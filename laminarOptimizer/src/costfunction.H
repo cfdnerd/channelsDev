@@ -31,9 +31,22 @@ if (PowerDiss > PowerDissRelax && PowerDissMax > SMALL)
   PD0Sug = PowerDiss0*(PowerDiss/Foam::max(PowerDissMax, SMALL));
 }
 PD0SugMaxCum = Foam::max(PD0SugMaxCum, PD0Sug);
+const bool pd0SugDiffObserved = Foam::mag(PD0Sug - PowerDiss0) > SMALL;
 
 if (Pstream::master())
 { 
+   if (pd0SugDiffObserved && !PD0SugLogInitialized)
+   {
+     std::ofstream PD0SugLog(PD0SugLogFile, std::ios::out);
+     PD0SugLog
+       << "# MTO_ThermalFluid cumulative PD0Sug maxima\n"
+       << "# Cols: Iter PD0SugMax_1_to_Iter\n"
+       << std::left
+       << std::setw(8) << "Iter"
+       << std::setw(20) << "PD0SugMax_1_to_Iter"
+       << '\n';
+     PD0SugLogInitialized = true;
+   }
    std::ofstream historyFile(optimizationHistoryFile, std::ios::app);
    if (opt > 1 && ((opt - 1) % 25 == 0))
    {
@@ -59,10 +72,10 @@ if (Pstream::master())
      << std::setw(16) << MeanT
      << std::setw(16) << maxT
      << '\n';
-   if (opt > 0 && (opt % 100 == 0))
+   if (PD0SugLogInitialized && opt > 0 && (opt % 100 == 0))
    {
-     std::ofstream maxPD0SugLogFile(maxPD0SugFile, std::ios::app);
-     maxPD0SugLogFile
+     std::ofstream PD0SugLog(PD0SugLogFile, std::ios::app);
+     PD0SugLog
        << std::right
        << std::setw(8) << opt
        << std::scientific << std::setprecision(8)

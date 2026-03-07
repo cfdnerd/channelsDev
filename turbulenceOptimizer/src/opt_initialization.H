@@ -1,6 +1,6 @@
 Info<< "Initialization\n" << endl;
 const char* optimizationHistoryFile = "optimization.hst";
-const char* maxPD0SugFile = "maxPD0Sug.log";
+const char* PD0SugLogFile = "PD0Sug.log";
 const char* debugOptimizerJsonFile = "debugOptimizer.jsonl";
 const char* debugOptimizerLogFile = "debugOptimizer.log";
 const char* debugAdjointCycleLogFile = debugOptimizerLogFile;
@@ -11,7 +11,7 @@ const char* firstFailureSnapshotFile = "firstFailureSnapshot.log";
 if (Pstream::master())
 {
   std::remove(optimizationHistoryFile);
-  std::remove(maxPD0SugFile);
+  std::remove(PD0SugLogFile);
   std::remove(debugOptimizerJsonFile);
   std::remove(debugOptimizerLogFile);
   std::remove(legacyDebugAdjointCycleLogFile);
@@ -32,15 +32,6 @@ if (Pstream::master())
     << std::setw(16) << "V"
     << std::setw(16) << "MeanT"
     << std::setw(16) << "MaxT"
-    << '\n';
-
-  std::ofstream maxPD0SugLogFile(maxPD0SugFile, std::ios::out);
-  maxPD0SugLogFile
-    << "# MTO_ThermalFluid cumulative PD0Sug maxima\n"
-    << "# Cols: Iter PD0SugMax_1_to_Iter\n"
-    << std::left
-    << std::setw(8) << "Iter"
-    << std::setw(20) << "PD0SugMax_1_to_Iter"
     << '\n';
 
   std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::out);
@@ -349,6 +340,7 @@ N=x.size();//N:design freedom
 reduce(N, sumOp<scalar>()); 
 
 scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PDActLog(0),PD0Sug(0),PD0SugMaxCum(-GREAT),PowerDissActualOverBase(0),maxT(0),sumT(0);
+bool PD0SugLogInitialized(false);
 scalar thermalExcessObjective(0.0);
 scalar thermalTmaxKSConstraint(0.0);
 scalar thermalTminKSConstraint(0.0);
