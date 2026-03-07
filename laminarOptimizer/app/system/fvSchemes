@@ -27,9 +27,7 @@ ddtSchemes
 gradSchemes
 {
     default         Gauss linear;
-    grad(D)         leastSquares;
     grad(T)         leastSquares;
-    grad(Da)        leastSquares;
     grad(Ta)        leastSquares;
     grad(Tb)        leastSquares;
 }
@@ -42,9 +40,9 @@ divSchemes
     div(-phi,Ua)    bounded Gauss upwind;
     div(-phi,Ub)    bounded Gauss upwind;
     div(-phi,Uc)    bounded Gauss upwind;
-    div(phi,T)      Gauss linearUpwind grad(T);
-    div(-phi,Ta)     Gauss linearUpwind grad(Ta);
-    div(-phi,Tb)     Gauss linearUpwind grad(Tb);
+    div(phi,T)      bounded Gauss linearUpwind grad(T);
+    div(-phi,Ta)    bounded Gauss linearUpwind grad(Ta);
+    div(-phi,Tb)    bounded Gauss linearUpwind grad(Tb);
     div((nuEff*dev2(T(grad(U))))) Gauss linear;
     div((nuEff*dev2(T(grad(Ua))))) Gauss linear;
 }
@@ -69,8 +67,6 @@ fluxRequired
     p;
     pa;
     pb;
-    D;
-    Da;
 }
 wallDist
 {

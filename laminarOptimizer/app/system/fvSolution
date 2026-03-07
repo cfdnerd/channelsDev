@@ -17,18 +17,6 @@ FoamFile
 
 solvers
 {
-    "(D|Da)"
-    {
-        solver          GAMG;
-        tolerance       1e-10;
-        relTol          0;
-        smoother        GaussSeidel;
-        cacheAgglomeration true;
-        agglomerator    faceAreaPair;
-        mergeLevels     1;
-        nCellsInCoarsestLevel 20;
-        maxIter         5000;
-    }
     "(p|pa|pb|pc)"
     {
         solver          GAMG;
@@ -55,18 +43,32 @@ solvers
     }
      "(T)"
     {
-        solver          PBiCGStab;
-        preconditioner  DILU;
+        solver          GAMG;
         tolerance       1e-10;
         relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
         maxIter         20000;
     }  
      "(Ta|Tb)"
     {
-        solver          PBiCGStab;
-        preconditioner  DILU;
+        solver          GAMG;
         tolerance       1e-10;
         relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
         maxIter         20000;
     }
      "(xp|fsensMeanT|gsensVol|gsensPowerDiss)"
