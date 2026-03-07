@@ -349,8 +349,10 @@ if (objFunction == 3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
   objectiveValue = thermalExcessObjective;
 }
 const scalar objectiveDelta = hasPreviousObjectiveValue ? objectiveValue - previousObjectiveValue : 0;
-const scalar powerConstraintMargin = gx[mmaPowerConstraintIndex];
-const scalar volumeConstraintMargin = gx[mmaVolumeConstraintIndex];
+const scalar powerConstraintWeightSafe = Foam::max(optPowerConstraintWeight, SMALL);
+const scalar powerConstraintMargin = gx[mmaPowerConstraintIndex]/powerConstraintWeightSafe;
+const scalar volumeConstraintWeightSafe = Foam::max(optVolumeConstraintWeight, SMALL);
+const scalar volumeConstraintMargin = gx[mmaVolumeConstraintIndex]/volumeConstraintWeightSafe;
 const scalar thermalTmaxConstraintMargin =
   static_cast<bool>(optThermalEnvelopeConstraintEnable) ? thermalTmaxKSConstraint : scalar(0.0);
 const scalar thermalTminConstraintMargin =
@@ -810,8 +812,8 @@ reduce(predictedVolumeDeltaLocal, sumOp<scalar>());
 reduce(predictedThermalTmaxDeltaLocal, sumOp<scalar>());
 reduce(predictedThermalTminDeltaLocal, sumOp<scalar>());
 const scalar predictedObjectiveDelta = predictedObjectiveDeltaLocal;
-const scalar predictedPowerDelta = predictedPowerDeltaLocal;
-const scalar predictedVolumeDelta = predictedVolumeDeltaLocal;
+const scalar predictedPowerDelta = predictedPowerDeltaLocal/powerConstraintWeightSafe;
+const scalar predictedVolumeDelta = predictedVolumeDeltaLocal/volumeConstraintWeightSafe;
 const scalar predictedThermalTmaxDelta = predictedThermalTmaxDeltaLocal;
 const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
 const scalar predictedPowerViolationPositive =

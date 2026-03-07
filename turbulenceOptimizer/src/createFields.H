@@ -46,6 +46,14 @@ label optStallWindow(convergenceControl.lookupOrDefault<label>("optStallWindow",
 scalar optObjectiveTol(convergenceControl.lookupOrDefault<scalar>("optObjectiveTol", 1e-3));
 scalar optConstraintTol(convergenceControl.lookupOrDefault<scalar>("optConstraintTol", 1e-3));
 scalar optStepTol(convergenceControl.lookupOrDefault<scalar>("optStepTol", 5e-3));
+scalar optPowerConstraintWeight
+(
+  convergenceControl.lookupOrDefault<scalar>("optPowerConstraintWeight", 1.0)
+);
+scalar optVolumeConstraintWeight
+(
+  convergenceControl.lookupOrDefault<scalar>("optVolumeConstraintWeight", 1.0)
+);
 label optConstraintWorsenMinIterations
 (
   convergenceControl.lookupOrDefault<label>("optConstraintWorsenMinIterations", optMinIterations)
@@ -510,6 +518,20 @@ if (optObjectiveTol <= 0.0 || optConstraintTol <= 0.0 || optStepTol <= 0.0)
     << "must be strictly positive. Found optObjectiveTol=" << optObjectiveTol
     << ", optConstraintTol=" << optConstraintTol
     << ", optStepTol=" << optStepTol
+    << exit(FatalError);
+}
+if (optPowerConstraintWeight <= 0.0)
+{
+  FatalErrorInFunction
+    << "tuneOptParameters.convergenceControl.optPowerConstraintWeight must be > 0. Found "
+    << optPowerConstraintWeight
+    << exit(FatalError);
+}
+if (optVolumeConstraintWeight <= 0.0)
+{
+  FatalErrorInFunction
+    << "tuneOptParameters.convergenceControl.optVolumeConstraintWeight must be > 0. Found "
+    << optVolumeConstraintWeight
     << exit(FatalError);
 }
 if (optMeritConstraintPenalty < 0.0)

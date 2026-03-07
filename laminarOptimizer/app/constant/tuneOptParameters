@@ -25,6 +25,8 @@ convergenceControl
     optObjectiveTol     1e-3;
     optConstraintTol    1e-3;
     optStepTol          5e-3;
+    optPowerConstraintWeight 1.0;
+    optVolumeConstraintWeight 1.0;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

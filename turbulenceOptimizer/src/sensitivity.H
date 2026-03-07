@@ -47,12 +47,15 @@ if (optimizationCycleTurbulentSensitivityMode && optimizationCycleUseTaThermalAd
 
 #include "filter_chainrule.H"
 
-gx[mmaPowerConstraintIndex]=
-(
-  PowerDiss/Foam::max(PowerDissRelax - scalar(0.2)*opt, PowerDissMax)
- - 1.0
-);
-gx[mmaVolumeConstraintIndex]=V;
+const scalar weightedPowerConstraint =
+  optPowerConstraintWeight*
+  (
+    PowerDiss/Foam::max(PowerDissRelax - scalar(0.2)*opt, PowerDissMax)
+   - 1.0
+  );
+const scalar weightedVolumeConstraint = optVolumeConstraintWeight*V;
+gx[mmaPowerConstraintIndex]=weightedPowerConstraint;
+gx[mmaVolumeConstraintIndex]=weightedVolumeConstraint;
 if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
 {
   gx[mmaThermalTmaxConstraintIndex] = thermalTmaxKSConstraint;
@@ -63,8 +66,8 @@ for(i=0;i<n;i++)
 {
  xmma[i] = x[i];
  dfdx[i]=fsensMeanT[i]/N;//sensitivities of objective function
- dgdx[mmaPowerConstraintIndex][i]=gsensPowerDiss[i]/N;//sensitivities of constraint function
- dgdx[mmaVolumeConstraintIndex][i]=gsensVol[i]/N;//sensitivities of constraint function
+ dgdx[mmaPowerConstraintIndex][i]=optPowerConstraintWeight*(gsensPowerDiss[i]/N);//sensitivities of constraint function
+ dgdx[mmaVolumeConstraintIndex][i]=optVolumeConstraintWeight*(gsensVol[i]/N);//sensitivities of constraint function
  if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
  {
    // Thermal envelope constraints currently reuse the thermal objective

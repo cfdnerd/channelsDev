@@ -254,7 +254,11 @@ solverSeverity = Foam::max(solverSeverity, linearSolveSeverityFromStats(gsensVol
 reduce(solverSeverity, maxOp<label>());
 
 const scalar objectiveRelativeDelta = Foam::mag(objectiveDelta)/Foam::max(Foam::mag(objectiveValue), SMALL);
-const scalar maxConstraintViolation = Foam::max(Foam::max(gx[0], gx[1]), scalar(0));
+const scalar powerConstraintWeightSafe = Foam::max(optPowerConstraintWeight, SMALL);
+const scalar powerConstraintMargin = gx[0]/powerConstraintWeightSafe;
+const scalar volumeConstraintWeightSafe = Foam::max(optVolumeConstraintWeight, SMALL);
+const scalar volumeConstraintMargin = gx[1]/volumeConstraintWeightSafe;
+const scalar maxConstraintViolation = Foam::max(Foam::max(powerConstraintMargin, volumeConstraintMargin), scalar(0));
 const bool convergenceCandidate =
   opt >= optMinIterations
   &&
@@ -278,7 +282,7 @@ if (Pstream::master())
     (xNonFiniteCountLocal > 0 || xLocalMin < -1e-8 || xLocalMax > 1.0 + 1e-8 || xhLocalMin < -1e-8 || xhLocalMax > 1.0 + 1e-8)
     ? "WARN"
     : (grayVolumeFraction > 0.50 ? "OBS" : "OK");
-  const char* constraintHealth = (gx[0] > 0 || gx[1] > 0) ? "WARN" : "OK";
+  const char* constraintHealth = (powerConstraintMargin > 0 || volumeConstraintMargin > 0) ? "WARN" : "OK";
   const char* sensitivityHealth =
     (fsensNonFiniteCountLocal > 0 || gsensPowerNonFiniteCountLocal > 0 || gsensVolNonFiniteCountLocal > 0)
     ? "WARN"
@@ -364,8 +368,8 @@ if (Pstream::master())
 
   writeSectionHeader("Objective And Constraints");
   writeRow("objective", "value="+fmtScalar(objectiveValue), "delta="+fmtScalar(objectiveDelta));
-  writeRow("power diss", "actual="+fmtScalar(PowerDissActual), "act/base="+fmtScalar(PowerDissActualOverBase), "constraint="+fmtScalar(PowerDiss), "margin="+fmtScalar(gx[0]));
-  writeRow("volume", "value="+fmtScalar(V), "margin="+fmtScalar(gx[1]));
+  writeRow("power diss", "actual="+fmtScalar(PowerDissActual), "act/base="+fmtScalar(PowerDissActualOverBase), "constraint="+fmtScalar(PowerDiss), "margin="+fmtScalar(powerConstraintMargin));
+  writeRow("volume", "value="+fmtScalar(V), "margin="+fmtScalar(volumeConstraintMargin));
   writeRow("thermal", "meanT="+fmtScalar(MeanT), "maxT="+fmtScalar(maxT));
 
   writeSectionHeader("MMA Diagnostics");
@@ -450,9 +454,9 @@ if (Pstream::master())
       << ",\"powerDissipationActual\":" << PowerDissActual
       << ",\"powerDissipationActualOverPowerDiss0\":" << PowerDissActualOverBase
       << ",\"powerDissipationConstraintValue\":" << PowerDiss
-      << ",\"powerDissipationConstraintMargin\":" << gx[0]
+      << ",\"powerDissipationConstraintMargin\":" << powerConstraintMargin
       << ",\"volumeConstraintValue\":" << V
-      << ",\"volumeConstraintMargin\":" << gx[1]
+      << ",\"volumeConstraintMargin\":" << volumeConstraintMargin
       << ",\"meanT\":" << MeanT
       << ",\"maxT\":" << maxT
     << "}"

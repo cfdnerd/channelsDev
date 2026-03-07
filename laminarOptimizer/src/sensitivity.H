@@ -19,15 +19,18 @@ gsenshPowerDiss=-alphaMax*(1+qu)*qu/((qu+xh)*(qu+xh))*(U&Ua);
 
 #include "filter_chainrule.H"
 
-gx[0]=(PowerDiss/Foam::max(PowerDissRelax-opt*0.2,PowerDissMax)-1.0);
-gx[1]=V;
+const scalar weightedPowerConstraint =
+  optPowerConstraintWeight*(PowerDiss/Foam::max(PowerDissRelax-opt*0.2,PowerDissMax)-1.0);
+const scalar weightedVolumeConstraint = optVolumeConstraintWeight*V;
+gx[0]=weightedPowerConstraint;
+gx[1]=weightedVolumeConstraint;
 
 for(i=0;i<n;i++)
 {
  xmma[i] = x[i];
  dfdx[i]=fsensMeanT[i]/N;//sensitivities of objective function
- dgdx[0][i]=gsensPowerDiss[i]/N;//sensitivities of constraint function
- dgdx[1][i]=gsensVol[i]/N;//sensitivities of constraint function
+ dgdx[0][i]=optPowerConstraintWeight*(gsensPowerDiss[i]/N);//sensitivities of constraint function
+ dgdx[1][i]=optVolumeConstraintWeight*(gsensVol[i]/N);//sensitivities of constraint function
 }
 
 
