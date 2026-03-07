@@ -14,6 +14,8 @@ import textwrap
 from pathlib import Path
 from typing import List, Sequence, Tuple
 
+EXCLUDED_PLOT_COLUMNS = {"PD0Sug"}
+
 
 def parse_history(path: Path) -> Tuple[List[str], List[List[float]]]:
     """Parse optimization.hst, handling comments and repeated headers."""
@@ -65,7 +67,9 @@ def parse_column_selection(header: Sequence[str], columns_arg: str | None) -> Li
     if not header:
         return []
 
-    default_indices = list(range(1, len(header)))
+    default_indices = [
+        idx for idx in range(1, len(header)) if header[idx] not in EXCLUDED_PLOT_COLUMNS
+    ]
     if not columns_arg:
         return default_indices
 
@@ -81,6 +85,8 @@ def parse_column_selection(header: Sequence[str], columns_arg: str | None) -> Li
                 f"Unknown column '{name}'. Available: {', '.join(header[1:])}"
             )
         if name == "Iter":
+            continue
+        if name in EXCLUDED_PLOT_COLUMNS:
             continue
         indices.append(name_to_idx[name])
 
@@ -155,7 +161,7 @@ def main() -> int:
         "-c",
         "--columns",
         default=None,
-        help="Comma-separated columns to plot (default: all, excluding Iter)",
+        help="Comma-separated columns to plot (default: all, excluding Iter and PD0Sug)",
     )
     parser.add_argument(
         "--live",
@@ -208,7 +214,7 @@ def main() -> int:
 
                 Options:
                   -f, --file PATH        Input history file (default: solverLogs/optimization.hst)
-                  -c, --columns LIST     Comma-separated columns (default: all except Iter)
+                  -c, --columns LIST     Comma-separated columns (default: all except Iter and PD0Sug)
                   --live                 Refresh continuously until Ctrl+C
                   --interval SEC         Refresh interval for --live (default: 2.0)
                   --save PATH            Save plot image (png/jpg/pdf...)
@@ -219,6 +225,7 @@ def main() -> int:
                 Column selection:
                   - Use exact header names from optimization.hst.
                   - Example: --columns PDCon,MeanT,MaxT
+                  - PD0Sug is intentionally excluded from plotting.
                   - Detected columns in {src}: {columns_msg}
 
                 Notes:

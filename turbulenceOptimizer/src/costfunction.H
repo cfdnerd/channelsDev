@@ -107,6 +107,7 @@ if (PowerDiss > PowerDissRelax && PowerDissMax > SMALL)
 {
   PD0Sug = PowerDiss0*(PowerDiss/Foam::max(PowerDissMax, SMALL));
 }
+PD0SugMaxCum = Foam::max(PD0SugMaxCum, PD0Sug);
 
 if (Pstream::master())
 { 
@@ -135,4 +136,14 @@ if (Pstream::master())
      << std::setw(16) << MeanT
      << std::setw(16) << maxT
      << '\n';
+   if (opt > 0 && (opt % 100 == 0))
+   {
+     std::ofstream maxPD0SugLogFile(maxPD0SugFile, std::ios::app);
+     maxPD0SugLogFile
+       << std::right
+       << std::setw(8) << opt
+       << std::scientific << std::setprecision(8)
+       << std::setw(20) << PD0SugMaxCum
+       << '\n';
+   }
 }
