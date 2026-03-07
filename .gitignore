@@ -12,3 +12,4 @@ CommitPush.sh
 runLOG
 *.Out
 **/solverLogs/
+*.txt
