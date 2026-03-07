@@ -13,3 +13,4 @@ runLOG
 *.Out
 **/solverLogs/
 *.txt
+**/__pycache__/
