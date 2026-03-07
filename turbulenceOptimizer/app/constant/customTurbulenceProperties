@@ -1,0 +1,76 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      customTurbulenceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+enable                  true;  // Enable custom turbulence framework.
+stageCThermalAdjointOnly false; // Disable the thermal-only slice once the broader Stage-C verification path is enabled.
+stageCFullAdjointVerification false; // Disable Stage-C verification mode when running the Stage-D gradient-closure path.
+stageDGradientClosure    true; // Stage-D gate key 1: allow turbulence-aware gradient closure assembly path.
+enableTurbulentOptimization true; // Stage-D gate key 2: explicit run-time acknowledgment before turbulent optimization is enabled.
+model                   kOmegaSST; // Custom turbulence scaffold is currently locked to kOmegaSST.
+inletTurbulenceMode     directFields; // Stage-B supports physical Uin/I/Lt conversion, but the current validated baseline still uses the explicit 0/ field values as the inlet reference.
+Uin                     1.0;   // Inlet bulk speed used for the reference turbulence conversion.
+turbulenceIntensity     0.05;  // Reference inlet turbulence intensity for k = 1.5*(U*I)^2.
+turbulenceLengthScale   turbulenceLengthScale [0 1 0 0 0 0 0] 2.8e-4; // Updated for the enlarged inlet width in the current blockMesh domain.
+inletConsistencyRelTol  0.20;  // Relative tolerance band for inlet k/omega consistency against the Stage-B reference conversion.
+
+alphaK1                 alphaK1 [0 0 0 0 0 0 0] 0.85; // SST closure coefficients
+alphaK2                 alphaK2 [0 0 0 0 0 0 0] 1.0;
+alphaOmega1             alphaOmega1 [0 0 0 0 0 0 0] 0.5;
+alphaOmega2             alphaOmega2 [0 0 0 0 0 0 0] 0.856;
+gamma1                  gamma1 [0 0 0 0 0 0 0] 0.5555555556;
+gamma2                  gamma2 [0 0 0 0 0 0 0] 0.44;
+beta1                   beta1 [0 0 0 0 0 0 0] 0.075;
+beta2                   beta2 [0 0 0 0 0 0 0] 0.0828;
+betaStar                betaStar [0 0 0 0 0 0 0] 0.09;
+a1                      a1 [0 0 0 0 0 0 0] 0.31;
+b1                      b1 [0 0 0 0 0 0 0] 1.0;
+c1                      c1 [0 0 0 0 0 0 0] 10.0;
+
+Prt                     Prt [0 0 0 0 0 0 0] 0.85; // Turbulent Prandtl number for alphat = nut/Prt.
+
+kMin                    kMin [0 2 -2 0 0 0 0] 1e-10; // Strict physical-admissibility threshold (must remain positive); not a tuning clip.
+omegaMin                omegaMin [0 0 -1 0 0 0 0] 1e-6;
+omegaMax                omegaMax [0 0 -1 0 0 0 0] 1e6;
+omegaWallFactor         60.0; // Near-wall omega uses omega = omegaWallFactor*nu/(beta1*y^2) on wall patches.
+nutFloor                nutFloor [0 2 -1 0 0 0 0] 1e-12; // Positivity floor used only for model admissibility checks.
+nutMax                  nutMax [0 2 -1 0 0 0 0] 1e-2;    // Physical envelope used for diagnostics/health tracking.
+yMin                    yMin [0 1 0 0 0 0 0] 1e-8;
+
+turbulenceDampingCoeff  1.0;
+porousAwareTurbulenceTransport true; // Enable porous-aware RANS transport shaping so k/omega suppression is handled through modeled sink/source balance, not only clipping.
+porousTurbulenceProductionExponent 2.0; // Fluid-mask exponent for turbulence production attenuation (xh^exp).
+porousTurbulenceProductionFloor 5e-3; // Keep a tiny production floor to avoid fully degenerate one-equation transport in near-solid transition cells.
+porousTurbulenceSuppressionCoeff 1.0; // Strain-rate-scaled porous suppression gain [dimensionless].
+porousTurbulenceSuppressionExponent 4.0; // Suppression-mask exponent applied to (1-xh); keeps suppression concentrated toward solid-like regions.
+porousTurbulenceAlphaSinkCoeff 0.5; // Additional Brinkman-rate-scaled suppression gain [dimensionless].
+momentumCorrectors      120;  // SIMPLE momentum-pressure correction passes per primal loop; increased for accuracy in primal verification.
+turbulenceCorrectors    5;    // Maximum nonlinear k-omega closure correction passes executed every primal loop; kept at the last stable value to avoid late-pass solver breakdown.
+minTurbulenceCorrectors 5;    // Force all configured turbulence passes every primal loop; use the convergence check as an end-of-cycle health gate, not an early-exit shortcut.
+kNonlinearTol           1e-2; // Treat sub-1% RMS k change after the full turbulence cycle as settled for the current primal benchmark.
+omegaNonlinearTol       3e-3; // Require omega to settle below roughly 0.3% RMS change before reporting nonlinear convergence.
+nutNonlinearTol         1.5e-2; // Treat sub-1.5% RMS nut change after the full turbulence cycle as settled.
+stageDFlowAdjointCorrectors 1;  // Latest Stage-D trace shows pass 1 consistently best for Ua/pa and pass 2 immediately regresses; run one pass directly.
+stageDHeatAdjointCorrectors 3;  // Keep the bounded three-pass Stage-D Ub/pb cycle from the latest stable run for higher adjoint pressure-velocity consistency.
+stageDTransportedClosureAdjoints true; // Item-1 enabled: solve PDE-transported ka/omegaa closure adjoints in Stage-D.
+stageDClosureAdjointFormulation transportedCrossCoupledV3; // V3 formulation selector: transported closure adjoints with explicit ka-omegaa cross-coupling.
+stageDClosureAdjointDualConsistentBC true; // Item-1 enabled: enforce zero duals on primal fixed-value closure patches.
+stageDClosureAdjointInvTau 1.0; // Pseudo-time inverse scale [1/s] for transported closure-adjoint surrogate equations.
+stageDClosureCrossCoupling 0.35; // V3 cross-coupling gain for ka<->omegaa transported closure-adjoint forcing.
+stageDClosureConsistencyUseBoundedState true; // Use shared bounded closure states (k/omega) across primal/adjoint/sensitivity coupling blocks.
+stageDUseLogClosureState true; // Maintain log-space closure diagnostics and scaling states for positivity-consistent sensitivity behavior.
+
+// ************************************************************************* //
