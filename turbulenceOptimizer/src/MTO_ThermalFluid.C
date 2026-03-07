@@ -114,6 +114,8 @@ int main(int argc, char *argv[])
             #include "costfunction.H"              
             #include "sensitivity.H"
         }
+        (void)sensitivityQualityWarn;
+        (void)sensitivityQualityFail;
         runTime.write();
         if (stopOptimization)
         {

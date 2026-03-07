@@ -162,6 +162,7 @@ Switch optFreezeContinuationOnReject(false);
 Switch optFreezeContinuationOnLowTrust(false);
 scalar optContinuationLowTrustThreshold(0.0);
 label optContinuationLowTrustRejectStreak(0);
+(void)optContinuationLowTrustRejectStreak;
 Switch optRejectStopRequireConstraintWindow(false);
 Switch optEarlyRecoveryOnGlobalizationReject(false);
 // Retired dictionary tuning family: continuation deadlock/catch-up heuristics.
@@ -232,6 +233,7 @@ Switch optUseTrustRatioGate(false);
 scalar optTrustRatioAcceptEta(0.0);
 scalar optTrustRatioShrinkEta(0.0);
 scalar optTrustRatioGrowEta(1.0);
+(void)optTrustRatioGrowEta;
 Switch optClosureDerivativeFDEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDEnable", true)

@@ -1,7 +1,7 @@
 //***********************************//update mu and lambda
 opt++;
 const label updateScheduleIterationCurrent =
-  Foam::max(continuationScheduleIterationActive, label(1));
+  Foam::max(opt, label(1));
 const scalar updatePowerConstraintScheduleDenomCurrent =
   Foam::max(PowerDissRelax - scalar(0.2)*updateScheduleIterationCurrent, PowerDissMax);
 const scalar updatePowerConstraintScheduleGap =
@@ -23,6 +23,7 @@ const label updateScheduleHorizonLagIterations =
     updatePowerConstraintScheduleIterationsToSettle - updateOptimizationIterationsRemaining,
     label(0)
   );
+(void)updateScheduleHorizonLagIterations;
 const bool updatePowerConstraintScheduleSettled =
   updatePowerConstraintScheduleDenomCurrent <= PowerDissMax + SMALL;
 const bool updatePowerConstraintScheduleWillSettleInRun =

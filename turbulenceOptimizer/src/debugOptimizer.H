@@ -358,7 +358,7 @@ const scalar thermalTminConstraintMargin =
 const scalar powerConstraintMarginDelta =
   hasPreviousPowerConstraintMargin ? powerConstraintMargin - previousPowerConstraintMargin : 0;
 const scalar powerConstraintFinalMargin =
-  PowerDissActualOverBase/Foam::max(PowerDissMax, SMALL) - 1.0;
+  PowerDiss/Foam::max(PowerDissMax, SMALL) - 1.0;
 const scalar powerConstraintFinalMarginDelta =
   hasPreviousPowerConstraintFinalMargin
   ? powerConstraintFinalMargin - previousPowerConstraintFinalMargin
@@ -481,9 +481,9 @@ const bool guardConstraintViolationWorsening =
   && guardConstraintViolationDelta > optConstraintWorsenTol;
 const bool constraintWorsenGuardEnabled = optConstraintWorsenWindow > 0;
 const label scheduleIterationCurrent =
-  Foam::max(continuationScheduleIterationActive, label(1));
+  Foam::max(opt, label(1));
 const label scheduleIterationPrevious =
-  Foam::max(previousContinuationScheduleIterationActive, label(0));
+  Foam::max(opt - 1, label(0));
 const scalar powerConstraintScheduleDenomCurrent =
   Foam::max(PowerDissRelax - scalar(0.2)*scheduleIterationCurrent, PowerDissMax);
 const scalar powerConstraintScheduleDenomPrevious =
@@ -777,6 +777,7 @@ const scalar rejectMoveScaleClamped =
   Foam::max(Foam::min(optMeritRejectMoveScale, scalar(0.99)), scalar(0.1));
 const scalar recoverMoveScaleClamped =
   Foam::max(optMeritRecoverMoveScale, scalar(1.0));
+(void)recoverMoveScaleClamped;
 const scalar meritTrustMoveMinClamped =
   Foam::max(Foam::min(optMeritTrustMoveMin, scalar(1.0)), scalar(0.01));
 const scalar continuationLowTrustThresholdReport =
@@ -874,6 +875,7 @@ const bool trustRatioAcceptedWithSensitivityGuard =
     || !trustRatioDefined
     || trustRatio >= Foam::max(optTrustRatioAcceptEta, scalar(0.2))
      );
+(void)trustRatioAcceptedWithSensitivityGuard;
 const bool filterAcceptanceEnabled =
   static_cast<bool>(optUseFilterAcceptance)
   && stageDTurbulentOptimizationMode
@@ -934,6 +936,7 @@ const bool meritAcceptedPreGate =
   !static_cast<bool>(optMeritGlobalizationEnable)
   || !hasPreviousAcceptedMerit
   || meritValue <= previousAcceptedMerit + meritAcceptanceTol;
+(void)meritAcceptedPreGate;
 const scalar objectiveAbsValue = Foam::mag(objectiveValue);
 const scalar thermalFieldAbsMaxObserved =
   Foam::max(Foam::mag(TLocalMin), Foam::mag(TLocalMax));
@@ -1124,6 +1127,7 @@ const bool deadlockConstraintPriorityAccepted =
 // Step-acceptance controller retired: always advance MMA design updates unless
 // a hard safety envelope is violated.
 const bool globalizationFrameworkEnabled(false);
+(void)globalizationFrameworkEnabled;
 const bool meritAcceptedRaw(true);
 const bool clipForcedRejectAcceptedByRestoration =
   clipGuardForcedReject && !clipHardForcedReject && feasibilityRestorationAcceptedGuarded;
@@ -1140,7 +1144,9 @@ const bool clipRecoverySignal =
        maxFluidClipFraction >= 0.9*optClipGuardFluidFraction
     || maxGrayClipFraction >= 0.85
   );
+(void)clipRecoverySignal;
 const bool meritRecoverySignal = false;
+(void)meritRecoverySignal;
 meritRecoveryRequest = false;
 const label rogueRejectTriggerClamped =
   Foam::max(optRogueRejectStreakTrigger, label(1));
@@ -2967,7 +2973,7 @@ if (Pstream::master())
 
   writeSectionHeader("Objective And Constraints");
   writeRow("objective", "value="+fmtScalar(objectiveValue), "delta="+fmtScalar(objectiveDelta));
-  writeRow("power diss", "actual="+fmtScalar(PowerDissActual), "act/base="+fmtScalar(PowerDissActualOverBase), "constraint="+fmtScalar(PowerDissActualOverBase));
+  writeRow("power diss", "actual="+fmtScalar(PowerDissActual), "act/base="+fmtScalar(PowerDissActualOverBase), "constraint="+fmtScalar(PowerDiss));
   writeRow("power margin", "sched="+fmtScalar(powerConstraintMargin), "final="+fmtScalar(powerConstraintFinalMargin));
   writeRow("volume", "value="+fmtScalar(V), "margin="+fmtScalar(volumeConstraintMargin));
   writeRow
@@ -3385,7 +3391,7 @@ if (Pstream::master())
       << ",\"delta\":" << objectiveDelta
       << ",\"powerDissipationActual\":" << PowerDissActual
       << ",\"powerDissipationActualOverPowerDiss0\":" << PowerDissActualOverBase
-      << ",\"powerDissipationConstraintValue\":" << PowerDissActualOverBase
+      << ",\"powerDissipationConstraintValue\":" << PowerDiss
       << ",\"powerDissipationConstraintMargin\":" << powerConstraintMargin
       << ",\"powerDissipationConstraintMarginDelta\":" << powerConstraintMarginDelta
       << ",\"powerDissipationFinalConstraintMargin\":" << powerConstraintFinalMargin

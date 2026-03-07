@@ -47,16 +47,10 @@ if (stageDTurbulentSensitivityMode)
 
 #include "filter_chainrule.H"
 
-const scalar powerConstraintScheduleDenomActive =
-  Foam::max
-  (
-    PowerDissRelax - scalar(0.2)*continuationScheduleIterationActive,
-    PowerDissMax
-  );
 gx[mmaPowerConstraintIndex]=
 (
-  PowerDissActualOverBase/Foam::max(powerConstraintScheduleDenomActive, SMALL)
- -1.0
+  PowerDiss/Foam::max(PowerDissRelax - scalar(0.2)*opt, PowerDissMax)
+ - 1.0
 );
 gx[mmaVolumeConstraintIndex]=V;
 if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
@@ -162,6 +156,7 @@ const scalar preMmaFinitePenalty =
   );
 const scalar preMmaClipPenalty =
   0.0;
+(void)preMmaClipPenalty;
 const scalar preMmaResidualPenalty =
   hasPreviousMaxLinearFinalResidual
   ? Foam::min
