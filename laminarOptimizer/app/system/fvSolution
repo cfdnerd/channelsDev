@@ -20,54 +20,69 @@ solvers
     "(D|Da)"
     {
         solver          GAMG;
-        tolerance       1e-6;
-        relTol          0.9;
+        tolerance       1e-10;
+        relTol          0;
         smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
         nCellsInCoarsestLevel 20;
+        maxIter         5000;
     }
     "(p|pa|pb|pc)"
     {
         solver          GAMG;
-        tolerance       1e-8;
-        relTol          0.01;
+        tolerance       1e-10;
+        relTol          0;
         smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        maxIter         5000;
     }
 
     "(U|Ua|Ub|Uc|k|epsilon)"
     {
         solver          smoothSolver;
-        smoother        GaussSeidel;
+        smoother        symGaussSeidel;
         nSweeps         2;
-        tolerance       1e-8;
-        relTol          0.1;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         5000;
     }
      "(T)"
     {
-        solver          GAMG;
+        solver          PBiCGStab;
         preconditioner  DILU;
-        smoother        GaussSeidel;
-        tolerance       1e-6;
+        tolerance       1e-10;
         relTol          0;
+        maxIter         20000;
     }  
      "(Ta|Tb)"
     {
         solver          PBiCGStab;
         preconditioner  DILU;
-        tolerance       1e-6;
+        tolerance       1e-10;
         relTol          0;
+        maxIter         20000;
     }
      "(xp|fsensMeanT|gsensVol|gsensPowerDiss)"
     {
         solver          PCG;
         preconditioner  DIC;
-        tolerance       1e-6;
+        tolerance       1e-8;
         relTol          0;
+        maxIter         5000;
     }
 }
 
 SIMPLE
 {
-    nNonOrthogonalCorrectors 0;
+    nNonOrthogonalCorrectors 2;
+    consistent yes;
  //   nCorrectors 2;
 // nOuterCorrectors 10;
     pRefCell 0;
