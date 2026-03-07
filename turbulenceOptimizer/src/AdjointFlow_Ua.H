@@ -2,17 +2,25 @@ const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleF
 const bool optimizationCycleFlowAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationCycleFlowAdjointMode;
+const bool adjointRollbackGuardsEnabled =
+    static_cast<bool>(optAdjointRollbackGuardsEnable);
 const bool resetAdjointState =
     (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
  || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState));
 const bool stagnationCheckEnabled =
-    (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleStagnationCheck))
- || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck));
+    adjointRollbackGuardsEnabled
+ && (
+      (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleStagnationCheck))
+   || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck))
+    );
 const label noImprovePatience =
     optimizationCycleFlowAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
 const label noImproveMinCorrectors =
     optimizationCycleFlowAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
-const bool divergenceCheckEnabled = adjointCycleFlowAdjointMode && adjointCycleDivergenceCheck;
+const bool divergenceCheckEnabled =
+    adjointRollbackGuardsEnabled
+ && adjointCycleFlowAdjointMode
+ && adjointCycleDivergenceCheck;
 const scalar flowAdjointMagnitudeLimit =
     optimizationCycleFlowAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
 const bool useNuEffInUaEquation =
@@ -338,7 +346,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       }
 
       bool adjointCycleMagnitudeGuardTriggered(false);
-      if (adjointCycleUaMax > flowAdjointMagnitudeLimit)
+      if (adjointRollbackGuardsEnabled && adjointCycleUaMax > flowAdjointMagnitudeLimit)
       {
           adjointCycleMagnitudeGuardTriggered = true;
           adjointCycleAdjointFlowDiverged = true;

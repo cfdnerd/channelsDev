@@ -21,6 +21,10 @@ convergenceControl
     // Run Profile
     // --------------------------------------------------------------------- //
     optRunMode production; // production | diagnostic
+    optAdjointRollbackGuardsEnable      true; // Ua/Ub rollback guards
+    optFirstFailureSnapshotEnable       true; // write first failure snapshot
+    optTurbulenceStateRegularizationEnable true; // smooth k/omega positivity repair
+    optClosureBoundedOmegaLimiterEnable true; // smooth omega limiter in nut
 
     // --------------------------------------------------------------------- //
     // Thermal Adjoint Selector

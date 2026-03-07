@@ -1,5 +1,9 @@
 {
   const bool turbulenceStateFailFast = optDiagnosticMode;
+  const bool turbulenceStateRegularizationEnabled =
+    static_cast<bool>(optTurbulenceStateRegularizationEnable);
+  const bool closureBoundedOmegaLimiterEnabled =
+    static_cast<bool>(optClosureBoundedOmegaLimiterEnable);
   const dimensionedScalar kRecoveryFloor
   (
     "kRecoveryFloorModel",
@@ -30,12 +34,12 @@
   const scalar omegaMinState = gMin(omega);
   if (!(kMinState > 0.0) || !(omegaMinState > 0.0))
   {
-    if (turbulenceStateFailFast)
+    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
     {
       FatalErrorInFunction
         << "Non-physical turbulence state entering closure model: "
         << "min(k)=" << kMinState << ", min(omega)=" << omegaMinState
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Smooth regularization is disabled; investigate formulation/root cause."
         << exit(FatalError);
     }
     if (Pstream::master())
@@ -186,7 +190,17 @@
     (
       0.5*(omegaLimiter + smallOmegaLimiter + omegaBoundBlendDen)
     );
-    const volScalarField rawNut(a1Coeff*kStateRef/boundedOmegaLimiter);
+    const volScalarField omegaLimiterPositive
+    (
+      Foam::max(omegaLimiter, smallOmegaLimiter)
+    );
+    const volScalarField omegaNutDenominator
+    (
+      closureBoundedOmegaLimiterEnabled
+      ? boundedOmegaLimiter
+      : omegaLimiterPositive
+    );
+    const volScalarField rawNut(a1Coeff*kStateRef/omegaNutDenominator);
     nut = rawNut;
     const scalar nutMinValue = gMin(nut);
     const scalar nutMaxValue = gMax(nut);
@@ -247,7 +261,17 @@
       (
         0.5*(omegaLimiterState + smallOmegaLimiter + omegaBoundBlendDenState)
       );
-      const volScalarField rawNutState(a1Coeff*kState/boundedOmegaLimiterState);
+      const volScalarField omegaLimiterStatePositive
+      (
+        Foam::max(omegaLimiterState, smallOmegaLimiter)
+      );
+      const volScalarField omegaNutDenominatorState
+      (
+        closureBoundedOmegaLimiterEnabled
+        ? boundedOmegaLimiterState
+        : omegaLimiterStatePositive
+      );
+      const volScalarField rawNutState(a1Coeff*kState/omegaNutDenominatorState);
       return volScalarField
       (
         rawNutState
@@ -289,9 +313,9 @@
     }
     else
     {
-      dNutDkBlock = a1Coeff/boundedOmegaLimiter;
+      dNutDkBlock = a1Coeff/omegaNutDenominator;
       dNutDOmegaBlock =
-        -sqr(a1Coeff)*kStateRef/sqr(boundedOmegaLimiter)
+        -sqr(a1Coeff)*kStateRef/sqr(omegaNutDenominator)
         *omegaLimiterWeightK;
     }
 

@@ -441,6 +441,7 @@ else if (customTurbulenceActive && adjointCycleFullAdjointVerification)
         << endl;
     Info<< "Adjoint-Cycle verification toggles: reset="
         << (adjointCycleResetAdjointState ? "true" : "false")
+        << " rollbackGuards=" << (optAdjointRollbackGuardsEnable ? "true" : "false")
         << " viscosity=" << (adjointCycleUseNuEff ? "nuEff" : "nu")
         << " thermalSource="
         << (adjointCycleIncludeThermalMomentumSource ? "true" : "false")
@@ -481,12 +482,18 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", sinkExp=" << porousTurbulenceSuppressionExponent
         << ", sinkS=" << porousTurbulenceSuppressionCoeff
         << ", sinkA=" << porousTurbulenceAlphaSinkCoeff << "). "
+        << "State regularization="
+        << (optTurbulenceStateRegularizationEnable ? "true" : "false")
+        << " omegaLimiterBounded="
+        << (optClosureBoundedOmegaLimiterEnable ? "true" : "false")
+        << ". "
         << "Bounded closure state="
         << (optimizationCycleClosureConsistencyUseBoundedState ? "true" : "false")
         << " logState=" << (optimizationCycleUseLogClosureState ? "true" : "false")
         << ". "
         << "No-improve rollback guard="
         << (optimizationCycleNoImproveCheck ? "true" : "false")
+        << " globalRollbackGuards=" << (optAdjointRollbackGuardsEnable ? "true" : "false")
         << " (minPass=" << optimizationCycleNoImproveMinCorrectors
         << ", patience=" << optimizationCycleNoImprovePatience << "). "
         << "Thermal adjoint mode=" << optThermalAdjointMode

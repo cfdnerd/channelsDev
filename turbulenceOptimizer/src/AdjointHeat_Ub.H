@@ -1,14 +1,19 @@
 const bool optimizationCycleObjectiveAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+const bool optimizationCycleHeatRollbackGuardsEnabled =
+    static_cast<bool>(optAdjointRollbackGuardsEnable);
 const volScalarField& thermalAdjointSourceField =
     optimizationCycleObjectiveAdjointMode ? optimizationCycleThermalAdjointField : Tb;
 const label adjointHeatCorrectors = optimizationCycleObjectiveAdjointMode ? optimizationCycleHeatAdjointCorrectors : 40;
 const scalar optimizationCycleHeatAdjointMagnitudeLimit =
     optimizationCycleObjectiveAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
 const bool optimizationCycleHeatNoImproveCheckEnabled =
-    optimizationCycleObjectiveAdjointMode
-  ? static_cast<bool>(optimizationCycleNoImproveCheck)
-  : static_cast<bool>(adjointCycleStagnationCheck);
+    optimizationCycleHeatRollbackGuardsEnabled
+ && (
+      optimizationCycleObjectiveAdjointMode
+      ? static_cast<bool>(optimizationCycleNoImproveCheck)
+      : static_cast<bool>(adjointCycleStagnationCheck)
+    );
 const label optimizationCycleHeatNoImprovePatience =
     optimizationCycleObjectiveAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
 const label optimizationCycleHeatNoImproveMinCorrectors =
@@ -254,7 +259,11 @@ if (optimizationCycleObjectiveAdjointMode)
   bool optimizationCyclePendingRollback(false);
   bool optimizationCycleMagnitudeGuardTriggered(false);
   bool optimizationCycleNoImproveDiverged(false);
-  if (optimizationCycleUbMax != optimizationCycleUbMax || optimizationCycleUbMax > optimizationCycleHeatAdjointMagnitudeLimit)
+  if
+  (
+      optimizationCycleHeatRollbackGuardsEnabled
+   && (optimizationCycleUbMax != optimizationCycleUbMax || optimizationCycleUbMax > optimizationCycleHeatAdjointMagnitudeLimit)
+  )
   {
     optimizationCycleMagnitudeGuardTriggered = true;
     optimizationCyclePendingRollback = true;

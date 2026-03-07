@@ -1,7 +1,10 @@
 if (customTurbulenceActive)
 {
   const bool turbulenceStateFailFast = optDiagnosticMode;
-  const label kRecoveryAttempts = turbulenceStateFailFast ? 1 : 3;
+  const bool turbulenceStateRegularizationEnabled =
+    static_cast<bool>(optTurbulenceStateRegularizationEnable);
+  const label kRecoveryAttempts =
+    (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled) ? 1 : 3;
   const dimensionedScalar kRecoveryFloor
   (
     "kRecoveryFloor",
@@ -34,12 +37,12 @@ if (customTurbulenceActive)
   }
   if (!(kMinBefore > 0.0))
   {
-    if (turbulenceStateFailFast)
+    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
     {
       FatalErrorInFunction
         << "Detected non-physical k state before k solve: "
         << "min(k)=" << kMinBefore
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Smooth regularization is disabled; investigate formulation/root cause."
         << exit(FatalError);
     }
     if (Pstream::master())
@@ -169,12 +172,12 @@ if (customTurbulenceActive)
 
   if (!kStatePhysical)
   {
-    if (turbulenceStateFailFast)
+    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
     {
       FatalErrorInFunction
         << "Non-physical k state detected after solve: "
         << "min(k)=" << kMinAfter << ", max(k)=" << kMaxAfter
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Smooth regularization is disabled; investigate formulation/root cause."
         << exit(FatalError);
     }
     if (Pstream::master())

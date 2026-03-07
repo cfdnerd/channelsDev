@@ -320,9 +320,21 @@ word optRunMode
 word optSensitivityMode(optRunMode);
 const bool optDiagnosticMode = optRunMode == word("diagnostic");
 const bool optSensitivityDiagnosticMode = optSensitivityMode == word("diagnostic");
-Switch optPersistFirstFailureSnapshot
+Switch optFirstFailureSnapshotEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPersistFirstFailureSnapshot", true)
+  convergenceControl.lookupOrDefault<Switch>("optFirstFailureSnapshotEnable", true)
+);
+Switch optAdjointRollbackGuardsEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optAdjointRollbackGuardsEnable", true)
+);
+Switch optTurbulenceStateRegularizationEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optTurbulenceStateRegularizationEnable", true)
+);
+Switch optClosureBoundedOmegaLimiterEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optClosureBoundedOmegaLimiterEnable", true)
 );
 Switch optContinuationEventDriven
 (

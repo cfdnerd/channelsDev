@@ -1,7 +1,10 @@
 if (customTurbulenceActive)
 {
   const bool turbulenceStateFailFast = optDiagnosticMode;
-  const label omegaRecoveryAttempts = turbulenceStateFailFast ? 1 : 3;
+  const bool turbulenceStateRegularizationEnabled =
+    static_cast<bool>(optTurbulenceStateRegularizationEnable);
+  const label omegaRecoveryAttempts =
+    (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled) ? 1 : 3;
   const dimensionedScalar omegaRecoveryFloor
   (
     "omegaRecoveryFloor",
@@ -34,12 +37,12 @@ if (customTurbulenceActive)
   }
   if (!(omegaMinBefore > 0.0))
   {
-    if (turbulenceStateFailFast)
+    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
     {
       FatalErrorInFunction
         << "Detected non-physical omega state before omega solve: "
         << "min(omega)=" << omegaMinBefore
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Smooth regularization is disabled; investigate formulation/root cause."
         << exit(FatalError);
     }
     if (Pstream::master())
@@ -174,12 +177,12 @@ if (customTurbulenceActive)
 
   if (!omegaStatePhysical)
   {
-    if (turbulenceStateFailFast)
+    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
     {
       FatalErrorInFunction
         << "Non-physical omega state detected after solve: "
         << "min(omega)=" << omegaMinAfter << ", max(omega)=" << omegaMaxAfter
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Smooth regularization is disabled; investigate formulation/root cause."
         << exit(FatalError);
     }
     if (Pstream::master())

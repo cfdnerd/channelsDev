@@ -58,13 +58,13 @@ if (Pstream::master())
     << " heatSource=" << heatSource.value()
     << '\n';
 
-  if (static_cast<bool>(optPersistFirstFailureSnapshot))
+  if (static_cast<bool>(optFirstFailureSnapshotEnable))
   {
     std::ofstream firstFailureSnapshotStream(firstFailureSnapshotFile, std::ios::out);
     firstFailureSnapshotStream
       << "# MTO_ThermalFluid first-failure snapshot bundle\n"
       << "# Stores the first optimizer health-failure event for reproducible debugging\n"
-      << "# Fields are written at failure time if optPersistFirstFailureSnapshot=true\n";
+      << "# Fields are written at failure time if optFirstFailureSnapshotEnable=true\n";
   }
 }
 

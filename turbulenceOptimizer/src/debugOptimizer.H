@@ -2439,7 +2439,7 @@ const bool firstFailureHealthEvent =
     || !healthGatesPassed
      );
 const bool triggerFirstFailureSnapshot =
-     static_cast<bool>(optPersistFirstFailureSnapshot)
+     static_cast<bool>(optFirstFailureSnapshotEnable)
   && !firstFailureSnapshotWritten
   && firstFailureHealthEvent;
 if (triggerFirstFailureSnapshot)
