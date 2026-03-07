@@ -9,3 +9,5 @@
 CommitPush.sh
 *.html
 *.png
+runLOG
+*.Out
