@@ -1,0 +1,11 @@
+**/linux64GccDPInt32Opt/
+**/processor*/
+**/polyMesh/
+*.log
+**/log
+*.hst
+*.jsonl
+**/solver_diagnostics/*
+CommitPush.sh
+*.html
+*.png
