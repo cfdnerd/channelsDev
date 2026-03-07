@@ -60,7 +60,7 @@ if (customTurbulenceActive)
   }
 
   volScalarField omegaDestructionState(omega);
-  if (static_cast<bool>(stageDClosureConsistencyUseBoundedState))
+  if (static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState))
   {
     omegaDestructionState = omegaClosureState;
   }

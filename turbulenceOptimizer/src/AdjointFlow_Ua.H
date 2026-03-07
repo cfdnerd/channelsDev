@@ -1,79 +1,79 @@
-const bool stageCFlowAdjointMode = customTurbulenceActive && stageCFullAdjointVerification;
-const bool stageDFlowAdjointMode =
-    customTurbulenceActive && stageDTurbulentOptimizationMode;
-const bool boundedFlowAdjointMode = stageCFlowAdjointMode || stageDFlowAdjointMode;
+const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
+const bool optimizationCycleFlowAdjointMode =
+    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationCycleFlowAdjointMode;
 const bool resetAdjointState =
-    (stageCFlowAdjointMode && static_cast<bool>(stageCResetAdjointState))
- || (stageDFlowAdjointMode && static_cast<bool>(stageDResetAdjointState));
+    (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
+ || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState));
 const bool stagnationCheckEnabled =
-    (stageCFlowAdjointMode && static_cast<bool>(stageCStagnationCheck))
- || (stageDFlowAdjointMode && static_cast<bool>(stageDNoImproveCheck));
+    (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleStagnationCheck))
+ || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck));
 const label noImprovePatience =
-    stageDFlowAdjointMode ? stageDNoImprovePatience : stageCStagnationPatience;
+    optimizationCycleFlowAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
 const label noImproveMinCorrectors =
-    stageDFlowAdjointMode ? stageDNoImproveMinCorrectors : label(1);
-const bool divergenceCheckEnabled = stageCFlowAdjointMode && stageCDivergenceCheck;
+    optimizationCycleFlowAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
+const bool divergenceCheckEnabled = adjointCycleFlowAdjointMode && adjointCycleDivergenceCheck;
 const scalar flowAdjointMagnitudeLimit =
-    stageDFlowAdjointMode ? stageDAdjointMaxMagnitude : stageCAdjointMaxMagnitude;
+    optimizationCycleFlowAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
 const bool useNuEffInUaEquation =
-    stageDFlowAdjointMode || (stageCFlowAdjointMode && stageCUseNuEff);
+    optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleUseNuEff);
 const bool includeTaSourceInUaEquation =
-    stageDFlowAdjointMode || (stageCFlowAdjointMode && stageCIncludeThermalMomentumSource);
+    optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleIncludeThermalMomentumSource);
 const label adjointFlowCorrectors =
-    stageDFlowAdjointMode
-  ? stageDFlowAdjointCorrectors
-  : (stageCFlowAdjointMode ? stageCAdjointCorrectors : 40);
-stageCAdjointUNonlinearChange = 0.0;
-stageCAdjointPNonlinearChange = 0.0;
-stageCAdjointFlowConverged = !boundedFlowAdjointMode;
-stageCAdjointCorrectorsUsed = 0;
-stageCAdjointCombinedMetric = 0.0;
-stageCAdjointBestCombinedMetric = GREAT;
-stageCAdjointBestUNonlinearChange = GREAT;
-stageCAdjointBestPNonlinearChange = GREAT;
-stageCAdjointBestUaMax = GREAT;
-stageCAdjointBestPaRange = GREAT;
-stageCAdjointBestPaMean = 0.0;
-stageCAdjointBestPhiaAbsSum = 0.0;
-stageCAdjointBestPhiaNet = 0.0;
-stageCAdjointBestCorrector = 0;
-stageCAdjointUaMax = 0.0;
-stageCAdjointPaRange = 0.0;
-stageCAdjointPaMean = 0.0;
-stageCAdjointPhiaAbsSum = 0.0;
-stageCAdjointPhiaNet = 0.0;
-stageCAdjointFlowDiverged = false;
-stageCAdjointDivergedCorrector = 0;
-stageCAdjointRolledBack = false;
-stageCAdjointRollbackCorrector = 0;
-stageCAdjointStopReason = boundedFlowAdjointMode ? "max-correctors" : "not-bounded";
+    optimizationCycleFlowAdjointMode
+  ? optimizationCycleFlowAdjointCorrectors
+  : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40);
+adjointCycleAdjointUNonlinearChange = 0.0;
+adjointCycleAdjointPNonlinearChange = 0.0;
+adjointCycleAdjointFlowConverged = !boundedFlowAdjointMode;
+adjointCycleAdjointCorrectorsUsed = 0;
+adjointCycleAdjointCombinedMetric = 0.0;
+adjointCycleAdjointBestCombinedMetric = GREAT;
+adjointCycleAdjointBestUNonlinearChange = GREAT;
+adjointCycleAdjointBestPNonlinearChange = GREAT;
+adjointCycleAdjointBestUaMax = GREAT;
+adjointCycleAdjointBestPaRange = GREAT;
+adjointCycleAdjointBestPaMean = 0.0;
+adjointCycleAdjointBestPhiaAbsSum = 0.0;
+adjointCycleAdjointBestPhiaNet = 0.0;
+adjointCycleAdjointBestCorrector = 0;
+adjointCycleAdjointUaMax = 0.0;
+adjointCycleAdjointPaRange = 0.0;
+adjointCycleAdjointPaMean = 0.0;
+adjointCycleAdjointPhiaAbsSum = 0.0;
+adjointCycleAdjointPhiaNet = 0.0;
+adjointCycleAdjointFlowDiverged = false;
+adjointCycleAdjointDivergedCorrector = 0;
+adjointCycleAdjointRolledBack = false;
+adjointCycleAdjointRollbackCorrector = 0;
+adjointCycleAdjointStopReason = boundedFlowAdjointMode ? "max-correctors" : "not-bounded";
 
-vectorField stageCBestUaInternal;
-scalarField stageCBestPaInternal;
-scalarField stageCBestPhiaInternal;
+vectorField adjointCycleBestUaInternal;
+scalarField adjointCycleBestPaInternal;
+scalarField adjointCycleBestPhiaInternal;
 
 if (boundedFlowAdjointMode)
 {
   if (resetAdjointState)
   {
-    // Default Stage-C behavior: zero the adjoint state so each verification
+    // Default Adjoint-Cycle behavior: zero the adjoint state so each verification
     // sweep is isolated. Warm-starting remains available as an A/B toggle.
-    Ua = dimensionedVector("zeroStageCUa", Ua.dimensions(), vector::zero);
-    pa = dimensionedScalar("zeroStageCPa", pa.dimensions(), 0.0);
-    phia = dimensionedScalar("zeroStageCPhia", phia.dimensions(), 0.0);
+    Ua = dimensionedVector("zeroAdjointCycleUa", Ua.dimensions(), vector::zero);
+    pa = dimensionedScalar("zeroAdjointCyclePa", pa.dimensions(), 0.0);
+    phia = dimensionedScalar("zeroAdjointCyclePhia", phia.dimensions(), 0.0);
     Ua.correctBoundaryConditions();
     pa.correctBoundaryConditions();
   }
 
   if (Pstream::master())
   {
-      std::ofstream debugStageCLogFileStream(debugStageCLogFile, std::ios::app);
-      const char* stageCTraceTag =
-          stageDFlowAdjointMode
-        ? "[Stage-D Flow Adjoint Corrector Trace]"
-        : "[Stage-C Flow Adjoint Corrector Trace]";
-      debugStageCLogFileStream
-        << "\n" << stageCTraceTag << "\n"
+      std::ofstream debugAdjointCycleLogFileStream(debugAdjointCycleLogFile, std::ios::app);
+      const char* adjointCycleTraceTag =
+          optimizationCycleFlowAdjointMode
+        ? "[Optimization-Cycle Flow Adjoint Corrector Trace]"
+        : "[Adjoint-Cycle Flow Adjoint Corrector Trace]";
+      debugAdjointCycleLogFileStream
+        << "\n" << adjointCycleTraceTag << "\n"
         << "  Iteration           : " << opt << "\n"
         << "  Config              : reset="
         << (resetAdjointState ? "true" : "false")
@@ -81,15 +81,15 @@ if (boundedFlowAdjointMode)
         << " TaSource="
         << (includeTaSourceInUaEquation ? "true" : "false")
         << " legacyPaRelax="
-        << (stageCUseLegacyPressureRelax ? "true" : "false")
+        << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
         << " divergenceGuard="
         << (divergenceCheckEnabled ? "true" : "false")
         << " stagnationGuard="
         << (stagnationCheckEnabled ? "true" : "false")
         << " |Ua|maxLimit=" << flowAdjointMagnitudeLimit
-        << " growth=" << stageCDivergenceGrowthFactor
+        << " growth=" << adjointCycleDivergenceGrowthFactor
         << " minPass="
-        << (stageDFlowAdjointMode ? noImproveMinCorrectors : stageCDivergenceMinCorrectors)
+        << (optimizationCycleFlowAdjointMode ? noImproveMinCorrectors : adjointCycleDivergenceMinCorrectors)
         << " patience=" << noImprovePatience
         << "\n"
         << "  "
@@ -115,20 +115,20 @@ if (boundedFlowAdjointMode)
         << "\n";
   }
 
-  stageCBestUaInternal = Ua.internalField();
-  stageCBestPaInternal = pa.internalField();
-  stageCBestPhiaInternal = phia.internalField();
+  adjointCycleBestUaInternal = Ua.internalField();
+  adjointCycleBestPaInternal = pa.internalField();
+  adjointCycleBestPhiaInternal = phia.internalField();
 }
 
-label stageCNoImproveStreak = 0;
+label adjointCycleNoImproveStreak = 0;
 
 for (i = 0; i < adjointFlowCorrectors; i++)
 {
   vectorField UaPrevious;
   scalarField paPrevious;
-  scalar stageCPaPassInitialResidual = 0.0;
-  scalar stageCPaPassFinalResidual = 0.0;
-  label stageCPaPassIterations = 0;
+  scalar adjointCyclePaPassInitialResidual = 0.0;
+  scalar adjointCyclePaPassFinalResidual = 0.0;
+  label adjointCyclePaPassIterations = 0;
   if (boundedFlowAdjointMode)
   {
       UaPrevious = Ua.internalField();
@@ -169,7 +169,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
 
   if (includeTaSourceInUaEquation)
   {
-      UaEqn += b1*Ta*fvc::grad(T);
+      UaEqn += b1*optimizationCycleThermalAdjointField*fvc::grad(T);
   }
 
   UaEqn.relax();
@@ -222,12 +222,12 @@ for (i = 0; i < adjointFlowCorrectors; i++)
           paLinearSolvePerformance.finalResidual(),
           paLinearSolvePerformance.nIterations()
       );
-      stageCPaPassInitialResidual =
-        Foam::max(stageCPaPassInitialResidual, paLinearSolvePerformance.initialResidual());
-      stageCPaPassFinalResidual =
-        Foam::max(stageCPaPassFinalResidual, paLinearSolvePerformance.finalResidual());
-      stageCPaPassIterations =
-        Foam::max(stageCPaPassIterations, paLinearSolvePerformance.nIterations());
+      adjointCyclePaPassInitialResidual =
+        Foam::max(adjointCyclePaPassInitialResidual, paLinearSolvePerformance.initialResidual());
+      adjointCyclePaPassFinalResidual =
+        Foam::max(adjointCyclePaPassFinalResidual, paLinearSolvePerformance.finalResidual());
+      adjointCyclePaPassIterations =
+        Foam::max(adjointCyclePaPassIterations, paLinearSolvePerformance.nIterations());
 
       if (simple.finalNonOrthogonalIter())
       {
@@ -235,7 +235,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       }
   }
 
-  if (!boundedFlowAdjointMode || stageCUseLegacyPressureRelax)
+  if (!boundedFlowAdjointMode || adjointCycleUseLegacyPressureRelax)
   {
       pa.relax();
   }
@@ -295,166 +295,166 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       reduce(localPhiaAbsSum, sumOp<scalar>());
       reduce(localPhiaNet, sumOp<scalar>());
 
-      stageCAdjointUNonlinearChange =
+      adjointCycleAdjointUNonlinearChange =
         Foam::sqrt(localUaDeltaSqSum/Foam::max(localUaScaleSqSum, SMALL));
-      stageCAdjointPNonlinearChange =
+      adjointCycleAdjointPNonlinearChange =
         Foam::sqrt(localPaDeltaSqSum/Foam::max(localPaScaleSqSum, SMALL));
-      stageCAdjointCorrectorsUsed = i + 1;
-      const volScalarField stageCUaMag(mag(Ua));
-      const scalar stageCUaMax = gMax(stageCUaMag);
-      const scalar stageCPaRange = gMax(pa) - gMin(pa);
-      stageCAdjointUaMax = stageCUaMax;
-      stageCAdjointPaRange = stageCPaRange;
-      stageCAdjointPaMean = localPaSum/area;
-      stageCAdjointPhiaAbsSum = localPhiaAbsSum;
-      stageCAdjointPhiaNet = localPhiaNet;
-      const scalar stageCUaTargetRatio =
-        stageCAdjointUNonlinearChange/Foam::max(stageCAdjointUNonlinearTol, SMALL);
-      const scalar stageCPaTargetRatio =
-        stageCAdjointPNonlinearChange/Foam::max(stageCAdjointPNonlinearTol, SMALL);
-      const char* stageCCurrentBlocker =
-          (stageCUaTargetRatio > 1.1*stageCPaTargetRatio)
+      adjointCycleAdjointCorrectorsUsed = i + 1;
+      const volScalarField adjointCycleUaMag(mag(Ua));
+      const scalar adjointCycleUaMax = gMax(adjointCycleUaMag);
+      const scalar adjointCyclePaRange = gMax(pa) - gMin(pa);
+      adjointCycleAdjointUaMax = adjointCycleUaMax;
+      adjointCycleAdjointPaRange = adjointCyclePaRange;
+      adjointCycleAdjointPaMean = localPaSum/area;
+      adjointCycleAdjointPhiaAbsSum = localPhiaAbsSum;
+      adjointCycleAdjointPhiaNet = localPhiaNet;
+      const scalar adjointCycleUaTargetRatio =
+        adjointCycleAdjointUNonlinearChange/Foam::max(adjointCycleAdjointUNonlinearTol, SMALL);
+      const scalar adjointCyclePaTargetRatio =
+        adjointCycleAdjointPNonlinearChange/Foam::max(adjointCycleAdjointPNonlinearTol, SMALL);
+      const char* adjointCycleCurrentBlocker =
+          (adjointCycleUaTargetRatio > 1.1*adjointCyclePaTargetRatio)
         ? "Ua"
-        : (stageCPaTargetRatio > 1.1*stageCUaTargetRatio)
+        : (adjointCyclePaTargetRatio > 1.1*adjointCycleUaTargetRatio)
           ? "pa"
           : "Ua+pa";
-      stageCAdjointCombinedMetric =
+      adjointCycleAdjointCombinedMetric =
         Foam::max
         (
-            stageCUaTargetRatio,
-            stageCPaTargetRatio
+            adjointCycleUaTargetRatio,
+            adjointCyclePaTargetRatio
         );
 
-      bool stageCIsBestPass = false;
-      bool stageCPendingRollback(false);
+      bool adjointCycleIsBestPass = false;
+      bool adjointCyclePendingRollback(false);
 
-      if (stageCUaMax != stageCUaMax)
+      if (adjointCycleUaMax != adjointCycleUaMax)
       {
           FatalErrorInFunction
-              << "Stage-C Ua adjoint magnitude became invalid (|Ua|max="
-              << stageCUaMax
+              << "Adjoint-Cycle Ua adjoint magnitude became invalid (|Ua|max="
+              << adjointCycleUaMax
               << "). This indicates verification-loop divergence."
               << exit(FatalError);
       }
 
-      bool stageCMagnitudeGuardTriggered(false);
-      if (stageCUaMax > flowAdjointMagnitudeLimit)
+      bool adjointCycleMagnitudeGuardTriggered(false);
+      if (adjointCycleUaMax > flowAdjointMagnitudeLimit)
       {
-          stageCMagnitudeGuardTriggered = true;
-          stageCAdjointFlowDiverged = true;
-          stageCAdjointDivergedCorrector = stageCAdjointCorrectorsUsed;
-          stageCAdjointStopReason = "magnitude-guard";
-          stageCPendingRollback = true;
+          adjointCycleMagnitudeGuardTriggered = true;
+          adjointCycleAdjointFlowDiverged = true;
+          adjointCycleAdjointDivergedCorrector = adjointCycleAdjointCorrectorsUsed;
+          adjointCycleAdjointStopReason = "magnitude-guard";
+          adjointCyclePendingRollback = true;
       }
 
       if
       (
-          !stageCMagnitudeGuardTriggered
+          !adjointCycleMagnitudeGuardTriggered
        && (
-              stageCAdjointBestCorrector == 0
-           || stageCAdjointCombinedMetric < stageCAdjointBestCombinedMetric
+              adjointCycleAdjointBestCorrector == 0
+           || adjointCycleAdjointCombinedMetric < adjointCycleAdjointBestCombinedMetric
           )
       )
       {
-          stageCAdjointBestCombinedMetric = stageCAdjointCombinedMetric;
-          stageCAdjointBestUNonlinearChange = stageCAdjointUNonlinearChange;
-          stageCAdjointBestPNonlinearChange = stageCAdjointPNonlinearChange;
-          stageCAdjointBestUaMax = stageCUaMax;
-          stageCAdjointBestPaRange = stageCPaRange;
-          stageCAdjointBestPaMean = stageCAdjointPaMean;
-          stageCAdjointBestPhiaAbsSum = stageCAdjointPhiaAbsSum;
-          stageCAdjointBestPhiaNet = stageCAdjointPhiaNet;
-          stageCAdjointBestCorrector = stageCAdjointCorrectorsUsed;
-          stageCBestUaInternal = UaCurrent;
-          stageCBestPaInternal = paCurrent;
-          stageCBestPhiaInternal = phia.internalField();
-          stageCIsBestPass = true;
+          adjointCycleAdjointBestCombinedMetric = adjointCycleAdjointCombinedMetric;
+          adjointCycleAdjointBestUNonlinearChange = adjointCycleAdjointUNonlinearChange;
+          adjointCycleAdjointBestPNonlinearChange = adjointCycleAdjointPNonlinearChange;
+          adjointCycleAdjointBestUaMax = adjointCycleUaMax;
+          adjointCycleAdjointBestPaRange = adjointCyclePaRange;
+          adjointCycleAdjointBestPaMean = adjointCycleAdjointPaMean;
+          adjointCycleAdjointBestPhiaAbsSum = adjointCycleAdjointPhiaAbsSum;
+          adjointCycleAdjointBestPhiaNet = adjointCycleAdjointPhiaNet;
+          adjointCycleAdjointBestCorrector = adjointCycleAdjointCorrectorsUsed;
+          adjointCycleBestUaInternal = UaCurrent;
+          adjointCycleBestPaInternal = paCurrent;
+          adjointCycleBestPhiaInternal = phia.internalField();
+          adjointCycleIsBestPass = true;
       }
-      if (stageCIsBestPass)
+      if (adjointCycleIsBestPass)
       {
-          stageCNoImproveStreak = 0;
+          adjointCycleNoImproveStreak = 0;
       }
-      else if (!stageCMagnitudeGuardTriggered)
+      else if (!adjointCycleMagnitudeGuardTriggered)
       {
-          stageCNoImproveStreak++;
+          adjointCycleNoImproveStreak++;
       }
 
-      stageCAdjointFlowConverged =
+      adjointCycleAdjointFlowConverged =
       (
-          stageCAdjointCorrectorsUsed >= 2
-       && stageCAdjointUNonlinearChange <= stageCAdjointUNonlinearTol
-       && stageCAdjointPNonlinearChange <= stageCAdjointPNonlinearTol
+          adjointCycleAdjointCorrectorsUsed >= 2
+       && adjointCycleAdjointUNonlinearChange <= adjointCycleAdjointUNonlinearTol
+       && adjointCycleAdjointPNonlinearChange <= adjointCycleAdjointPNonlinearTol
       );
 
-      bool stageCGrowthDiverged(false);
-      bool stageCNoImproveDiverged(false);
+      bool adjointCycleGrowthDiverged(false);
+      bool adjointCycleNoImproveDiverged(false);
       if
       (
-          !stageCMagnitudeGuardTriggered
-       && !stageCAdjointFlowConverged
+          !adjointCycleMagnitudeGuardTriggered
+       && !adjointCycleAdjointFlowConverged
        && divergenceCheckEnabled
-       && stageCAdjointCorrectorsUsed >= stageCDivergenceMinCorrectors
-       && stageCAdjointBestCorrector > 0
-       && stageCAdjointCorrectorsUsed > stageCAdjointBestCorrector
-       && stageCAdjointUNonlinearChange
-          > stageCDivergenceGrowthFactor
-           *Foam::max(stageCAdjointBestUNonlinearChange, stageCAdjointUNonlinearTol)
-       && stageCAdjointPNonlinearChange
-          > stageCDivergenceGrowthFactor
-           *Foam::max(stageCAdjointBestPNonlinearChange, stageCAdjointPNonlinearTol)
-       && stageCUaMax
-          > stageCDivergenceGrowthFactor
-           *Foam::max(stageCAdjointBestUaMax, scalar(1.0))
-       && stageCPaRange
-          > stageCDivergenceGrowthFactor
-           *Foam::max(stageCAdjointBestPaRange, scalar(1.0))
+       && adjointCycleAdjointCorrectorsUsed >= adjointCycleDivergenceMinCorrectors
+       && adjointCycleAdjointBestCorrector > 0
+       && adjointCycleAdjointCorrectorsUsed > adjointCycleAdjointBestCorrector
+       && adjointCycleAdjointUNonlinearChange
+          > adjointCycleDivergenceGrowthFactor
+           *Foam::max(adjointCycleAdjointBestUNonlinearChange, adjointCycleAdjointUNonlinearTol)
+       && adjointCycleAdjointPNonlinearChange
+          > adjointCycleDivergenceGrowthFactor
+           *Foam::max(adjointCycleAdjointBestPNonlinearChange, adjointCycleAdjointPNonlinearTol)
+       && adjointCycleUaMax
+          > adjointCycleDivergenceGrowthFactor
+           *Foam::max(adjointCycleAdjointBestUaMax, scalar(1.0))
+       && adjointCyclePaRange
+          > adjointCycleDivergenceGrowthFactor
+           *Foam::max(adjointCycleAdjointBestPaRange, scalar(1.0))
       )
       {
-          stageCGrowthDiverged = true;
-          stageCAdjointFlowDiverged = true;
-          stageCAdjointDivergedCorrector = stageCAdjointCorrectorsUsed;
-          stageCAdjointStopReason = "growth-diverged";
-          if (stageCAdjointBestCorrector > 0)
+          adjointCycleGrowthDiverged = true;
+          adjointCycleAdjointFlowDiverged = true;
+          adjointCycleAdjointDivergedCorrector = adjointCycleAdjointCorrectorsUsed;
+          adjointCycleAdjointStopReason = "growth-diverged";
+          if (adjointCycleAdjointBestCorrector > 0)
           {
-              stageCPendingRollback = true;
+              adjointCyclePendingRollback = true;
           }
       }
       if
       (
-          !stageCMagnitudeGuardTriggered
-       && !stageCGrowthDiverged
-       && !stageCAdjointFlowConverged
+          !adjointCycleMagnitudeGuardTriggered
+       && !adjointCycleGrowthDiverged
+       && !adjointCycleAdjointFlowConverged
        && stagnationCheckEnabled
-       && stageCAdjointBestCorrector > 0
-       && stageCAdjointCorrectorsUsed > stageCAdjointBestCorrector
-       && stageCAdjointCorrectorsUsed >= noImproveMinCorrectors
-       && stageCNoImproveStreak >= noImprovePatience
+       && adjointCycleAdjointBestCorrector > 0
+       && adjointCycleAdjointCorrectorsUsed > adjointCycleAdjointBestCorrector
+       && adjointCycleAdjointCorrectorsUsed >= noImproveMinCorrectors
+       && adjointCycleNoImproveStreak >= noImprovePatience
       )
       {
-          stageCNoImproveDiverged = true;
-          stageCAdjointFlowDiverged = true;
-          stageCAdjointDivergedCorrector = stageCAdjointCorrectorsUsed;
-          stageCAdjointStopReason =
-            std::string("no-improve-") + stageCCurrentBlocker;
-          stageCPendingRollback = true;
+          adjointCycleNoImproveDiverged = true;
+          adjointCycleAdjointFlowDiverged = true;
+          adjointCycleAdjointDivergedCorrector = adjointCycleAdjointCorrectorsUsed;
+          adjointCycleAdjointStopReason =
+            std::string("no-improve-") + adjointCycleCurrentBlocker;
+          adjointCyclePendingRollback = true;
       }
 
-      if (stageCAdjointFlowConverged)
+      if (adjointCycleAdjointFlowConverged)
       {
-          stageCAdjointStopReason = "converged";
+          adjointCycleAdjointStopReason = "converged";
       }
       else if
       (
-          !stageCAdjointFlowDiverged
-       && stageCAdjointCorrectorsUsed >= adjointFlowCorrectors
+          !adjointCycleAdjointFlowDiverged
+       && adjointCycleAdjointCorrectorsUsed >= adjointFlowCorrectors
       )
       {
-          stageCAdjointStopReason = "max-correctors";
+          adjointCycleAdjointStopReason = "max-correctors";
       }
 
       if (Pstream::master())
       {
-          std::ofstream debugStageCLogFileStream(debugStageCLogFile, std::ios::app);
+          std::ofstream debugAdjointCycleLogFileStream(debugAdjointCycleLogFile, std::ios::app);
           auto fmtTraceScalar =
           [&](const scalar value)
           {
@@ -463,85 +463,85 @@ for (i = 0; i < adjointFlowCorrectors; i++)
               return os.str();
           };
 
-          std::string stageCPassState("run");
-          if (stageCAdjointFlowConverged)
+          std::string adjointCyclePassState("run");
+          if (adjointCycleAdjointFlowConverged)
           {
-              stageCPassState = "converged";
+              adjointCyclePassState = "converged";
           }
-          else if (stageCNoImproveDiverged)
+          else if (adjointCycleNoImproveDiverged)
           {
-              stageCPassState = "stalled";
+              adjointCyclePassState = "stalled";
           }
-          else if (stageCMagnitudeGuardTriggered || stageCGrowthDiverged || stageCNoImproveDiverged)
+          else if (adjointCycleMagnitudeGuardTriggered || adjointCycleGrowthDiverged || adjointCycleNoImproveDiverged)
           {
-              stageCPassState = "diverged";
+              adjointCyclePassState = "diverged";
           }
-          else if (stageCIsBestPass)
+          else if (adjointCycleIsBestPass)
           {
-              stageCPassState = "best";
+              adjointCyclePassState = "best";
           }
 
-          debugStageCLogFileStream
+          debugAdjointCycleLogFileStream
             << "  "
             << std::left
-            << std::setw(6) << stageCAdjointCorrectorsUsed
-            << std::setw(12) << stageCPassState
+            << std::setw(6) << adjointCycleAdjointCorrectorsUsed
+            << std::setw(12) << adjointCyclePassState
             << std::setw(14) << fmtTraceScalar(cmptMax(UaLinearSolvePerformance.initialResidual()))
             << std::setw(14) << fmtTraceScalar(cmptMax(UaLinearSolvePerformance.finalResidual()))
             << std::setw(8) << cmptMax(UaLinearSolvePerformance.nIterations())
-            << std::setw(14) << fmtTraceScalar(stageCPaPassInitialResidual)
-            << std::setw(14) << fmtTraceScalar(stageCPaPassFinalResidual)
-            << std::setw(8) << stageCPaPassIterations
-            << std::setw(14) << fmtTraceScalar(stageCAdjointUNonlinearChange)
-            << std::setw(14) << fmtTraceScalar(stageCAdjointPNonlinearChange)
-            << std::setw(14) << fmtTraceScalar(stageCUaMax)
-            << std::setw(14) << fmtTraceScalar(stageCPaRange)
-            << std::setw(14) << fmtTraceScalar(stageCAdjointPaMean)
-            << std::setw(14) << fmtTraceScalar(stageCAdjointPhiaAbsSum)
-            << std::setw(14) << fmtTraceScalar(stageCAdjointPhiaNet)
+            << std::setw(14) << fmtTraceScalar(adjointCyclePaPassInitialResidual)
+            << std::setw(14) << fmtTraceScalar(adjointCyclePaPassFinalResidual)
+            << std::setw(8) << adjointCyclePaPassIterations
+            << std::setw(14) << fmtTraceScalar(adjointCycleAdjointUNonlinearChange)
+            << std::setw(14) << fmtTraceScalar(adjointCycleAdjointPNonlinearChange)
+            << std::setw(14) << fmtTraceScalar(adjointCycleUaMax)
+            << std::setw(14) << fmtTraceScalar(adjointCyclePaRange)
+            << std::setw(14) << fmtTraceScalar(adjointCycleAdjointPaMean)
+            << std::setw(14) << fmtTraceScalar(adjointCycleAdjointPhiaAbsSum)
+            << std::setw(14) << fmtTraceScalar(adjointCycleAdjointPhiaNet)
             << "\n";
       }
 
-      if (stageCAdjointFlowConverged)
+      if (adjointCycleAdjointFlowConverged)
       {
           break;
       }
-      if (stageCPendingRollback)
+      if (adjointCyclePendingRollback)
       {
-          Ua.primitiveFieldRef() = stageCBestUaInternal;
-          pa.primitiveFieldRef() = stageCBestPaInternal;
-          phia.primitiveFieldRef() = stageCBestPhiaInternal;
+          Ua.primitiveFieldRef() = adjointCycleBestUaInternal;
+          pa.primitiveFieldRef() = adjointCycleBestPaInternal;
+          phia.primitiveFieldRef() = adjointCycleBestPhiaInternal;
           Ua.correctBoundaryConditions();
           pa.correctBoundaryConditions();
           fvOptions.correct(Ua);
 
-          stageCAdjointRolledBack = true;
-          stageCAdjointRollbackCorrector = stageCAdjointBestCorrector;
-          if (stageCAdjointBestCorrector > 0)
+          adjointCycleAdjointRolledBack = true;
+          adjointCycleAdjointRollbackCorrector = adjointCycleAdjointBestCorrector;
+          if (adjointCycleAdjointBestCorrector > 0)
           {
-              stageCAdjointUNonlinearChange = stageCAdjointBestUNonlinearChange;
-              stageCAdjointPNonlinearChange = stageCAdjointBestPNonlinearChange;
-              stageCAdjointCombinedMetric = stageCAdjointBestCombinedMetric;
-              stageCAdjointUaMax = stageCAdjointBestUaMax;
-              stageCAdjointPaRange = stageCAdjointBestPaRange;
-              stageCAdjointPaMean = stageCAdjointBestPaMean;
-              stageCAdjointPhiaAbsSum = stageCAdjointBestPhiaAbsSum;
-              stageCAdjointPhiaNet = stageCAdjointBestPhiaNet;
+              adjointCycleAdjointUNonlinearChange = adjointCycleAdjointBestUNonlinearChange;
+              adjointCycleAdjointPNonlinearChange = adjointCycleAdjointBestPNonlinearChange;
+              adjointCycleAdjointCombinedMetric = adjointCycleAdjointBestCombinedMetric;
+              adjointCycleAdjointUaMax = adjointCycleAdjointBestUaMax;
+              adjointCycleAdjointPaRange = adjointCycleAdjointBestPaRange;
+              adjointCycleAdjointPaMean = adjointCycleAdjointBestPaMean;
+              adjointCycleAdjointPhiaAbsSum = adjointCycleAdjointBestPhiaAbsSum;
+              adjointCycleAdjointPhiaNet = adjointCycleAdjointBestPhiaNet;
           }
-          if (stageCGrowthDiverged)
+          if (adjointCycleGrowthDiverged)
           {
-              stageCAdjointStopReason = "growth-diverged-rollback";
+              adjointCycleAdjointStopReason = "growth-diverged-rollback";
           }
-          else if (stageCNoImproveDiverged)
+          else if (adjointCycleNoImproveDiverged)
           {
-              stageCAdjointStopReason += "-rollback";
+              adjointCycleAdjointStopReason += "-rollback";
           }
-          else if (stageCMagnitudeGuardTriggered)
+          else if (adjointCycleMagnitudeGuardTriggered)
           {
-              stageCAdjointStopReason = "magnitude-guard-rollback";
+              adjointCycleAdjointStopReason = "magnitude-guard-rollback";
           }
       }
-      if (stageCMagnitudeGuardTriggered || stageCGrowthDiverged || stageCNoImproveDiverged)
+      if (adjointCycleMagnitudeGuardTriggered || adjointCycleGrowthDiverged || adjointCycleNoImproveDiverged)
       {
           break;
       }

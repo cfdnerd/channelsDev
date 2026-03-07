@@ -58,7 +58,7 @@ if (objFunction == 3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
    TaEqn -= unitThermalSource*thermalExcessWeight;
 }
 
-// Stage-C thermal adjoint is currently a standalone verification block.
+// Adjoint-Cycle thermal adjoint is currently a standalone verification block.
 // Explicitly pin one cell to remove the null mode seen in parallel runs.
 if (mesh.nCells() > 0)
 {

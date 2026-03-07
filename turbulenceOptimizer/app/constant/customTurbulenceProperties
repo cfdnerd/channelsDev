@@ -16,10 +16,10 @@ FoamFile
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
 enable                  true;  // Enable custom turbulence framework.
-stageCThermalAdjointOnly false; // Disable the thermal-only slice once the broader Stage-C verification path is enabled.
-stageCFullAdjointVerification false; // Disable Stage-C verification mode when running the Stage-D gradient-closure path.
-stageDGradientClosure    true; // Stage-D gate key 1: allow turbulence-aware gradient closure assembly path.
-enableTurbulentOptimization true; // Stage-D gate key 2: explicit run-time acknowledgment before turbulent optimization is enabled.
+adjointCycleThermalAdjointOnly false; // Disable the thermal-only slice once the broader Adjoint-Cycle verification path is enabled.
+adjointCycleFullAdjointVerification false; // Disable Adjoint-Cycle verification mode when running the Optimization-Cycle gradient-closure path.
+optimizationCycleGradientClosure    true; // Optimization-Cycle gate key 1: allow turbulence-aware gradient closure assembly path.
+enableTurbulentOptimization true; // Optimization-Cycle gate key 2: explicit run-time acknowledgment before turbulent optimization is enabled.
 model                   kOmegaSST; // Custom turbulence scaffold is currently locked to kOmegaSST.
 inletTurbulenceMode     directFields; // Stage-B supports physical Uin/I/Lt conversion, but the current validated baseline still uses the explicit 0/ field values as the inlet reference.
 Uin                     1.0;   // Inlet bulk speed used for the reference turbulence conversion.
@@ -63,14 +63,14 @@ minTurbulenceCorrectors 5;    // Force all configured turbulence passes every pr
 kNonlinearTol           1e-2; // Treat sub-1% RMS k change after the full turbulence cycle as settled for the current primal benchmark.
 omegaNonlinearTol       3e-3; // Require omega to settle below roughly 0.3% RMS change before reporting nonlinear convergence.
 nutNonlinearTol         1.5e-2; // Treat sub-1.5% RMS nut change after the full turbulence cycle as settled.
-stageDFlowAdjointCorrectors 1;  // Latest Stage-D trace shows pass 1 consistently best for Ua/pa and pass 2 immediately regresses; run one pass directly.
-stageDHeatAdjointCorrectors 3;  // Keep the bounded three-pass Stage-D Ub/pb cycle from the latest stable run for higher adjoint pressure-velocity consistency.
-stageDTransportedClosureAdjoints true; // Item-1 enabled: solve PDE-transported ka/omegaa closure adjoints in Stage-D.
-stageDClosureAdjointFormulation transportedCrossCoupledV3; // V3 formulation selector: transported closure adjoints with explicit ka-omegaa cross-coupling.
-stageDClosureAdjointDualConsistentBC true; // Item-1 enabled: enforce zero duals on primal fixed-value closure patches.
-stageDClosureAdjointInvTau 1.0; // Pseudo-time inverse scale [1/s] for transported closure-adjoint surrogate equations.
-stageDClosureCrossCoupling 0.35; // V3 cross-coupling gain for ka<->omegaa transported closure-adjoint forcing.
-stageDClosureConsistencyUseBoundedState true; // Use shared bounded closure states (k/omega) across primal/adjoint/sensitivity coupling blocks.
-stageDUseLogClosureState true; // Maintain log-space closure diagnostics and scaling states for positivity-consistent sensitivity behavior.
+optimizationCycleFlowAdjointCorrectors 1;  // Latest Optimization-Cycle trace shows pass 1 consistently best for Ua/pa and pass 2 immediately regresses; run one pass directly.
+optimizationCycleHeatAdjointCorrectors 3;  // Keep the bounded three-pass Optimization-Cycle Ub/pb cycle from the latest stable run for higher adjoint pressure-velocity consistency.
+optimizationCycleTransportedClosureAdjoints true; // Item-1 enabled: solve PDE-transported ka/omegaa closure adjoints in Optimization-Cycle.
+optimizationCycleClosureAdjointFormulation transportedCrossCoupledV3; // V3 formulation selector: transported closure adjoints with explicit ka-omegaa cross-coupling.
+optimizationCycleClosureAdjointDualConsistentBC true; // Item-1 enabled: enforce zero duals on primal fixed-value closure patches.
+optimizationCycleClosureAdjointInvTau 1.0; // Pseudo-time inverse scale [1/s] for transported closure-adjoint surrogate equations.
+optimizationCycleClosureCrossCoupling 0.35; // V3 cross-coupling gain for ka<->omegaa transported closure-adjoint forcing.
+optimizationCycleClosureConsistencyUseBoundedState true; // Use shared bounded closure states (k/omega) across primal/adjoint/sensitivity coupling blocks.
+optimizationCycleUseLogClosureState true; // Maintain log-space closure diagnostics and scaling states for positivity-consistent sensitivity behavior.
 
 // ************************************************************************* //

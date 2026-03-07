@@ -1,19 +1,19 @@
 if (customTurbulenceActive)
 {
-  const bool stageDUseTransportedClosureAdjoints =
-    stageDTurbulentOptimizationMode
-    && static_cast<bool>(stageDTransportedClosureAdjoints)
+  const bool optimizationCycleUseTransportedClosureAdjoints =
+    optimizationCycleTurbulentOptimizationMode
+    && static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
     && static_cast<bool>(optDualConsistentStateMapEnforce);
-  const bool stageDUseResidualDraftClosureAdjoints =
-    stageDUseTransportedClosureAdjoints
-    && stageDClosureAdjointFormulation == word("transportedResidualDraft");
-  const bool stageDUseCrossCoupledClosureAdjoints =
-    stageDUseTransportedClosureAdjoints
-    && stageDClosureAdjointFormulation == word("transportedCrossCoupledV3");
+  const bool optimizationCycleUseResidualDraftClosureAdjoints =
+    optimizationCycleUseTransportedClosureAdjoints
+    && optimizationCycleClosureAdjointFormulation == word("transportedResidualDraft");
+  const bool optimizationCycleUseCrossCoupledClosureAdjoints =
+    optimizationCycleUseTransportedClosureAdjoints
+    && optimizationCycleClosureAdjointFormulation == word("transportedCrossCoupledV3");
   auto applyDualConsistentOmegaaBC =
   [&]()
   {
-    if (stageDUseTransportedClosureAdjoints && static_cast<bool>(stageDClosureAdjointDualConsistentBC))
+    if (optimizationCycleUseTransportedClosureAdjoints && static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC))
     {
       forAll(omegaa.boundaryFieldRef(), patchi)
       {
@@ -25,44 +25,44 @@ if (customTurbulenceActive)
     }
   };
 
-  const volSymmTensorField stageCSymmGradU(symm(fvc::grad(U)));
-  const volSymmTensorField stageCSymmGradUa(symm(fvc::grad(Ua)));
-  const volScalarField& stageDOmegaStateRef =
-    static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+  const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
+  const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
+  const volScalarField& optimizationCycleOmegaStateRef =
+    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
     ? omegaClosureState
     : omega;
-  const volScalarField stageCOmegaThermalCoupling
+  const volScalarField adjointCycleOmegaThermalCoupling
   (
-    dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(Ta))
+    dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
   );
-  const volScalarField stageCOmegaMomentumCoupling
+  const volScalarField adjointCycleOmegaMomentumCoupling
   (
-    2.0*dNutDOmegaBlock*(stageCSymmGradU && stageCSymmGradUa)
+    2.0*dNutDOmegaBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
   );
-  const volScalarField stageCOmegaThermalMagnitude(mag(stageCOmegaThermalCoupling));
-  const volScalarField stageCOmegaMomentumMagnitude(mag(stageCOmegaMomentumCoupling));
-  const scalar stageCOmegaThermalScaleValue =
-    Foam::max(gMax(stageCOmegaThermalMagnitude), SMALL);
-  const scalar stageCOmegaMomentumScaleValue =
-    Foam::max(gMax(stageCOmegaMomentumMagnitude), SMALL);
-  const dimensionedScalar stageCOmegaThermalScale
+  const volScalarField adjointCycleOmegaThermalMagnitude(mag(adjointCycleOmegaThermalCoupling));
+  const volScalarField adjointCycleOmegaMomentumMagnitude(mag(adjointCycleOmegaMomentumCoupling));
+  const scalar adjointCycleOmegaThermalScaleValue =
+    Foam::max(gMax(adjointCycleOmegaThermalMagnitude), SMALL);
+  const scalar adjointCycleOmegaMomentumScaleValue =
+    Foam::max(gMax(adjointCycleOmegaMomentumMagnitude), SMALL);
+  const dimensionedScalar adjointCycleOmegaThermalScale
   (
-    "stageCOmegaThermalScale",
-    stageCOmegaThermalCoupling.dimensions(),
-    stageCOmegaThermalScaleValue
+    "adjointCycleOmegaThermalScale",
+    adjointCycleOmegaThermalCoupling.dimensions(),
+    adjointCycleOmegaThermalScaleValue
   );
-  const dimensionedScalar stageCOmegaMomentumScale
+  const dimensionedScalar adjointCycleOmegaMomentumScale
   (
-    "stageCOmegaMomentumScale",
-    stageCOmegaMomentumCoupling.dimensions(),
-    stageCOmegaMomentumScaleValue
+    "adjointCycleOmegaMomentumScale",
+    adjointCycleOmegaMomentumCoupling.dimensions(),
+    adjointCycleOmegaMomentumScaleValue
   );
-  volScalarField stageCOmegaSourceProxy
+  volScalarField adjointCycleOmegaSourceProxy
   (
-    stageCOmegaThermalCoupling/stageCOmegaThermalScale
-  + stageCOmegaMomentumCoupling/stageCOmegaMomentumScale
+    adjointCycleOmegaThermalCoupling/adjointCycleOmegaThermalScale
+  + adjointCycleOmegaMomentumCoupling/adjointCycleOmegaMomentumScale
   );
-  if (static_cast<bool>(stageDUseLogClosureState))
+  if (static_cast<bool>(optimizationCycleUseLogClosureState))
   {
     const volScalarField logOmegaMagnitude(mag(logOmegaClosureState));
     const dimensionedScalar logOmegaScale
@@ -71,49 +71,49 @@ if (customTurbulenceActive)
       logOmegaClosureState.dimensions(),
       Foam::max(gMax(logOmegaMagnitude), SMALL)
     );
-    stageCOmegaSourceProxy += 0.05*logOmegaClosureState/logOmegaScale;
+    adjointCycleOmegaSourceProxy += 0.05*logOmegaClosureState/logOmegaScale;
   }
-  if (stageDUseTransportedClosureAdjoints)
+  if (optimizationCycleUseTransportedClosureAdjoints)
   {
     applyDualConsistentOmegaaBC();
 
-    const dimensionedScalar stageDClosureInvTau
+    const dimensionedScalar optimizationCycleClosureInvTau
     (
-      "stageDClosureInvTau",
+      "optimizationCycleClosureInvTau",
       dimless/dimTime,
-      stageDClosureAdjointInvTau
+      optimizationCycleClosureAdjointInvTau
     );
-    volScalarField stageDOmegaReactionCoeff
+    volScalarField optimizationCycleOmegaReactionCoeff
     (
       scalar(2.0)
      *betaField
-     *stageDOmegaStateRef
+     *optimizationCycleOmegaStateRef
     + turbulenceDampingCoeff*alpha
     );
-    if (!stageDUseResidualDraftClosureAdjoints)
+    if (!optimizationCycleUseResidualDraftClosureAdjoints)
     {
-      stageDOmegaReactionCoeff =
+      optimizationCycleOmegaReactionCoeff =
         dimensionedScalar
         (
-          "zeroStageDOmegaReactionCoeff",
-          stageDOmegaReactionCoeff.dimensions(),
+          "zeroOptimizationCycleOmegaReactionCoeff",
+          optimizationCycleOmegaReactionCoeff.dimensions(),
           0.0
         );
     }
-    volScalarField stageDOmegaCrossSource
+    volScalarField optimizationCycleOmegaCrossSource
     (
       IOobject
       (
-        "stageDOmegaCrossSource",
+        "optimizationCycleOmegaCrossSource",
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
       ),
       mesh,
-      dimensionedScalar("zeroStageDOmegaCrossSource", dimless/dimTime, 0.0)
+      dimensionedScalar("zeroOptimizationCycleOmegaCrossSource", dimless/dimTime, 0.0)
     );
-    if (stageDUseCrossCoupledClosureAdjoints)
+    if (optimizationCycleUseCrossCoupledClosureAdjoints)
     {
       const volScalarField kaMagnitude(mag(ka));
       const dimensionedScalar kaScale
@@ -122,20 +122,20 @@ if (customTurbulenceActive)
         ka.dimensions(),
         Foam::max(gMax(kaMagnitude), SMALL)
       );
-      stageDOmegaCrossSource =
-        stageDClosureInvTau
-       *stageDClosureCrossCoupling
+      optimizationCycleOmegaCrossSource =
+        optimizationCycleClosureInvTau
+       *optimizationCycleClosureCrossCoupling
        *(ka/kaScale);
     }
     fvScalarMatrix omegaaEqn
     (
         fvm::div(phi, omegaa)
       - fvm::laplacian(nu + alphaOmegaField*nut, omegaa)
-      + fvm::Sp(stageDClosureInvTau, omegaa)
-      + fvm::Sp(stageDOmegaReactionCoeff, omegaa)
+      + fvm::Sp(optimizationCycleClosureInvTau, omegaa)
+      + fvm::Sp(optimizationCycleOmegaReactionCoeff, omegaa)
      ==
-        stageDClosureInvTau*stageCOmegaSourceProxy
-      + stageDOmegaCrossSource
+        optimizationCycleClosureInvTau*adjointCycleOmegaSourceProxy
+      + optimizationCycleOmegaCrossSource
     );
 
     omegaaEqn.relax();
@@ -153,12 +153,12 @@ if (customTurbulenceActive)
   }
   else
   {
-    omegaa = stageCOmegaSourceProxy;
+    omegaa = adjointCycleOmegaSourceProxy;
   }
 
   const volScalarField omegaaMagnitudeCheck(mag(omegaa));
   const scalar omegaaAbsMax = gMax(omegaaMagnitudeCheck);
-  if (!(omegaaAbsMax < stageDAdjointMaxMagnitude))
+  if (!(omegaaAbsMax < optimizationCycleAdjointMaxMagnitude))
   {
     FatalErrorInFunction
       << "Non-physical omegaa magnitude detected: max(|omegaa|)=" << omegaaAbsMax

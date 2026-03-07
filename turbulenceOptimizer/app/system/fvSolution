@@ -122,7 +122,7 @@ solvers
 SIMPLE
 {
     nNonOrthogonalCorrectors 2;
-    consistent no;
+    consistent yes;
  //   nCorrectors 2;
 // nOuterCorrectors 10;
     pRefCell 0;

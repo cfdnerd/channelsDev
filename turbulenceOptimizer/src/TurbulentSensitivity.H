@@ -1,9 +1,9 @@
-if (customTurbulenceActive && stageDTurbulentOptimizationMode)
+if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
 {
-  const bool stageDUseTransportedClosureAdjoints =
-    static_cast<bool>(stageDTransportedClosureAdjoints)
+  const bool optimizationCycleUseTransportedClosureAdjoints =
+    static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
     && static_cast<bool>(optDualConsistentStateMapEnforce);
-  auto stageDGlobalAbsMax =
+  auto optimizationCycleGlobalAbsMax =
   [&](const volScalarField& field) -> scalar
   {
     scalar localMax = 0.0;
@@ -16,342 +16,342 @@ if (customTurbulenceActive && stageDTurbulentOptimizationMode)
     return localMax;
   };
 
-  const volSymmTensorField stageDSymmGradU(symm(fvc::grad(U)));
-  const volSymmTensorField stageDSymmGradUa(symm(fvc::grad(Ua)));
-  const volSymmTensorField stageDSymmGradUb(symm(fvc::grad(Ub)));
+  const volSymmTensorField optimizationCycleSymmGradU(symm(fvc::grad(U)));
+  const volSymmTensorField optimizationCycleSymmGradUa(symm(fvc::grad(Ua)));
+  const volSymmTensorField optimizationCycleSymmGradUb(symm(fvc::grad(Ub)));
 
-  const volScalarField stageDKObjectiveThermal
+  const volScalarField optimizationCycleKObjectiveThermal
   (
-    dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(Ta))
+    dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
   );
-  const volScalarField stageDKObjectiveMomentum
+  const volScalarField optimizationCycleKObjectiveMomentum
   (
-    2.0*dNutDkBlock*(stageDSymmGradU && stageDSymmGradUb)
+    2.0*dNutDkBlock*(optimizationCycleSymmGradU && optimizationCycleSymmGradUb)
   );
-  const volScalarField stageDOmegaObjectiveThermal
+  const volScalarField optimizationCycleOmegaObjectiveThermal
   (
-    dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(Ta))
+    dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
   );
-  const volScalarField stageDOmegaObjectiveMomentum
+  const volScalarField optimizationCycleOmegaObjectiveMomentum
   (
-    2.0*dNutDOmegaBlock*(stageDSymmGradU && stageDSymmGradUb)
+    2.0*dNutDOmegaBlock*(optimizationCycleSymmGradU && optimizationCycleSymmGradUb)
   );
-  const volScalarField stageDKConstraintMomentum
+  const volScalarField optimizationCycleKConstraintMomentum
   (
-    2.0*dNutDkBlock*(stageDSymmGradU && stageDSymmGradUa)
+    2.0*dNutDkBlock*(optimizationCycleSymmGradU && optimizationCycleSymmGradUa)
   );
-  const volScalarField stageDOmegaConstraintMomentum
+  const volScalarField optimizationCycleOmegaConstraintMomentum
   (
-    2.0*dNutDOmegaBlock*(stageDSymmGradU && stageDSymmGradUa)
+    2.0*dNutDOmegaBlock*(optimizationCycleSymmGradU && optimizationCycleSymmGradUa)
   );
-  const volScalarField stageDKObjectiveThermalMagnitude
+  const volScalarField optimizationCycleKObjectiveThermalMagnitude
   (
-    mag(stageDKObjectiveThermal)
+    mag(optimizationCycleKObjectiveThermal)
   );
-  const volScalarField stageDKObjectiveMomentumMagnitude
+  const volScalarField optimizationCycleKObjectiveMomentumMagnitude
   (
-    mag(stageDKObjectiveMomentum)
+    mag(optimizationCycleKObjectiveMomentum)
   );
-  const volScalarField stageDOmegaObjectiveThermalMagnitude
+  const volScalarField optimizationCycleOmegaObjectiveThermalMagnitude
   (
-    mag(stageDOmegaObjectiveThermal)
+    mag(optimizationCycleOmegaObjectiveThermal)
   );
-  const volScalarField stageDOmegaObjectiveMomentumMagnitude
+  const volScalarField optimizationCycleOmegaObjectiveMomentumMagnitude
   (
-    mag(stageDOmegaObjectiveMomentum)
+    mag(optimizationCycleOmegaObjectiveMomentum)
   );
-  const volScalarField stageDKConstraintMomentumMagnitude
+  const volScalarField optimizationCycleKConstraintMomentumMagnitude
   (
-    mag(stageDKConstraintMomentum)
+    mag(optimizationCycleKConstraintMomentum)
   );
-  const volScalarField stageDOmegaConstraintMomentumMagnitude
+  const volScalarField optimizationCycleOmegaConstraintMomentumMagnitude
   (
-    mag(stageDOmegaConstraintMomentum)
-  );
-
-  const scalar stageDKObjectiveThermalScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDKObjectiveThermalMagnitude), SMALL);
-  const scalar stageDKObjectiveMomentumScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDKObjectiveMomentumMagnitude), SMALL);
-  const scalar stageDOmegaObjectiveThermalScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDOmegaObjectiveThermalMagnitude), SMALL);
-  const scalar stageDOmegaObjectiveMomentumScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDOmegaObjectiveMomentumMagnitude), SMALL);
-  const scalar stageDKConstraintMomentumScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDKConstraintMomentumMagnitude), SMALL);
-  const scalar stageDOmegaConstraintMomentumScaleValue =
-    Foam::max(stageDGlobalAbsMax(stageDOmegaConstraintMomentumMagnitude), SMALL);
-
-  const dimensionedScalar stageDKObjectiveThermalScale
-  (
-    "stageDKObjectiveThermalScale",
-    stageDKObjectiveThermal.dimensions(),
-    stageDKObjectiveThermalScaleValue
-  );
-  const dimensionedScalar stageDKObjectiveMomentumScale
-  (
-    "stageDKObjectiveMomentumScale",
-    stageDKObjectiveMomentum.dimensions(),
-    stageDKObjectiveMomentumScaleValue
-  );
-  const dimensionedScalar stageDOmegaObjectiveThermalScale
-  (
-    "stageDOmegaObjectiveThermalScale",
-    stageDOmegaObjectiveThermal.dimensions(),
-    stageDOmegaObjectiveThermalScaleValue
-  );
-  const dimensionedScalar stageDOmegaObjectiveMomentumScale
-  (
-    "stageDOmegaObjectiveMomentumScale",
-    stageDOmegaObjectiveMomentum.dimensions(),
-    stageDOmegaObjectiveMomentumScaleValue
-  );
-  const dimensionedScalar stageDKConstraintMomentumScale
-  (
-    "stageDKConstraintMomentumScale",
-    stageDKConstraintMomentum.dimensions(),
-    stageDKConstraintMomentumScaleValue
-  );
-  const dimensionedScalar stageDOmegaConstraintMomentumScale
-  (
-    "stageDOmegaConstraintMomentumScale",
-    stageDOmegaConstraintMomentum.dimensions(),
-    stageDOmegaConstraintMomentumScaleValue
+    mag(optimizationCycleOmegaConstraintMomentum)
   );
 
-  const volScalarField stageDKObjectiveProxy
+  const scalar optimizationCycleKObjectiveThermalScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleKObjectiveThermalMagnitude), SMALL);
+  const scalar optimizationCycleKObjectiveMomentumScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleKObjectiveMomentumMagnitude), SMALL);
+  const scalar optimizationCycleOmegaObjectiveThermalScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleOmegaObjectiveThermalMagnitude), SMALL);
+  const scalar optimizationCycleOmegaObjectiveMomentumScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleOmegaObjectiveMomentumMagnitude), SMALL);
+  const scalar optimizationCycleKConstraintMomentumScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleKConstraintMomentumMagnitude), SMALL);
+  const scalar optimizationCycleOmegaConstraintMomentumScaleValue =
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleOmegaConstraintMomentumMagnitude), SMALL);
+
+  const dimensionedScalar optimizationCycleKObjectiveThermalScale
   (
-      stageDKObjectiveThermal/stageDKObjectiveThermalScale
-    + stageDKObjectiveMomentum/stageDKObjectiveMomentumScale
+    "optimizationCycleKObjectiveThermalScale",
+    optimizationCycleKObjectiveThermal.dimensions(),
+    optimizationCycleKObjectiveThermalScaleValue
   );
-  const volScalarField stageDOmegaObjectiveProxy
+  const dimensionedScalar optimizationCycleKObjectiveMomentumScale
   (
-      stageDOmegaObjectiveThermal/stageDOmegaObjectiveThermalScale
-    + stageDOmegaObjectiveMomentum/stageDOmegaObjectiveMomentumScale
+    "optimizationCycleKObjectiveMomentumScale",
+    optimizationCycleKObjectiveMomentum.dimensions(),
+    optimizationCycleKObjectiveMomentumScaleValue
   );
-  const volScalarField stageDKConstraintProxy
+  const dimensionedScalar optimizationCycleOmegaObjectiveThermalScale
   (
-    stageDKConstraintMomentum/stageDKConstraintMomentumScale
+    "optimizationCycleOmegaObjectiveThermalScale",
+    optimizationCycleOmegaObjectiveThermal.dimensions(),
+    optimizationCycleOmegaObjectiveThermalScaleValue
   );
-  const volScalarField stageDOmegaConstraintProxy
+  const dimensionedScalar optimizationCycleOmegaObjectiveMomentumScale
   (
-    stageDOmegaConstraintMomentum/stageDOmegaConstraintMomentumScale
+    "optimizationCycleOmegaObjectiveMomentumScale",
+    optimizationCycleOmegaObjectiveMomentum.dimensions(),
+    optimizationCycleOmegaObjectiveMomentumScaleValue
   );
-  const volScalarField stageDKMagnitude
+  const dimensionedScalar optimizationCycleKConstraintMomentumScale
+  (
+    "optimizationCycleKConstraintMomentumScale",
+    optimizationCycleKConstraintMomentum.dimensions(),
+    optimizationCycleKConstraintMomentumScaleValue
+  );
+  const dimensionedScalar optimizationCycleOmegaConstraintMomentumScale
+  (
+    "optimizationCycleOmegaConstraintMomentumScale",
+    optimizationCycleOmegaConstraintMomentum.dimensions(),
+    optimizationCycleOmegaConstraintMomentumScaleValue
+  );
+
+  const volScalarField optimizationCycleKObjectiveProxy
+  (
+      optimizationCycleKObjectiveThermal/optimizationCycleKObjectiveThermalScale
+    + optimizationCycleKObjectiveMomentum/optimizationCycleKObjectiveMomentumScale
+  );
+  const volScalarField optimizationCycleOmegaObjectiveProxy
+  (
+      optimizationCycleOmegaObjectiveThermal/optimizationCycleOmegaObjectiveThermalScale
+    + optimizationCycleOmegaObjectiveMomentum/optimizationCycleOmegaObjectiveMomentumScale
+  );
+  const volScalarField optimizationCycleKConstraintProxy
+  (
+    optimizationCycleKConstraintMomentum/optimizationCycleKConstraintMomentumScale
+  );
+  const volScalarField optimizationCycleOmegaConstraintProxy
+  (
+    optimizationCycleOmegaConstraintMomentum/optimizationCycleOmegaConstraintMomentumScale
+  );
+  const volScalarField optimizationCycleKMagnitude
   (
     mag
     (
-      static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
       ? kClosureState
       : k
     )
   );
-  const volScalarField stageDOmegaMagnitude
+  const volScalarField optimizationCycleOmegaMagnitude
   (
     mag
     (
-      static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
       ? omegaClosureState
       : omega
     )
   );
 
-  const volScalarField stageDDampingDxh
+  const volScalarField optimizationCycleDampingDxh
   (
     turbulenceDampingCoeff*dAlphaDxh
   );
-  const volScalarField stageDDampingMagnitude
+  const volScalarField optimizationCycleDampingMagnitude
   (
-    mag(stageDDampingDxh)
+    mag(optimizationCycleDampingDxh)
   );
-  const dimensionedScalar stageDKScale
+  const dimensionedScalar optimizationCycleKScale
   (
-    "stageDKScale",
+    "optimizationCycleKScale",
     k.dimensions(),
-    Foam::max(stageDGlobalAbsMax(stageDKMagnitude), SMALL)
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleKMagnitude), SMALL)
   );
-  const dimensionedScalar stageDOmegaScale
+  const dimensionedScalar optimizationCycleOmegaScale
   (
-    "stageDOmegaScale",
+    "optimizationCycleOmegaScale",
     omega.dimensions(),
-    Foam::max(stageDGlobalAbsMax(stageDOmegaMagnitude), SMALL)
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleOmegaMagnitude), SMALL)
   );
-  const dimensionedScalar stageDDampingScale
+  const dimensionedScalar optimizationCycleDampingScale
   (
-    "stageDDampingScale",
-    stageDDampingDxh.dimensions(),
-    Foam::max(stageDGlobalAbsMax(stageDDampingMagnitude), SMALL)
+    "optimizationCycleDampingScale",
+    optimizationCycleDampingDxh.dimensions(),
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleDampingMagnitude), SMALL)
   );
-  const volScalarField stageDDampingNormalized
+  const volScalarField optimizationCycleDampingNormalized
   (
-    stageDDampingDxh/stageDDampingScale
+    optimizationCycleDampingDxh/optimizationCycleDampingScale
   );
-  const volScalarField stageDKObjectiveNormalized
+  const volScalarField optimizationCycleKObjectiveNormalized
   (
     (
       (
-        static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+        static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
         ? kClosureState
         : k
-      )/stageDKScale
-    )*stageDKObjectiveProxy
+      )/optimizationCycleKScale
+    )*optimizationCycleKObjectiveProxy
   );
-  const volScalarField stageDOmegaObjectiveNormalized
+  const volScalarField optimizationCycleOmegaObjectiveNormalized
   (
     (
       (
-        static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+        static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
         ? omegaClosureState
         : omega
-      )/stageDOmegaScale
-    )*stageDOmegaObjectiveProxy
+      )/optimizationCycleOmegaScale
+    )*optimizationCycleOmegaObjectiveProxy
   );
-  const volScalarField stageDKConstraintNormalized
+  const volScalarField optimizationCycleKConstraintNormalized
   (
     (
       (
-        static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+        static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
         ? kClosureState
         : k
-      )/stageDKScale
-    )*stageDKConstraintProxy
+      )/optimizationCycleKScale
+    )*optimizationCycleKConstraintProxy
   );
-  const volScalarField stageDOmegaConstraintNormalized
+  const volScalarField optimizationCycleOmegaConstraintNormalized
   (
     (
       (
-        static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+        static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
         ? omegaClosureState
         : omega
-      )/stageDOmegaScale
-    )*stageDOmegaConstraintProxy
+      )/optimizationCycleOmegaScale
+    )*optimizationCycleOmegaConstraintProxy
   );
-  const volScalarField stageDObjectiveNormalizedMix
+  const volScalarField optimizationCycleObjectiveNormalizedMix
   (
-    stageDKObjectiveNormalized + stageDOmegaObjectiveNormalized
+    optimizationCycleKObjectiveNormalized + optimizationCycleOmegaObjectiveNormalized
   );
-  const volScalarField stageDConstraintNormalizedMix
+  const volScalarField optimizationCycleConstraintNormalizedMix
   (
-    stageDKConstraintNormalized + stageDOmegaConstraintNormalized
+    optimizationCycleKConstraintNormalized + optimizationCycleOmegaConstraintNormalized
   );
-  const volScalarField stageDTransportedClosureMix
+  const volScalarField optimizationCycleTransportedClosureMix
   (
     ka + omegaa
   );
-  const volScalarField stageDLogClosureMix
+  const volScalarField optimizationCycleLogClosureMix
   (
     logKClosureState + logOmegaClosureState
   );
-  const volScalarField stageDLogClosureMixMagnitude
+  const volScalarField optimizationCycleLogClosureMixMagnitude
   (
-    mag(stageDLogClosureMix)
+    mag(optimizationCycleLogClosureMix)
   );
-  const dimensionedScalar stageDLogClosureScale
+  const dimensionedScalar optimizationCycleLogClosureScale
   (
-    "stageDLogClosureScale",
-    stageDLogClosureMix.dimensions(),
-    Foam::max(stageDGlobalAbsMax(stageDLogClosureMixMagnitude), SMALL)
+    "optimizationCycleLogClosureScale",
+    optimizationCycleLogClosureMix.dimensions(),
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleLogClosureMixMagnitude), SMALL)
   );
-  const volScalarField stageDTransportedClosureMixMagnitude
+  const volScalarField optimizationCycleTransportedClosureMixMagnitude
   (
-    mag(stageDTransportedClosureMix)
+    mag(optimizationCycleTransportedClosureMix)
   );
-  const dimensionedScalar stageDTransportedClosureScale
+  const dimensionedScalar optimizationCycleTransportedClosureScale
   (
-    "stageDTransportedClosureScale",
-    stageDTransportedClosureMix.dimensions(),
-    Foam::max(stageDGlobalAbsMax(stageDTransportedClosureMixMagnitude), SMALL)
+    "optimizationCycleTransportedClosureScale",
+    optimizationCycleTransportedClosureMix.dimensions(),
+    Foam::max(optimizationCycleGlobalAbsMax(optimizationCycleTransportedClosureMixMagnitude), SMALL)
   );
-  const volScalarField stageDTransportedClosureNormalized
+  const volScalarField optimizationCycleTransportedClosureNormalized
   (
-    stageDTransportedClosureMix/stageDTransportedClosureScale
+    optimizationCycleTransportedClosureMix/optimizationCycleTransportedClosureScale
   );
-  volScalarField stageDObjectiveClosureMix
+  volScalarField optimizationCycleObjectiveClosureMix
   (
-    stageDUseTransportedClosureAdjoints
-    ? stageDTransportedClosureNormalized
-    : stageDObjectiveNormalizedMix
+    optimizationCycleUseTransportedClosureAdjoints
+    ? optimizationCycleTransportedClosureNormalized
+    : optimizationCycleObjectiveNormalizedMix
   );
   if
   (
-      stageDUseTransportedClosureAdjoints
-   && static_cast<bool>(stageDUseLogClosureState)
+      optimizationCycleUseTransportedClosureAdjoints
+   && static_cast<bool>(optimizationCycleUseLogClosureState)
   )
   {
-    stageDObjectiveClosureMix +=
-      0.05*stageDLogClosureMix/stageDLogClosureScale;
+    optimizationCycleObjectiveClosureMix +=
+      0.05*optimizationCycleLogClosureMix/optimizationCycleLogClosureScale;
   }
-  const volScalarField stageDConstraintClosureMix
+  const volScalarField optimizationCycleConstraintClosureMix
   (
-    stageDUseTransportedClosureAdjoints
-    ? stageDTransportedClosureNormalized
-    : stageDConstraintNormalizedMix
+    optimizationCycleUseTransportedClosureAdjoints
+    ? optimizationCycleTransportedClosureNormalized
+    : optimizationCycleConstraintNormalizedMix
   );
-  const volScalarField stageDObjectiveClosureContribution
+  const volScalarField optimizationCycleObjectiveClosureContribution
   (
-    -fsenshMeanT*stageDDampingNormalized*stageDObjectiveClosureMix
+    -fsenshMeanT*optimizationCycleDampingNormalized*optimizationCycleObjectiveClosureMix
   );
-  const volScalarField stageDConstraintClosureContribution
+  const volScalarField optimizationCycleConstraintClosureContribution
   (
-    -gsenshPowerDiss*stageDDampingNormalized*stageDConstraintClosureMix
-  );
-
-  fsenshMeanT += stageDObjectiveClosureContribution;
-  gsenshPowerDiss += stageDConstraintClosureContribution;
-  const volScalarField stageDObjectiveClosureMagnitude
-  (
-    mag(stageDObjectiveClosureContribution)
-  );
-  const volScalarField stageDConstraintClosureMagnitude
-  (
-    mag(stageDConstraintClosureContribution)
-  );
-  const volScalarField stageDKObjectiveProxyMagnitude
-  (
-    mag(stageDKObjectiveProxy)
-  );
-  const volScalarField stageDOmegaObjectiveProxyMagnitude
-  (
-    mag(stageDOmegaObjectiveProxy)
-  );
-  const volScalarField stageDKConstraintProxyMagnitude
-  (
-    mag(stageDKConstraintProxy)
-  );
-  const volScalarField stageDOmegaConstraintProxyMagnitude
-  (
-    mag(stageDOmegaConstraintProxy)
+    -gsenshPowerDiss*optimizationCycleDampingNormalized*optimizationCycleConstraintClosureMix
   );
 
-  const scalar stageDObjectiveClosureMax =
-    stageDGlobalAbsMax(stageDObjectiveClosureMagnitude);
-  const scalar stageDConstraintClosureMax =
-    stageDGlobalAbsMax(stageDConstraintClosureMagnitude);
-  const scalar stageDKObjectiveProxyMax =
-    stageDGlobalAbsMax(stageDKObjectiveProxyMagnitude);
-  const scalar stageDOmegaObjectiveProxyMax =
-    stageDGlobalAbsMax(stageDOmegaObjectiveProxyMagnitude);
-  const scalar stageDKConstraintProxyMax =
-    stageDGlobalAbsMax(stageDKConstraintProxyMagnitude);
-  const scalar stageDOmegaConstraintProxyMax =
-    stageDGlobalAbsMax(stageDOmegaConstraintProxyMagnitude);
-  const scalar stageDTransportedClosureMixMax =
-    stageDGlobalAbsMax(stageDTransportedClosureMixMagnitude);
+  fsenshMeanT += optimizationCycleObjectiveClosureContribution;
+  gsenshPowerDiss += optimizationCycleConstraintClosureContribution;
+  const volScalarField optimizationCycleObjectiveClosureMagnitude
+  (
+    mag(optimizationCycleObjectiveClosureContribution)
+  );
+  const volScalarField optimizationCycleConstraintClosureMagnitude
+  (
+    mag(optimizationCycleConstraintClosureContribution)
+  );
+  const volScalarField optimizationCycleKObjectiveProxyMagnitude
+  (
+    mag(optimizationCycleKObjectiveProxy)
+  );
+  const volScalarField optimizationCycleOmegaObjectiveProxyMagnitude
+  (
+    mag(optimizationCycleOmegaObjectiveProxy)
+  );
+  const volScalarField optimizationCycleKConstraintProxyMagnitude
+  (
+    mag(optimizationCycleKConstraintProxy)
+  );
+  const volScalarField optimizationCycleOmegaConstraintProxyMagnitude
+  (
+    mag(optimizationCycleOmegaConstraintProxy)
+  );
+
+  const scalar optimizationCycleObjectiveClosureMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleObjectiveClosureMagnitude);
+  const scalar optimizationCycleConstraintClosureMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleConstraintClosureMagnitude);
+  const scalar optimizationCycleKObjectiveProxyMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleKObjectiveProxyMagnitude);
+  const scalar optimizationCycleOmegaObjectiveProxyMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleOmegaObjectiveProxyMagnitude);
+  const scalar optimizationCycleKConstraintProxyMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleKConstraintProxyMagnitude);
+  const scalar optimizationCycleOmegaConstraintProxyMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleOmegaConstraintProxyMagnitude);
+  const scalar optimizationCycleTransportedClosureMixMax =
+    optimizationCycleGlobalAbsMax(optimizationCycleTransportedClosureMixMagnitude);
 
   if (Pstream::master())
   {
     std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::app);
     debugLogFile
-      << "\n[Stage-D Turbulent Sensitivity]\n"
-      << "  Obj closure |max|       : " << stageDObjectiveClosureMax << "\n"
-      << "  Con closure |max|       : " << stageDConstraintClosureMax << "\n"
-      << "  Obj k-proxy |max|       : " << stageDKObjectiveProxyMax << "\n"
-      << "  Obj omega-proxy |max|   : " << stageDOmegaObjectiveProxyMax << "\n"
-      << "  Con k-proxy |max|       : " << stageDKConstraintProxyMax << "\n"
-      << "  Con omega-proxy |max|   : " << stageDOmegaConstraintProxyMax << "\n"
+      << "\n[Optimization-Cycle Turbulent Sensitivity]\n"
+      << "  Obj closure |max|       : " << optimizationCycleObjectiveClosureMax << "\n"
+      << "  Con closure |max|       : " << optimizationCycleConstraintClosureMax << "\n"
+      << "  Obj k-proxy |max|       : " << optimizationCycleKObjectiveProxyMax << "\n"
+      << "  Obj omega-proxy |max|   : " << optimizationCycleOmegaObjectiveProxyMax << "\n"
+      << "  Con k-proxy |max|       : " << optimizationCycleKConstraintProxyMax << "\n"
+      << "  Con omega-proxy |max|   : " << optimizationCycleOmegaConstraintProxyMax << "\n"
       << "  Closure mix mode        : "
-      << (stageDUseTransportedClosureAdjoints ? "transported" : "proxy")
+      << (optimizationCycleUseTransportedClosureAdjoints ? "transported" : "proxy")
       << "\n"
-      << "  Transported mix |max|   : " << stageDTransportedClosureMixMax << "\n";
+      << "  Transported mix |max|   : " << optimizationCycleTransportedClosureMixMax << "\n";
   }
 }

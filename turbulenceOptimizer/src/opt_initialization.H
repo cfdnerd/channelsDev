@@ -2,8 +2,8 @@ Info<< "Initialization\n" << endl;
 const char* optimizationHistoryFile = "optimization.hst";
 const char* debugOptimizerJsonFile = "debugOptimizer.jsonl";
 const char* debugOptimizerLogFile = "debugOptimizer.log";
-const char* debugStageCLogFile = debugOptimizerLogFile;
-const char* legacyDebugStageCLogFile = "debugStageC.log";
+const char* debugAdjointCycleLogFile = debugOptimizerLogFile;
+const char* legacyDebugAdjointCycleLogFile = "debugAdjointCycle.log";
 const char* solverConvergenceFile = "solverConvergences.log";
 const char* optimizerDirectionEventFile = "optimizerDirectionEvents.log";
 const char* firstFailureSnapshotFile = "firstFailureSnapshot.log";
@@ -12,7 +12,7 @@ if (Pstream::master())
   std::remove(optimizationHistoryFile);
   std::remove(debugOptimizerJsonFile);
   std::remove(debugOptimizerLogFile);
-  std::remove(legacyDebugStageCLogFile);
+  std::remove(legacyDebugAdjointCycleLogFile);
   std::remove(solverConvergenceFile);
   std::remove(optimizerDirectionEventFile);
   std::remove(firstFailureSnapshotFile);
@@ -35,7 +35,7 @@ if (Pstream::master())
     << "# MTO_ThermalFluid optimizer debug log\n"
     << "# Structured per-iteration diagnostics for optimizer development\n"
     << "# Format: sectioned human-readable report, one block per optimization iteration\n"
-    << "# Stage-C/Stage-D adjoint traces are consolidated in this file under dedicated sections\n";
+    << "# Adjoint-Cycle/Optimization-Cycle adjoint traces are consolidated in this file under dedicated sections\n";
 
   if (static_cast<bool>(optRogueDirectionSwitchEnable))
   {
@@ -64,44 +64,44 @@ if (Pstream::master())
   }
 }
 
-if (stageDTurbulentOptimizationMode && static_cast<bool>(optFormulationExecutionGateEnable))
+if (optimizationCycleTurbulentOptimizationMode && static_cast<bool>(optFormulationExecutionGateEnable))
 {
   if
   (
       static_cast<bool>(optRequireTransportedClosureAdjoints)
-   && !static_cast<bool>(stageDTransportedClosureAdjoints)
+   && !static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
   )
   {
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
-      << "customTurbulenceProperties.stageDTransportedClosureAdjoints=true "
-      << "for Stage-D runs."
+      << "customTurbulenceProperties.optimizationCycleTransportedClosureAdjoints=true "
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   if
   (
       static_cast<bool>(optRequireTransportedClosureAdjoints)
-   && stageDClosureAdjointFormulation != word("transportedResidualDraft")
-   && stageDClosureAdjointFormulation != word("transportedCrossCoupledV3")
+   && optimizationCycleClosureAdjointFormulation != word("transportedResidualDraft")
+   && optimizationCycleClosureAdjointFormulation != word("transportedCrossCoupledV3")
   )
   {
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
-      << "customTurbulenceProperties.stageDClosureAdjointFormulation "
+      << "customTurbulenceProperties.optimizationCycleClosureAdjointFormulation "
       << "to be transportedResidualDraft or transportedCrossCoupledV3. Found "
-      << stageDClosureAdjointFormulation
+      << optimizationCycleClosureAdjointFormulation
       << exit(FatalError);
   }
   if
   (
       static_cast<bool>(optRequireDualConsistentClosureBC)
-   && !static_cast<bool>(stageDClosureAdjointDualConsistentBC)
+   && !static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC)
   )
   {
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
-      << "customTurbulenceProperties.stageDClosureAdjointDualConsistentBC=true "
-      << "for Stage-D runs."
+      << "customTurbulenceProperties.optimizationCycleClosureAdjointDualConsistentBC=true "
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   if (static_cast<bool>(smoothTurbulenceClipping))
@@ -120,7 +120,7 @@ if (stageDTurbulentOptimizationMode && static_cast<bool>(optFormulationExecution
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "tuneOptParameters.convergenceControl.optGradientCheckEnable=true "
-      << "for Stage-D runs."
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   if
@@ -132,7 +132,7 @@ if (stageDTurbulentOptimizationMode && static_cast<bool>(optFormulationExecution
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "tuneOptParameters.convergenceControl.optClosureDerivativeFDStageCheckEnable=true "
-      << "for Stage-D runs."
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   if (!static_cast<bool>(optSensitivityQualityGateEnable))
@@ -140,21 +140,21 @@ if (stageDTurbulentOptimizationMode && static_cast<bool>(optFormulationExecution
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "tuneOptParameters.convergenceControl.optSensitivityQualityGateEnable=true "
-      << "for Stage-D runs."
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   const dictionary& solverControls = mesh.solutionDict().subDict("solvers");
   if (!solverControls.found("ka"))
   {
     FatalErrorInFunction
-      << "Stage-D transported closure adjoints require a dedicated 'ka' block "
+      << "Optimization-Cycle transported closure adjoints require a dedicated 'ka' block "
       << "in fvSolution.solvers."
       << exit(FatalError);
   }
   if (!solverControls.found("omegaa"))
   {
     FatalErrorInFunction
-      << "Stage-D transported closure adjoints require a dedicated 'omegaa' "
+      << "Optimization-Cycle transported closure adjoints require a dedicated 'omegaa' "
       << "block in fvSolution.solvers."
       << exit(FatalError);
   }
@@ -162,16 +162,16 @@ if (stageDTurbulentOptimizationMode && static_cast<bool>(optFormulationExecution
   (
       static_cast<bool>(optDualConsistentStateMapEnforce)
    && (
-         !static_cast<bool>(stageDTransportedClosureAdjoints)
-      || !static_cast<bool>(stageDClosureConsistencyUseBoundedState)
-      || stageDClosureAdjointFormulation == word("proxyNormalized")
+         !static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
+      || !static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
+      || optimizationCycleClosureAdjointFormulation == word("proxyNormalized")
       )
   )
   {
     FatalErrorInFunction
       << "Dual-consistent state-map enforcement requires "
       << "transported closure adjoints, bounded closure state mapping, "
-      << "and non-proxy closure-adjoint formulation in Stage-D."
+      << "and non-proxy closure-adjoint formulation in Optimization-Cycle."
       << exit(FatalError);
   }
 }
@@ -244,7 +244,6 @@ auto recordLinearSolve =
 
 const scalar linearSolveObsResidual = 1e-6;
 const scalar linearSolveWarnResidual = 1e-4;
-const label linearSolveWarnIterations = 150;
 
 auto classifyLinearSolveStatus =
 [&](const LinearSolveStats& stats) -> const char*
@@ -254,10 +253,6 @@ auto classifyLinearSolveStatus =
     return "SKIP";
   }
   if (stats.finalResidualMax > linearSolveWarnResidual)
-  {
-    return "WARN";
-  }
-  if (stats.iterationMax >= linearSolveWarnIterations)
   {
     return "WARN";
   }
@@ -451,30 +446,30 @@ bool turbulenceNonlinearConverged(false);
 bool turbulenceInletConsistent(true);
 label turbulenceCorrectorsUsed(0);
 const char* turbulenceInletConsistencyStatus("SKIP");
-scalar stageCAdjointUNonlinearChange(0);
-scalar stageCAdjointPNonlinearChange(0);
-bool stageCAdjointFlowConverged(false);
-label stageCAdjointCorrectorsUsed(0);
-scalar stageCAdjointCombinedMetric(0);
-scalar stageCAdjointBestCombinedMetric(GREAT);
-scalar stageCAdjointBestUNonlinearChange(GREAT);
-scalar stageCAdjointBestPNonlinearChange(GREAT);
-scalar stageCAdjointBestUaMax(GREAT);
-scalar stageCAdjointBestPaRange(GREAT);
-scalar stageCAdjointBestPaMean(0);
-scalar stageCAdjointBestPhiaAbsSum(0);
-scalar stageCAdjointBestPhiaNet(0);
-label stageCAdjointBestCorrector(0);
-scalar stageCAdjointUaMax(0);
-scalar stageCAdjointPaRange(0);
-scalar stageCAdjointPaMean(0);
-scalar stageCAdjointPhiaAbsSum(0);
-scalar stageCAdjointPhiaNet(0);
-bool stageCAdjointFlowDiverged(false);
-label stageCAdjointDivergedCorrector(0);
-bool stageCAdjointRolledBack(false);
-label stageCAdjointRollbackCorrector(0);
-word stageCAdjointStopReason("not-run");
+scalar adjointCycleAdjointUNonlinearChange(0);
+scalar adjointCycleAdjointPNonlinearChange(0);
+bool adjointCycleAdjointFlowConverged(false);
+label adjointCycleAdjointCorrectorsUsed(0);
+scalar adjointCycleAdjointCombinedMetric(0);
+scalar adjointCycleAdjointBestCombinedMetric(GREAT);
+scalar adjointCycleAdjointBestUNonlinearChange(GREAT);
+scalar adjointCycleAdjointBestPNonlinearChange(GREAT);
+scalar adjointCycleAdjointBestUaMax(GREAT);
+scalar adjointCycleAdjointBestPaRange(GREAT);
+scalar adjointCycleAdjointBestPaMean(0);
+scalar adjointCycleAdjointBestPhiaAbsSum(0);
+scalar adjointCycleAdjointBestPhiaNet(0);
+label adjointCycleAdjointBestCorrector(0);
+scalar adjointCycleAdjointUaMax(0);
+scalar adjointCycleAdjointPaRange(0);
+scalar adjointCycleAdjointPaMean(0);
+scalar adjointCycleAdjointPhiaAbsSum(0);
+scalar adjointCycleAdjointPhiaNet(0);
+bool adjointCycleAdjointFlowDiverged(false);
+label adjointCycleAdjointDivergedCorrector(0);
+bool adjointCycleAdjointRolledBack(false);
+label adjointCycleAdjointRollbackCorrector(0);
+word adjointCycleAdjointStopReason("not-run");
 double len=std::pow(area/N, 1.0/3);
 b.value()=1.0/(filterR*len/3.464)/(filterR*len/3.464);
 //***********************************//MMA

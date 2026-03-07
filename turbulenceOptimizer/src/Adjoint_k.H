@@ -1,19 +1,19 @@
 if (customTurbulenceActive)
 {
-  const bool stageDUseTransportedClosureAdjoints =
-    stageDTurbulentOptimizationMode
-    && static_cast<bool>(stageDTransportedClosureAdjoints)
+  const bool optimizationCycleUseTransportedClosureAdjoints =
+    optimizationCycleTurbulentOptimizationMode
+    && static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
     && static_cast<bool>(optDualConsistentStateMapEnforce);
-  const bool stageDUseResidualDraftClosureAdjoints =
-    stageDUseTransportedClosureAdjoints
-    && stageDClosureAdjointFormulation == word("transportedResidualDraft");
-  const bool stageDUseCrossCoupledClosureAdjoints =
-    stageDUseTransportedClosureAdjoints
-    && stageDClosureAdjointFormulation == word("transportedCrossCoupledV3");
+  const bool optimizationCycleUseResidualDraftClosureAdjoints =
+    optimizationCycleUseTransportedClosureAdjoints
+    && optimizationCycleClosureAdjointFormulation == word("transportedResidualDraft");
+  const bool optimizationCycleUseCrossCoupledClosureAdjoints =
+    optimizationCycleUseTransportedClosureAdjoints
+    && optimizationCycleClosureAdjointFormulation == word("transportedCrossCoupledV3");
   auto applyDualConsistentKaBC =
   [&]()
   {
-    if (stageDUseTransportedClosureAdjoints && static_cast<bool>(stageDClosureAdjointDualConsistentBC))
+    if (optimizationCycleUseTransportedClosureAdjoints && static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC))
     {
       forAll(ka.boundaryFieldRef(), patchi)
       {
@@ -25,44 +25,44 @@ if (customTurbulenceActive)
     }
   };
 
-  const volSymmTensorField stageCSymmGradU(symm(fvc::grad(U)));
-  const volSymmTensorField stageCSymmGradUa(symm(fvc::grad(Ua)));
-  const volScalarField& stageDOmegaStateRef =
-    static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+  const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
+  const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
+  const volScalarField& optimizationCycleOmegaStateRef =
+    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
     ? omegaClosureState
     : omega;
-  const volScalarField stageCKThermalCoupling
+  const volScalarField adjointCycleKThermalCoupling
   (
-    dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(Ta))
+    dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
   );
-  const volScalarField stageCKMomentumCoupling
+  const volScalarField adjointCycleKMomentumCoupling
   (
-    2.0*dNutDkBlock*(stageCSymmGradU && stageCSymmGradUa)
+    2.0*dNutDkBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
   );
-  const volScalarField stageCKThermalMagnitude(mag(stageCKThermalCoupling));
-  const volScalarField stageCKMomentumMagnitude(mag(stageCKMomentumCoupling));
-  const scalar stageCKThermalScaleValue =
-    Foam::max(gMax(stageCKThermalMagnitude), SMALL);
-  const scalar stageCKMomentumScaleValue =
-    Foam::max(gMax(stageCKMomentumMagnitude), SMALL);
-  const dimensionedScalar stageCKThermalScale
+  const volScalarField adjointCycleKThermalMagnitude(mag(adjointCycleKThermalCoupling));
+  const volScalarField adjointCycleKMomentumMagnitude(mag(adjointCycleKMomentumCoupling));
+  const scalar adjointCycleKThermalScaleValue =
+    Foam::max(gMax(adjointCycleKThermalMagnitude), SMALL);
+  const scalar adjointCycleKMomentumScaleValue =
+    Foam::max(gMax(adjointCycleKMomentumMagnitude), SMALL);
+  const dimensionedScalar adjointCycleKThermalScale
   (
-    "stageCKThermalScale",
-    stageCKThermalCoupling.dimensions(),
-    stageCKThermalScaleValue
+    "adjointCycleKThermalScale",
+    adjointCycleKThermalCoupling.dimensions(),
+    adjointCycleKThermalScaleValue
   );
-  const dimensionedScalar stageCKMomentumScale
+  const dimensionedScalar adjointCycleKMomentumScale
   (
-    "stageCKMomentumScale",
-    stageCKMomentumCoupling.dimensions(),
-    stageCKMomentumScaleValue
+    "adjointCycleKMomentumScale",
+    adjointCycleKMomentumCoupling.dimensions(),
+    adjointCycleKMomentumScaleValue
   );
-  volScalarField stageCKSourceProxy
+  volScalarField adjointCycleKSourceProxy
   (
-    stageCKThermalCoupling/stageCKThermalScale
-  + stageCKMomentumCoupling/stageCKMomentumScale
+    adjointCycleKThermalCoupling/adjointCycleKThermalScale
+  + adjointCycleKMomentumCoupling/adjointCycleKMomentumScale
   );
-  if (static_cast<bool>(stageDUseLogClosureState))
+  if (static_cast<bool>(optimizationCycleUseLogClosureState))
   {
     const volScalarField logKMagnitude(mag(logKClosureState));
     const dimensionedScalar logKScale
@@ -71,48 +71,48 @@ if (customTurbulenceActive)
       logKClosureState.dimensions(),
       Foam::max(gMax(logKMagnitude), SMALL)
     );
-    stageCKSourceProxy += 0.05*logKClosureState/logKScale;
+    adjointCycleKSourceProxy += 0.05*logKClosureState/logKScale;
   }
-  if (stageDUseTransportedClosureAdjoints)
+  if (optimizationCycleUseTransportedClosureAdjoints)
   {
     applyDualConsistentKaBC();
 
-    const dimensionedScalar stageDClosureInvTau
+    const dimensionedScalar optimizationCycleClosureInvTau
     (
-      "stageDClosureInvTau",
+      "optimizationCycleClosureInvTau",
       dimless/dimTime,
-      stageDClosureAdjointInvTau
+      optimizationCycleClosureAdjointInvTau
     );
-    volScalarField stageDKReactionCoeff
+    volScalarField optimizationCycleKReactionCoeff
     (
       betaStarCoeff
-     *stageDOmegaStateRef
+     *optimizationCycleOmegaStateRef
     + turbulenceDampingCoeff*alpha
     );
-    if (!stageDUseResidualDraftClosureAdjoints)
+    if (!optimizationCycleUseResidualDraftClosureAdjoints)
     {
-      stageDKReactionCoeff =
+      optimizationCycleKReactionCoeff =
         dimensionedScalar
         (
-          "zeroStageDKReactionCoeff",
-          stageDKReactionCoeff.dimensions(),
+          "zeroOptimizationCycleKReactionCoeff",
+          optimizationCycleKReactionCoeff.dimensions(),
           0.0
         );
     }
-    volScalarField stageDKCrossSource
+    volScalarField optimizationCycleKCrossSource
     (
       IOobject
       (
-        "stageDKCrossSource",
+        "optimizationCycleKCrossSource",
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
       ),
       mesh,
-      dimensionedScalar("zeroStageDKCrossSource", dimless/dimTime, 0.0)
+      dimensionedScalar("zeroOptimizationCycleKCrossSource", dimless/dimTime, 0.0)
     );
-    if (stageDUseCrossCoupledClosureAdjoints)
+    if (optimizationCycleUseCrossCoupledClosureAdjoints)
     {
       const volScalarField omegaaMagnitude(mag(omegaa));
       const dimensionedScalar omegaaScale
@@ -121,20 +121,20 @@ if (customTurbulenceActive)
         omegaa.dimensions(),
         Foam::max(gMax(omegaaMagnitude), SMALL)
       );
-      stageDKCrossSource =
-        stageDClosureInvTau
-       *stageDClosureCrossCoupling
+      optimizationCycleKCrossSource =
+        optimizationCycleClosureInvTau
+       *optimizationCycleClosureCrossCoupling
        *(omegaa/omegaaScale);
     }
     fvScalarMatrix kaEqn
     (
         fvm::div(phi, ka)
       - fvm::laplacian(nu + alphaKField*nut, ka)
-      + fvm::Sp(stageDClosureInvTau, ka)
-      + fvm::Sp(stageDKReactionCoeff, ka)
+      + fvm::Sp(optimizationCycleClosureInvTau, ka)
+      + fvm::Sp(optimizationCycleKReactionCoeff, ka)
      ==
-        stageDClosureInvTau*stageCKSourceProxy
-      + stageDKCrossSource
+        optimizationCycleClosureInvTau*adjointCycleKSourceProxy
+      + optimizationCycleKCrossSource
     );
 
     kaEqn.relax();
@@ -152,12 +152,12 @@ if (customTurbulenceActive)
   }
   else
   {
-    ka = stageCKSourceProxy;
+    ka = adjointCycleKSourceProxy;
   }
 
   const volScalarField kaMagnitudeCheck(mag(ka));
   const scalar kaAbsMax = gMax(kaMagnitudeCheck);
-  if (!(kaAbsMax < stageDAdjointMaxMagnitude))
+  if (!(kaAbsMax < optimizationCycleAdjointMaxMagnitude))
   {
     FatalErrorInFunction
       << "Non-physical ka magnitude detected: max(|ka|)=" << kaAbsMax

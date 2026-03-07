@@ -354,6 +354,23 @@ Switch optThermalBoundedObjectiveEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optThermalBoundedObjectiveEnable", true)
 );
+word optThermalAdjointMode
+(
+  convergenceControl.lookupOrDefault<word>("optThermalAdjointMode", "ta")
+);
+if
+(
+    optThermalAdjointMode != word("ta")
+ && optThermalAdjointMode != word("tbOriginal")
+ && optThermalAdjointMode != word("tbLaminar")
+)
+{
+  FatalErrorInFunction
+    << "Unsupported tuneOptParameters.convergenceControl.optThermalAdjointMode='"
+    << optThermalAdjointMode
+    << "'. Supported values: ta, tbOriginal, tbLaminar."
+    << exit(FatalError);
+}
 scalar optThermalExcessTref
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalExcessTref", 300.0)

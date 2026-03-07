@@ -95,8 +95,6 @@ auto recordLinearSolve =
 
 const scalar linearSolveObsResidual = 1e-6;
 const scalar linearSolveWarnResidual = 1e-4;
-const label linearSolveObsIterations = 60;
-const label linearSolveWarnIterations = 150;
 
 auto classifyLinearSolveStatus =
 [&](const LinearSolveStats& stats) -> const char*
@@ -105,11 +103,11 @@ auto classifyLinearSolveStatus =
   {
     return "SKIP";
   }
-  if (stats.finalResidualMax > linearSolveWarnResidual || stats.iterationMax >= linearSolveWarnIterations)
+  if (stats.finalResidualMax > linearSolveWarnResidual)
   {
     return "WARN";
   }
-  if (stats.finalResidualMax > linearSolveObsResidual || stats.iterationMax >= linearSolveObsIterations)
+  if (stats.finalResidualMax > linearSolveObsResidual)
   {
     return "OBS";
   }

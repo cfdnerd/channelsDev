@@ -61,7 +61,7 @@
     kClosureState = k;
     omegaClosureState = omega;
 
-    if (static_cast<bool>(stageDUseLogClosureState))
+    if (static_cast<bool>(optimizationCycleUseLogClosureState))
     {
       const dimensionedScalar kLogFloor
       (
@@ -93,9 +93,9 @@
     }
 
     const volScalarField& kStateRef =
-      static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? kClosureState : k;
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? kClosureState : k;
     const volScalarField& omegaStateRef =
-      static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? omegaClosureState : omega;
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? omegaClosureState : omega;
 
     const volTensorField gradU(fvc::grad(U));
     const volScalarField S2(2.0*magSqr(symm(gradU)));

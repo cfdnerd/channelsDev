@@ -12,25 +12,25 @@ IOdictionary customTurbulenceProperties
 );
 
 Switch customTurbulenceActive(customTurbulenceProperties.lookup("enable"));
-Switch stageCThermalAdjointOnly
+Switch adjointCycleThermalAdjointOnly
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageCThermalAdjointOnly", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleThermalAdjointOnly", false)
 );
-Switch stageCFullAdjointVerification
+Switch adjointCycleFullAdjointVerification
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageCFullAdjointVerification", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleFullAdjointVerification", false)
 );
-Switch stageDGradientClosure
+Switch optimizationCycleGradientClosure
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageDGradientClosure", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleGradientClosure", false)
 );
 Switch enableTurbulentOptimization
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("enableTurbulentOptimization", false)
 );
-const bool stageDTurbulentOptimizationMode =
+const bool optimizationCycleTurbulentOptimizationMode =
     customTurbulenceActive
- && stageDGradientClosure
+ && optimizationCycleGradientClosure
  && enableTurbulentOptimization;
 word inletTurbulenceMode
 (
@@ -203,85 +203,85 @@ scalar turbulenceNutNonlinearTol
 (
     customTurbulenceProperties.lookupOrDefault<scalar>("nutNonlinearTol", 1e-4)
 );
-// Retired dictionary tuning knobs: fixed Stage-C/Stage-D legacy fallback caps.
-label stageCAdjointCorrectors(8);
-label stageDAdjointCorrectors(12);
-label stageDFlowAdjointCorrectors
+// Retired dictionary tuning knobs: fixed Adjoint-Cycle/Optimization-Cycle legacy fallback caps.
+label adjointCycleAdjointCorrectors(8);
+label optimizationCycleAdjointCorrectors(12);
+label optimizationCycleFlowAdjointCorrectors
 (
     customTurbulenceProperties.lookupOrDefault<label>
     (
-        "stageDFlowAdjointCorrectors",
-        stageDAdjointCorrectors
+        "optimizationCycleFlowAdjointCorrectors",
+        optimizationCycleAdjointCorrectors
     )
 );
-label stageDHeatAdjointCorrectors
+label optimizationCycleHeatAdjointCorrectors
 (
     customTurbulenceProperties.lookupOrDefault<label>
     (
-        "stageDHeatAdjointCorrectors",
-        stageDAdjointCorrectors
+        "optimizationCycleHeatAdjointCorrectors",
+        optimizationCycleAdjointCorrectors
     )
 );
-Switch stageDTransportedClosureAdjoints
+Switch optimizationCycleTransportedClosureAdjoints
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageDTransportedClosureAdjoints", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleTransportedClosureAdjoints", false)
 );
-word stageDClosureAdjointFormulation
+word optimizationCycleClosureAdjointFormulation
 (
-    customTurbulenceProperties.lookupOrDefault<word>("stageDClosureAdjointFormulation", "proxyNormalized")
+    customTurbulenceProperties.lookupOrDefault<word>("optimizationCycleClosureAdjointFormulation", "proxyNormalized")
 );
-Switch stageDClosureAdjointDualConsistentBC
+Switch optimizationCycleClosureAdjointDualConsistentBC
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageDClosureAdjointDualConsistentBC", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleClosureAdjointDualConsistentBC", false)
 );
-scalar stageDClosureAdjointInvTau
+scalar optimizationCycleClosureAdjointInvTau
 (
-    customTurbulenceProperties.lookupOrDefault<scalar>("stageDClosureAdjointInvTau", 1.0)
+    customTurbulenceProperties.lookupOrDefault<scalar>("optimizationCycleClosureAdjointInvTau", 1.0)
 );
-scalar stageDClosureCrossCoupling
+scalar optimizationCycleClosureCrossCoupling
 (
-    customTurbulenceProperties.lookupOrDefault<scalar>("stageDClosureCrossCoupling", 0.35)
+    customTurbulenceProperties.lookupOrDefault<scalar>("optimizationCycleClosureCrossCoupling", 0.35)
 );
-Switch stageDClosureConsistencyUseBoundedState
+Switch optimizationCycleClosureConsistencyUseBoundedState
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageDClosureConsistencyUseBoundedState", true)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleClosureConsistencyUseBoundedState", true)
 );
-Switch stageDUseLogClosureState
+Switch optimizationCycleUseLogClosureState
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("stageDUseLogClosureState", true)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleUseLogClosureState", true)
 );
 // Retired dictionary tuning knobs: fixed staged-adjoint guard policy.
-scalar stageCAdjointUNonlinearTol(5e-3);
-scalar stageCAdjointPNonlinearTol(5e-3);
-scalar stageCAdjointMaxMagnitude(1e8);
-scalar stageDAdjointMaxMagnitude(1e10);
-Switch stageCResetAdjointState(true);
-Switch stageDResetAdjointState(true);
-Switch stageCUseNuEff(true);
-Switch stageCIncludeThermalMomentumSource(true);
-Switch stageCUseLegacyPressureRelax(false);
-Switch stageCDivergenceCheck(true);
-Switch stageCStagnationCheck(true);
-label stageCDivergenceMinCorrectors
+scalar adjointCycleAdjointUNonlinearTol(5e-3);
+scalar adjointCycleAdjointPNonlinearTol(5e-3);
+scalar adjointCycleAdjointMaxMagnitude(1e8);
+scalar optimizationCycleAdjointMaxMagnitude(1e10);
+Switch adjointCycleResetAdjointState(true);
+Switch optimizationCycleResetAdjointState(true);
+Switch adjointCycleUseNuEff(true);
+Switch adjointCycleIncludeThermalMomentumSource(true);
+Switch adjointCycleUseLegacyPressureRelax(false);
+Switch adjointCycleDivergenceCheck(true);
+Switch adjointCycleStagnationCheck(true);
+label adjointCycleDivergenceMinCorrectors
 (
     Foam::min
     (
         label(5),
-        stageCAdjointCorrectors
+        adjointCycleAdjointCorrectors
     )
 );
-scalar stageCDivergenceGrowthFactor(1.5);
-label stageCStagnationPatience(1);
-Switch stageDNoImproveCheck(true);
-label stageDNoImproveMinCorrectors
+scalar adjointCycleDivergenceGrowthFactor(1.5);
+label adjointCycleStagnationPatience(1);
+Switch optimizationCycleNoImproveCheck(true);
+label optimizationCycleNoImproveMinCorrectors
 (
     Foam::min
     (
         label(2),
-        Foam::max(stageDFlowAdjointCorrectors, stageDHeatAdjointCorrectors)
+        Foam::max(optimizationCycleFlowAdjointCorrectors, optimizationCycleHeatAdjointCorrectors)
     )
 );
-label stageDNoImprovePatience(1);
+label optimizationCycleNoImprovePatience(1);
 
 if (customTurbulenceModelName != "kOmegaSST")
 {
@@ -292,16 +292,16 @@ if (customTurbulenceModelName != "kOmegaSST")
 }
 if
 (
-    stageDClosureAdjointFormulation != "proxyNormalized"
- && stageDClosureAdjointFormulation != "transportedResidualDraft"
- && stageDClosureAdjointFormulation != "transportedCrossCoupledV3"
+    optimizationCycleClosureAdjointFormulation != "proxyNormalized"
+ && optimizationCycleClosureAdjointFormulation != "transportedResidualDraft"
+ && optimizationCycleClosureAdjointFormulation != "transportedCrossCoupledV3"
 )
 {
     FatalErrorInFunction
-        << "customTurbulenceProperties.stageDClosureAdjointFormulation must "
+        << "customTurbulenceProperties.optimizationCycleClosureAdjointFormulation must "
         << "be proxyNormalized, transportedResidualDraft, or "
         << "transportedCrossCoupledV3. Found "
-        << stageDClosureAdjointFormulation
+        << optimizationCycleClosureAdjointFormulation
         << exit(FatalError);
 }
 if (porousTurbulenceProductionExponent < 1.0)
@@ -376,101 +376,101 @@ if
         << ", nutNonlinearTol=" << turbulenceNutNonlinearTol
         << exit(FatalError);
 }
-if (stageDFlowAdjointCorrectors < 1 || stageDHeatAdjointCorrectors < 1)
+if (optimizationCycleFlowAdjointCorrectors < 1 || optimizationCycleHeatAdjointCorrectors < 1)
 {
     FatalErrorInFunction
-        << "customTurbulenceProperties.stageDFlowAdjointCorrectors and "
-        << "stageDHeatAdjointCorrectors must both be >= 1. Found flow="
-        << stageDFlowAdjointCorrectors
-        << ", heat=" << stageDHeatAdjointCorrectors
+        << "customTurbulenceProperties.optimizationCycleFlowAdjointCorrectors and "
+        << "optimizationCycleHeatAdjointCorrectors must both be >= 1. Found flow="
+        << optimizationCycleFlowAdjointCorrectors
+        << ", heat=" << optimizationCycleHeatAdjointCorrectors
         << exit(FatalError);
 }
-if (stageDClosureAdjointInvTau <= SMALL)
+if (optimizationCycleClosureAdjointInvTau <= SMALL)
 {
     FatalErrorInFunction
-        << "customTurbulenceProperties.stageDClosureAdjointInvTau must be > 0. Found "
-        << stageDClosureAdjointInvTau
+        << "customTurbulenceProperties.optimizationCycleClosureAdjointInvTau must be > 0. Found "
+        << optimizationCycleClosureAdjointInvTau
         << exit(FatalError);
 }
-if (stageDClosureCrossCoupling < 0.0 || stageDClosureCrossCoupling > 1.0)
+if (optimizationCycleClosureCrossCoupling < 0.0 || optimizationCycleClosureCrossCoupling > 1.0)
 {
     FatalErrorInFunction
-        << "customTurbulenceProperties.stageDClosureCrossCoupling must be in [0, 1]. Found "
-        << stageDClosureCrossCoupling
+        << "customTurbulenceProperties.optimizationCycleClosureCrossCoupling must be in [0, 1]. Found "
+        << optimizationCycleClosureCrossCoupling
         << exit(FatalError);
 }
 if
 (
-    (stageCThermalAdjointOnly && stageCFullAdjointVerification)
- || (stageCThermalAdjointOnly && stageDTurbulentOptimizationMode)
- || (stageCFullAdjointVerification && stageDTurbulentOptimizationMode)
+    (adjointCycleThermalAdjointOnly && adjointCycleFullAdjointVerification)
+ || (adjointCycleThermalAdjointOnly && optimizationCycleTurbulentOptimizationMode)
+ || (adjointCycleFullAdjointVerification && optimizationCycleTurbulentOptimizationMode)
 )
 {
     FatalErrorInFunction
-        << "customTurbulenceProperties.stageCThermalAdjointOnly, "
-        << "customTurbulenceProperties.stageCFullAdjointVerification, and "
-        << "the Stage-D turbulent optimization mode are "
+        << "customTurbulenceProperties.adjointCycleThermalAdjointOnly, "
+        << "customTurbulenceProperties.adjointCycleFullAdjointVerification, and "
+        << "the Optimization-Cycle turbulent optimization mode are "
         << "mutually exclusive run modes."
         << exit(FatalError);
 }
-if (customTurbulenceActive && stageDGradientClosure != enableTurbulentOptimization)
+if (customTurbulenceActive && optimizationCycleGradientClosure != enableTurbulentOptimization)
 {
     FatalErrorInFunction
-        << "Stage-D turbulent optimization is guarded by a strict two-key "
+        << "Optimization-Cycle turbulent optimization is guarded by a strict two-key "
         << "runtime gate. Set both "
-        << "customTurbulenceProperties.stageDGradientClosure and "
+        << "customTurbulenceProperties.optimizationCycleGradientClosure and "
         << "customTurbulenceProperties.enableTurbulentOptimization to true "
         << "to enable it, or set both to false to keep it disabled."
         << exit(FatalError);
 }
-if (customTurbulenceActive && stageCThermalAdjointOnly)
+if (customTurbulenceActive && adjointCycleThermalAdjointOnly)
 {
-    Info<< "Custom kOmegaSST Stage-C thermal-adjoint verification mode is "
+    Info<< "Custom kOmegaSST Adjoint-Cycle thermal-adjoint verification mode is "
         << "enabled. The explicit Ta block will be solved with alphaEff, while "
         << "the turbulent momentum adjoint, k-adjoint, omega-adjoint, and "
         << "turbulent sensitivities remain disabled."
         << endl;
 }
-else if (customTurbulenceActive && stageCFullAdjointVerification)
+else if (customTurbulenceActive && adjointCycleFullAdjointVerification)
 {
-    Info<< "Custom kOmegaSST Stage-C full-adjoint verification mode is "
+    Info<< "Custom kOmegaSST Adjoint-Cycle full-adjoint verification mode is "
         << "enabled. The explicit Ta and Ua/pa verification blocks will be "
         << "solved, and ka/omegaa proxy fields will be reconstructed from the "
         << "same Stage-B residual blocks. Turbulent sensitivities remain "
         << "disabled."
         << endl;
-    Info<< "Stage-C verification toggles: reset="
-        << (stageCResetAdjointState ? "true" : "false")
-        << " viscosity=" << (stageCUseNuEff ? "nuEff" : "nu")
+    Info<< "Adjoint-Cycle verification toggles: reset="
+        << (adjointCycleResetAdjointState ? "true" : "false")
+        << " viscosity=" << (adjointCycleUseNuEff ? "nuEff" : "nu")
         << " thermalSource="
-        << (stageCIncludeThermalMomentumSource ? "true" : "false")
+        << (adjointCycleIncludeThermalMomentumSource ? "true" : "false")
         << " legacyPressureRelax="
-        << (stageCUseLegacyPressureRelax ? "true" : "false")
+        << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
         << " divergenceGuard="
-        << (stageCDivergenceCheck ? "true" : "false")
-        << " growthFactor=" << stageCDivergenceGrowthFactor
-        << " minPass=" << stageCDivergenceMinCorrectors
+        << (adjointCycleDivergenceCheck ? "true" : "false")
+        << " growthFactor=" << adjointCycleDivergenceGrowthFactor
+        << " minPass=" << adjointCycleDivergenceMinCorrectors
         << endl;
 }
-else if (customTurbulenceActive && stageDTurbulentOptimizationMode)
+else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
 {
-    Info<< "Custom kOmegaSST Stage-D turbulent optimization mode is enabled "
+    Info<< "Custom kOmegaSST Optimization-Cycle turbulent optimization mode is enabled "
         << "through the strict runtime gate. The solver will assemble "
         << "turbulence-aware sensitivities and include explicit residual "
         << "closure derivatives in the optimizer gradients. "
         << "Adjoint reset="
-        << (stageDResetAdjointState ? "true" : "false") << ". "
+        << (optimizationCycleResetAdjointState ? "true" : "false") << ". "
         << "Adjoint correctors per loop: flow="
-        << stageDFlowAdjointCorrectors
-        << ", heat=" << stageDHeatAdjointCorrectors << ". "
+        << optimizationCycleFlowAdjointCorrectors
+        << ", heat=" << optimizationCycleHeatAdjointCorrectors << ". "
         << "Adjoint magnitude guard: |Uadj|max <= "
-        << stageDAdjointMaxMagnitude << ". "
+        << optimizationCycleAdjointMaxMagnitude << ". "
         << "Closure adjoints="
-        << (stageDTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
-        << " (invTau=" << stageDClosureAdjointInvTau
-        << ", crossCoupling=" << stageDClosureCrossCoupling
-        << ", formulation=" << stageDClosureAdjointFormulation
-        << ", dualBC=" << (stageDClosureAdjointDualConsistentBC ? "true" : "false")
+        << (optimizationCycleTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
+        << " (invTau=" << optimizationCycleClosureAdjointInvTau
+        << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
+        << ", formulation=" << optimizationCycleClosureAdjointFormulation
+        << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
         << ", clipWeighting=false"
         << "). "
         << "Smooth clipping=disabled (policy). "
@@ -482,23 +482,26 @@ else if (customTurbulenceActive && stageDTurbulentOptimizationMode)
         << ", sinkS=" << porousTurbulenceSuppressionCoeff
         << ", sinkA=" << porousTurbulenceAlphaSinkCoeff << "). "
         << "Bounded closure state="
-        << (stageDClosureConsistencyUseBoundedState ? "true" : "false")
-        << " logState=" << (stageDUseLogClosureState ? "true" : "false")
+        << (optimizationCycleClosureConsistencyUseBoundedState ? "true" : "false")
+        << " logState=" << (optimizationCycleUseLogClosureState ? "true" : "false")
         << ". "
         << "No-improve rollback guard="
-        << (stageDNoImproveCheck ? "true" : "false")
-        << " (minPass=" << stageDNoImproveMinCorrectors
-        << ", patience=" << stageDNoImprovePatience << ")."
+        << (optimizationCycleNoImproveCheck ? "true" : "false")
+        << " (minPass=" << optimizationCycleNoImproveMinCorrectors
+        << ", patience=" << optimizationCycleNoImprovePatience << "). "
+        << "Thermal adjoint mode=" << optThermalAdjointMode
+        << " (ta=explicit Ta, tbOriginal=legacy turbulent Tb, "
+        << "tbLaminar=laminar-identical Tb)."
         << endl;
 }
 else if (customTurbulenceActive)
 {
     FatalErrorInFunction
         << "Custom kOmegaSST is currently implemented only through the Stage-B "
-        << "primal and staged verification paths, plus the strict Stage-D "
-        << "mode. Select exactly one of stageCThermalAdjointOnly, "
-        << "stageCFullAdjointVerification, or set "
-        << "both stageDGradientClosure and enableTurbulentOptimization to true."
+        << "primal and staged verification paths, plus the strict Optimization-Cycle "
+        << "mode. Select exactly one of adjointCycleThermalAdjointOnly, "
+        << "adjointCycleFullAdjointVerification, or set "
+        << "both optimizationCycleGradientClosure and enableTurbulentOptimization to true."
         << exit(FatalError);
 }
 

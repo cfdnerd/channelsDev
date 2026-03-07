@@ -46,6 +46,9 @@ convergenceControl
     optProductionContinueAfterSafetyReject true;
 
     // Thermal objective/constraints (user physical targets)
+    // Single thermal-adjoint selector for turbulence optimization:
+    // ta | tbOriginal | tbLaminar
+    optThermalAdjointMode ta;
     optThermalExcessTref 1.0;
     optThermalExcessSoftplusScale 0.5;
     optThermalTmaxLimit 15.0;

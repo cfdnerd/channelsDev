@@ -26,10 +26,10 @@ const volScalarField dAlphaMolDxh
 (
   (kf - ks)*(1 + qu)*qu/((qu + xh)*(qu + xh))/rhoCp
 );
-const bool stageDTurbulentSensitivityMode =
-    customTurbulenceActive && stageDTurbulentOptimizationMode;
+const bool optimizationCycleTurbulentSensitivityMode =
+    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
 const volScalarField& objectiveThermalAdjoint =
-    stageDTurbulentSensitivityMode ? Ta : Tb;
+    optimizationCycleTurbulentSensitivityMode ? optimizationCycleThermalAdjointField : Tb;
 
 fsenshMeanT = dAlphaDxh*(U&Ub)
            + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(objectiveThermalAdjoint));
@@ -39,7 +39,7 @@ if(DDHS)//design dependent heat source
 }
 gsenshPowerDiss = dAlphaDxh*(U&Ua);
 
-if (stageDTurbulentSensitivityMode)
+if (optimizationCycleTurbulentSensitivityMode && optimizationCycleUseTaThermalAdjoint)
 {
  #include "TurbulentSensitivity.H"
 }

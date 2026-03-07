@@ -81,24 +81,45 @@ int main(int argc, char *argv[])
             }
         }
         #include "Primal_T.H"
-        if (customTurbulenceActive && stageCThermalAdjointOnly)
+        const bool optimizationCycleUseTaThermalAdjoint =
+            customTurbulenceActive
+         && optimizationCycleTurbulentOptimizationMode
+         && optThermalAdjointMode == word("ta");
+        const bool optimizationCycleUseTbLaminarThermalAdjoint =
+            customTurbulenceActive
+         && optimizationCycleTurbulentOptimizationMode
+         && optThermalAdjointMode == word("tbLaminar");
+        const volScalarField& optimizationCycleThermalAdjointField =
+            optimizationCycleUseTaThermalAdjoint ? Ta : Tb;
+        if (customTurbulenceActive && adjointCycleThermalAdjointOnly)
         {
             #include "Adjoint_Ta.H"
             #include "solverConvergenceWrite.H"
-            #include "stageCThermalWrite.H"
+            #include "adjointCycleThermalWrite.H"
         }
-        else if (customTurbulenceActive && stageCFullAdjointVerification)
+        else if (customTurbulenceActive && adjointCycleFullAdjointVerification)
         {
             #include "Adjoint_Ta.H"
             #include "AdjointFlow_Ua.H"
             #include "Adjoint_k.H"
             #include "Adjoint_omega.H"
             #include "solverConvergenceWrite.H"
-            #include "stageCThermalWrite.H"
+            #include "adjointCycleThermalWrite.H"
         }
-        else if (customTurbulenceActive && stageDTurbulentOptimizationMode)
+        else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         {
-            #include "Adjoint_Ta.H"
+            if (optimizationCycleUseTaThermalAdjoint)
+            {
+                #include "Adjoint_Ta.H"
+            }
+            else if (optimizationCycleUseTbLaminarThermalAdjoint)
+            {
+                #include "AdjointHeat_TbLaminarIdentical.H"
+            }
+            else
+            {
+                #include "AdjointHeat_Tb.H"
+            }
             #include "AdjointHeat_Ub.H"
             #include "AdjointFlow_Ua.H"
             #include "Adjoint_k.H"

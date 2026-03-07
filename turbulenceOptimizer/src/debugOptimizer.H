@@ -64,11 +64,11 @@ for(i=0;i<n;i++)
   const scalar UaMag = Foam::mag(Ua[i]);
   const scalar UbMag = Foam::mag(Ub[i]);
   const scalar kValue =
-    static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
     ? kClosureState[i]
     : k[i];
   const scalar omegaValue =
-    static_cast<bool>(stageDClosureConsistencyUseBoundedState)
+    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
     ? omegaClosureState[i]
     : omega[i];
   const scalar nutValue = nut[i];
@@ -421,19 +421,19 @@ const scalar linearResidualGrowthRatio =
 
 const scalar kGlobalMin =
   customTurbulenceActive
-  ? gMin(static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? kClosureState : k)
+  ? gMin(static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? kClosureState : k)
   : 0;
 const scalar kGlobalMax =
   customTurbulenceActive
-  ? gMax(static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? kClosureState : k)
+  ? gMax(static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? kClosureState : k)
   : 0;
 const scalar omegaGlobalMin =
   customTurbulenceActive
-  ? gMin(static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? omegaClosureState : omega)
+  ? gMin(static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? omegaClosureState : omega)
   : 0;
 const scalar omegaGlobalMax =
   customTurbulenceActive
-  ? gMax(static_cast<bool>(stageDClosureConsistencyUseBoundedState) ? omegaClosureState : omega)
+  ? gMax(static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState) ? omegaClosureState : omega)
   : 0;
 const scalar nutGlobalMax = customTurbulenceActive ? gMax(nut) : 0;
 
@@ -700,14 +700,14 @@ const scalar clipHardRejectFluidJumpClamped =
   Foam::max(optClipHardRejectFluidJump, scalar(0.0));
 const bool clipHardRejectByFraction =
   customTurbulenceActive
-  && stageDTurbulentOptimizationMode
+  && optimizationCycleTurbulentOptimizationMode
   && (
        maxFluidClipFraction >= clipHardRejectFluidFractionClamped
     || maxGrayClipFraction >= clipHardRejectGrayFractionClamped
      );
 const bool clipHardRejectByJump =
   customTurbulenceActive
-  && stageDTurbulentOptimizationMode
+  && optimizationCycleTurbulentOptimizationMode
   && hasPreviousClipDiagnostics
   && clipHardRejectFluidJumpClamped > SMALL
   && maxFluidClipFraction >= Foam::max(scalar(0.5)*clipHardRejectFluidFractionClamped, optClipGuardFluidFraction)
@@ -878,7 +878,7 @@ const bool trustRatioAcceptedWithSensitivityGuard =
 (void)trustRatioAcceptedWithSensitivityGuard;
 const bool filterAcceptanceEnabled =
   static_cast<bool>(optUseFilterAcceptance)
-  && stageDTurbulentOptimizationMode
+  && optimizationCycleTurbulentOptimizationMode
   && optFilterMaxEntries > 0;
 bool filterDominated = false;
 if (filterAcceptanceEnabled)
@@ -948,7 +948,7 @@ const bool thermalFieldEnvelopeViolated =
   || !std::isfinite(static_cast<double>(TLocalMax))
   || thermalFieldAbsMaxObserved > Foam::max(optThermalFieldAbsMax, scalar(0.0));
 const bool fieldEnvelopeForcedReject =
-  stageDTurbulentOptimizationMode
+  optimizationCycleTurbulentOptimizationMode
   && (objectiveEnvelopeViolated || thermalFieldEnvelopeViolated);
 const bool constraintNonDeteriorationAccepted =
      !hasPreviousGuardConstraintViolation
@@ -1005,7 +1005,7 @@ const bool feasibilityRestorationClipCompatible =
 const bool feasibilityRestorationEligible =
      static_cast<bool>(optFeasibilityRestorationEnable)
   && !optDiagnosticMode
-  && stageDTurbulentOptimizationMode
+  && optimizationCycleTurbulentOptimizationMode
   && hasPreviousGuardConstraintViolation
   && meritRejectStreak >= Foam::max(optFeasibilityRestorationRejectThreshold, label(1))
   && feasibilityRestorationClipCompatible;
@@ -1191,7 +1191,7 @@ const bool rogueClipSignal =
   && maxFluidClipFraction >= rogueClipFluidThresholdClamped
   && maxGrayClipFraction >= rogueClipGrayThresholdClamped;
 const bool rogueSignal =
-  stageDTurbulentOptimizationMode
+  optimizationCycleTurbulentOptimizationMode
   && !meritAccepted
   && (rogueRejectSignal || rogueClipSignal);
 bool rogueDirectionGraceActive = false;
@@ -1203,7 +1203,7 @@ bool rogueDirectionWatchCleared = false;
 label rogueDirectionWatchStartIterationReport = rogueDirectionWatchStartIteration;
 if
 (
-    stageDTurbulentOptimizationMode
+    optimizationCycleTurbulentOptimizationMode
  && static_cast<bool>(optRogueDirectionSwitchEnable)
  && !optDiagnosticMode
 )
@@ -1254,7 +1254,7 @@ else
 }
 const bool gradientCheckActive =
   static_cast<bool>(optGradientCheckEnable)
-  && stageDTurbulentOptimizationMode
+  && optimizationCycleTurbulentOptimizationMode
   && opt >= optGradientCheckStartIter
   && l2XChange >= optGradientCheckMinStepL2;
 const scalar objectiveConsistencyRatio =
@@ -1298,7 +1298,7 @@ bool closureDerivativeFDStageCheckActive = false;
 if
 (
     customTurbulenceActive
- && stageDTurbulentOptimizationMode
+ && optimizationCycleTurbulentOptimizationMode
  && static_cast<bool>(optClosureDerivativeFDStageCheckEnable)
  && optClosureDerivativeFDStageCheckSamples > 0
 )
@@ -1551,7 +1551,7 @@ const bool closureDerivativeFDStageCheckStopTriggered =
     >= optClosureDerivativeFDStageCheckFailWindow;
 const bool closureDerivativeFDStageCheckClipLimited =
     customTurbulenceActive
- && stageDTurbulentOptimizationMode
+ && optimizationCycleTurbulentOptimizationMode
  && static_cast<bool>(optClosureDerivativeFDStageCheckEnable)
  && optClosureDerivativeFDStageCheckSamples > 0
  && closureDerivativeFDStageCheckSamplesUsed == 0;
@@ -1661,7 +1661,7 @@ if (!meritAccepted)
   xh.correctBoundaryConditions();
   alpha=alphaMax*qu*(1-xh)/(qu+xh);
   DT=(ks+(kf-ks)*xh*(1+qu)/(qu+xh))/rhoCp;
-  if (stageDTurbulentOptimizationMode)
+  if (optimizationCycleTurbulentOptimizationMode)
   {
     U.primitiveFieldRef() = UOldInternal;
     p.primitiveFieldRef() = pOldInternal;
@@ -1710,7 +1710,7 @@ if (!meritAccepted)
       Foam::max(scalar(0.8)*meritTrustMoveScale, meritTrustMoveMinClamped);
   }
   const bool deadlockTrustEscapeEligible =
-       stageDTurbulentOptimizationMode
+       optimizationCycleTurbulentOptimizationMode
     && !optDiagnosticMode
     && meritRejectStreak >= 3*filterDeadlockRejectThreshold
     && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
@@ -1723,12 +1723,12 @@ if (!meritAccepted)
       Foam::min(Foam::max(meritTrustMoveScale, scalar(0.10)), scalar(0.25));
   }
   const bool continuationClipBackoffEligible =
-       stageDTurbulentOptimizationMode
+       optimizationCycleTurbulentOptimizationMode
     && clipForcedReject
     && guardConstraintViolationDelta > optConstraintWorsenTol
     && continuationIteration > 1;
   const bool continuationFieldEnvelopeBackoffEligible =
-       stageDTurbulentOptimizationMode
+       optimizationCycleTurbulentOptimizationMode
     && fieldEnvelopeForcedReject
     && continuationIteration > 1;
   if (continuationClipBackoffEligible || continuationFieldEnvelopeBackoffEligible)
@@ -2041,7 +2041,7 @@ else
   meritRejectStopEligibleStreak = 0;
   meritTrustMoveScale = 1.0;
   const bool rogueDirectionSwitchRearmEligible =
-       stageDTurbulentOptimizationMode
+       optimizationCycleTurbulentOptimizationMode
     && static_cast<bool>(optRogueDirectionSwitchEnable)
     && !optDiagnosticMode
     && rogueDirectionSwitchCount > 0
@@ -3007,18 +3007,18 @@ if (Pstream::master())
   writeSectionHeader("Solver Diagnostics");
   const label effectivePrimalCorrectors = momentumCorrectors;
   const label effectiveAdjPowerCorrectors =
-      stageDTurbulentOptimizationMode
-    ? stageDFlowAdjointCorrectors
-    : (stageCFullAdjointVerification ? stageCAdjointCorrectors : 40);
+      optimizationCycleTurbulentOptimizationMode
+    ? optimizationCycleFlowAdjointCorrectors
+    : (adjointCycleFullAdjointVerification ? adjointCycleAdjointCorrectors : 40);
   const label effectiveAdjHeatCorrectors =
-      stageDTurbulentOptimizationMode
-    ? stageDHeatAdjointCorrectors
+      optimizationCycleTurbulentOptimizationMode
+    ? optimizationCycleHeatAdjointCorrectors
     : 40;
   const char* optimizationModeLabel =
-      stageDTurbulentOptimizationMode
-    ? "stageD"
-    : (stageCFullAdjointVerification ? "stageC-full"
-      : (stageCThermalAdjointOnly ? "stageC-thermal" : "baseline"));
+      optimizationCycleTurbulentOptimizationMode
+    ? "optimizationCycle"
+    : (adjointCycleFullAdjointVerification ? "adjointCycle-full"
+      : (adjointCycleThermalAdjointOnly ? "adjointCycle-thermal" : "baseline"));
   writeRow
   (
       "config",

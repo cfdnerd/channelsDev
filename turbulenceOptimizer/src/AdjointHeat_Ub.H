@@ -1,82 +1,83 @@
-const bool stageDObjectiveAdjointMode =
-    customTurbulenceActive && stageDTurbulentOptimizationMode;
-const volScalarField& thermalAdjointSourceField = stageDObjectiveAdjointMode ? Ta : Tb;
-const label adjointHeatCorrectors = stageDObjectiveAdjointMode ? stageDHeatAdjointCorrectors : 40;
-const scalar stageDHeatAdjointMagnitudeLimit =
-    stageDObjectiveAdjointMode ? stageDAdjointMaxMagnitude : stageCAdjointMaxMagnitude;
-const bool stageDHeatNoImproveCheckEnabled =
-    stageDObjectiveAdjointMode
-  ? static_cast<bool>(stageDNoImproveCheck)
-  : static_cast<bool>(stageCStagnationCheck);
-const label stageDHeatNoImprovePatience =
-    stageDObjectiveAdjointMode ? stageDNoImprovePatience : stageCStagnationPatience;
-const label stageDHeatNoImproveMinCorrectors =
-    stageDObjectiveAdjointMode ? stageDNoImproveMinCorrectors : label(1);
+const bool optimizationCycleObjectiveAdjointMode =
+    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+const volScalarField& thermalAdjointSourceField =
+    optimizationCycleObjectiveAdjointMode ? optimizationCycleThermalAdjointField : Tb;
+const label adjointHeatCorrectors = optimizationCycleObjectiveAdjointMode ? optimizationCycleHeatAdjointCorrectors : 40;
+const scalar optimizationCycleHeatAdjointMagnitudeLimit =
+    optimizationCycleObjectiveAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
+const bool optimizationCycleHeatNoImproveCheckEnabled =
+    optimizationCycleObjectiveAdjointMode
+  ? static_cast<bool>(optimizationCycleNoImproveCheck)
+  : static_cast<bool>(adjointCycleStagnationCheck);
+const label optimizationCycleHeatNoImprovePatience =
+    optimizationCycleObjectiveAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
+const label optimizationCycleHeatNoImproveMinCorrectors =
+    optimizationCycleObjectiveAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
 const bool resetHeatAdjointState =
-    stageDObjectiveAdjointMode && static_cast<bool>(stageDResetAdjointState);
+    optimizationCycleObjectiveAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState);
 
-vectorField stageDBestUbInternal;
-scalarField stageDBestPbInternal;
-scalarField stageDBestPhibInternal;
-scalar stageDBestCombinedMetric = GREAT;
-label stageDNoImproveStreak = 0;
-label stageDBestCorrector = 0;
-label stageDAdjointCorrectorsUsed = 0;
-word stageDHeatStopReason(stageDObjectiveAdjointMode ? "max-correctors" : "legacy");
+vectorField optimizationCycleBestUbInternal;
+scalarField optimizationCycleBestPbInternal;
+scalarField optimizationCycleBestPhibInternal;
+scalar optimizationCycleBestCombinedMetric = GREAT;
+label optimizationCycleNoImproveStreak = 0;
+label optimizationCycleBestCorrector = 0;
+label optimizationCycleAdjointCorrectorsUsed = 0;
+word optimizationCycleHeatStopReason(optimizationCycleObjectiveAdjointMode ? "max-correctors" : "legacy");
 
-if (stageDObjectiveAdjointMode)
+if (optimizationCycleObjectiveAdjointMode)
 {
   if (resetHeatAdjointState)
   {
-    Ub = dimensionedVector("zeroStageDUb", Ub.dimensions(), vector::zero);
-    pb = dimensionedScalar("zeroStageDPb", pb.dimensions(), 0.0);
-    phib = dimensionedScalar("zeroStageDPhib", phib.dimensions(), 0.0);
+    Ub = dimensionedVector("zeroOptimizationCycleUb", Ub.dimensions(), vector::zero);
+    pb = dimensionedScalar("zeroOptimizationCyclePb", pb.dimensions(), 0.0);
+    phib = dimensionedScalar("zeroOptimizationCyclePhib", phib.dimensions(), 0.0);
     Ub.correctBoundaryConditions();
     pb.correctBoundaryConditions();
   }
 
-  stageDBestUbInternal = Ub.internalField();
-  stageDBestPbInternal = pb.internalField();
-  stageDBestPhibInternal = phib.internalField();
+  optimizationCycleBestUbInternal = Ub.internalField();
+  optimizationCycleBestPbInternal = pb.internalField();
+  optimizationCycleBestPhibInternal = phib.internalField();
 
   if (Pstream::master())
   {
-    std::ofstream debugStageCLogFileStream(debugStageCLogFile, std::ios::app);
-    debugStageCLogFileStream
-      << "\n[Stage-D Heat Adjoint Corrector Trace]\n"
+    std::ofstream debugAdjointCycleLogFileStream(debugAdjointCycleLogFile, std::ios::app);
+    debugAdjointCycleLogFileStream
+      << "\n[Optimization-Cycle Heat Adjoint Corrector Trace]\n"
       << "  Iteration           : " << opt << "\n"
       << "  Config              : reset="
       << (resetHeatAdjointState ? "true" : "false")
-      << " viscosity=" << (stageDObjectiveAdjointMode ? "nuEff" : "nu")
+      << " viscosity=" << (optimizationCycleObjectiveAdjointMode ? "nuEff" : "nu")
       << " legacyPbRelax="
-      << (stageCUseLegacyPressureRelax ? "true" : "false")
+      << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
       << " noImproveGuard="
-      << (stageDHeatNoImproveCheckEnabled ? "true" : "false")
-      << " minPass=" << stageDHeatNoImproveMinCorrectors
-      << " patience=" << stageDHeatNoImprovePatience
-      << " |Ub|maxLimit=" << stageDHeatAdjointMagnitudeLimit
+      << (optimizationCycleHeatNoImproveCheckEnabled ? "true" : "false")
+      << " minPass=" << optimizationCycleHeatNoImproveMinCorrectors
+      << " patience=" << optimizationCycleHeatNoImprovePatience
+      << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
   }
 }
 
 for (i = 0; i < adjointHeatCorrectors; i++)
 {    
-vectorField stageDUbPrevious;
-scalarField stageDPbPrevious;
-scalar stageDPbPassInitialResidual = 0.0;
-scalar stageDPbPassFinalResidual = 0.0;
-label stageDPbPassIterations = 0;
-if (stageDObjectiveAdjointMode)
+vectorField optimizationCycleUbPrevious;
+scalarField optimizationCyclePbPrevious;
+scalar optimizationCyclePbPassInitialResidual = 0.0;
+scalar optimizationCyclePbPassFinalResidual = 0.0;
+label optimizationCyclePbPassIterations = 0;
+if (optimizationCycleObjectiveAdjointMode)
 {
-  stageDUbPrevious = Ub.internalField();
-  stageDPbPrevious = pb.internalField();
+  optimizationCycleUbPrevious = Ub.internalField();
+  optimizationCyclePbPrevious = pb.internalField();
 }
 
 volVectorField adjointTransposeConvectionb((fvc::grad(U) & Ub));
 
 tmp<fvVectorMatrix> tUbEqn
 (
-  stageDObjectiveAdjointMode
+  optimizationCycleObjectiveAdjointMode
 ? tmp<fvVectorMatrix>
   (
       new fvVectorMatrix
@@ -156,12 +157,12 @@ while (simple.correctNonOrthogonal())
         pbLinearSolvePerformance.finalResidual(),
         pbLinearSolvePerformance.nIterations()
     );
-    stageDPbPassInitialResidual =
-      Foam::max(stageDPbPassInitialResidual, pbLinearSolvePerformance.initialResidual());
-    stageDPbPassFinalResidual =
-      Foam::max(stageDPbPassFinalResidual, pbLinearSolvePerformance.finalResidual());
-    stageDPbPassIterations =
-      Foam::max(stageDPbPassIterations, pbLinearSolvePerformance.nIterations());
+    optimizationCyclePbPassInitialResidual =
+      Foam::max(optimizationCyclePbPassInitialResidual, pbLinearSolvePerformance.initialResidual());
+    optimizationCyclePbPassFinalResidual =
+      Foam::max(optimizationCyclePbPassFinalResidual, pbLinearSolvePerformance.finalResidual());
+    optimizationCyclePbPassIterations =
+      Foam::max(optimizationCyclePbPassIterations, pbLinearSolvePerformance.nIterations());
 
     if (simple.finalNonOrthogonalIter())
     {
@@ -171,7 +172,7 @@ while (simple.correctNonOrthogonal())
 
 //#include "adjointContinuityErrs.H"
 
-if (!stageDObjectiveAdjointMode || stageCUseLegacyPressureRelax)
+if (!optimizationCycleObjectiveAdjointMode || adjointCycleUseLegacyPressureRelax)
 {
   pb.relax();
 }
@@ -181,10 +182,10 @@ Ub = HbyAb - rAtUb()*fvc::grad(pb);
 Ub.correctBoundaryConditions();
 fvOptions.correct(Ub);
 
-if (stageDObjectiveAdjointMode)
+if (optimizationCycleObjectiveAdjointMode)
 {
-  const vectorField& stageDUbCurrent = Ub.internalField();
-  const scalarField& stageDPbCurrent = pb.internalField();
+  const vectorField& optimizationCycleUbCurrent = Ub.internalField();
+  const scalarField& optimizationCyclePbCurrent = pb.internalField();
   scalar localUbDeltaSqSum = 0.0;
   scalar localUbScaleSqSum = 0.0;
   scalar localPbDeltaSqSum = 0.0;
@@ -193,35 +194,35 @@ if (stageDObjectiveAdjointMode)
   scalar localPhibAbsSum = 0.0;
   scalar localPhibNet = 0.0;
 
-  forAll(stageDPbCurrent, celli)
+  forAll(optimizationCyclePbCurrent, celli)
   {
     const scalar ubReferenceScale =
       Foam::max
       (
-        Foam::max(Foam::mag(stageDUbPrevious[celli]), Foam::mag(stageDUbCurrent[celli])),
+        Foam::max(Foam::mag(optimizationCycleUbPrevious[celli]), Foam::mag(optimizationCycleUbCurrent[celli])),
         scalar(1.0)
       );
     const scalar pbReferenceScale =
       Foam::max
       (
-        Foam::max(Foam::mag(stageDPbPrevious[celli]), Foam::mag(stageDPbCurrent[celli])),
+        Foam::max(Foam::mag(optimizationCyclePbPrevious[celli]), Foam::mag(optimizationCyclePbCurrent[celli])),
         scalar(1.0)
       );
-    const vector ubDelta = stageDUbCurrent[celli] - stageDUbPrevious[celli];
-    const scalar pbDelta = stageDPbCurrent[celli] - stageDPbPrevious[celli];
+    const vector ubDelta = optimizationCycleUbCurrent[celli] - optimizationCycleUbPrevious[celli];
+    const scalar pbDelta = optimizationCyclePbCurrent[celli] - optimizationCyclePbPrevious[celli];
 
     localUbDeltaSqSum += magSqr(ubDelta);
     localUbScaleSqSum += sqr(ubReferenceScale);
     localPbDeltaSqSum += sqr(pbDelta);
     localPbScaleSqSum += sqr(pbReferenceScale);
-    localPbSum += stageDPbCurrent[celli]*mesh.V()[celli];
+    localPbSum += optimizationCyclePbCurrent[celli]*mesh.V()[celli];
   }
 
-  const scalarField& stageDPhibInternal = phib.internalField();
-  forAll(stageDPhibInternal, facei)
+  const scalarField& optimizationCyclePhibInternal = phib.internalField();
+  forAll(optimizationCyclePhibInternal, facei)
   {
-    localPhibAbsSum += Foam::mag(stageDPhibInternal[facei]);
-    localPhibNet += stageDPhibInternal[facei];
+    localPhibAbsSum += Foam::mag(optimizationCyclePhibInternal[facei]);
+    localPhibNet += optimizationCyclePhibInternal[facei];
   }
 
   reduce(localUbDeltaSqSum, sumOp<scalar>());
@@ -232,88 +233,88 @@ if (stageDObjectiveAdjointMode)
   reduce(localPhibAbsSum, sumOp<scalar>());
   reduce(localPhibNet, sumOp<scalar>());
 
-  stageDAdjointCorrectorsUsed = i + 1;
-  const scalar stageDUNonlinearChange =
+  optimizationCycleAdjointCorrectorsUsed = i + 1;
+  const scalar optimizationCycleUNonlinearChange =
     Foam::sqrt(localUbDeltaSqSum/Foam::max(localUbScaleSqSum, SMALL));
-  const scalar stageDPNonlinearChange =
+  const scalar optimizationCyclePNonlinearChange =
     Foam::sqrt(localPbDeltaSqSum/Foam::max(localPbScaleSqSum, SMALL));
-  const scalar stageDUTargetRatio =
-    stageDUNonlinearChange/Foam::max(stageCAdjointUNonlinearTol, SMALL);
-  const scalar stageDPTargetRatio =
-    stageDPNonlinearChange/Foam::max(stageCAdjointPNonlinearTol, SMALL);
-  const scalar stageDCombinedMetric = Foam::max(stageDUTargetRatio, stageDPTargetRatio);
-  const volScalarField stageDUbMagnitude(mag(Ub));
-  const scalar stageDUbMax = gMax(stageDUbMagnitude);
-  const scalar stageDPbRange = gMax(pb) - gMin(pb);
-  const scalar stageDPbMean = localPbSum/area;
-  const scalar stageDPhibAbsSum = localPhibAbsSum;
-  const scalar stageDPhibNet = localPhibNet;
+  const scalar optimizationCycleUTargetRatio =
+    optimizationCycleUNonlinearChange/Foam::max(adjointCycleAdjointUNonlinearTol, SMALL);
+  const scalar optimizationCyclePTargetRatio =
+    optimizationCyclePNonlinearChange/Foam::max(adjointCycleAdjointPNonlinearTol, SMALL);
+  const scalar optimizationCycleCombinedMetric = Foam::max(optimizationCycleUTargetRatio, optimizationCyclePTargetRatio);
+  const volScalarField optimizationCycleUbMagnitude(mag(Ub));
+  const scalar optimizationCycleUbMax = gMax(optimizationCycleUbMagnitude);
+  const scalar optimizationCyclePbRange = gMax(pb) - gMin(pb);
+  const scalar optimizationCyclePbMean = localPbSum/area;
+  const scalar optimizationCyclePhibAbsSum = localPhibAbsSum;
+  const scalar optimizationCyclePhibNet = localPhibNet;
 
-  bool stageDIsBestPass(false);
-  bool stageDPendingRollback(false);
-  bool stageDMagnitudeGuardTriggered(false);
-  bool stageDNoImproveDiverged(false);
-  if (stageDUbMax != stageDUbMax || stageDUbMax > stageDHeatAdjointMagnitudeLimit)
+  bool optimizationCycleIsBestPass(false);
+  bool optimizationCyclePendingRollback(false);
+  bool optimizationCycleMagnitudeGuardTriggered(false);
+  bool optimizationCycleNoImproveDiverged(false);
+  if (optimizationCycleUbMax != optimizationCycleUbMax || optimizationCycleUbMax > optimizationCycleHeatAdjointMagnitudeLimit)
   {
-    stageDMagnitudeGuardTriggered = true;
-    stageDPendingRollback = true;
-    stageDHeatStopReason = "magnitude-guard";
+    optimizationCycleMagnitudeGuardTriggered = true;
+    optimizationCyclePendingRollback = true;
+    optimizationCycleHeatStopReason = "magnitude-guard";
   }
 
   if
   (
-      !stageDMagnitudeGuardTriggered
-   && (stageDBestCorrector == 0 || stageDCombinedMetric < stageDBestCombinedMetric)
+      !optimizationCycleMagnitudeGuardTriggered
+   && (optimizationCycleBestCorrector == 0 || optimizationCycleCombinedMetric < optimizationCycleBestCombinedMetric)
   )
   {
-    stageDBestCombinedMetric = stageDCombinedMetric;
-    stageDBestUbInternal = stageDUbCurrent;
-    stageDBestPbInternal = stageDPbCurrent;
-    stageDBestPhibInternal = phib.internalField();
-    stageDBestCorrector = stageDAdjointCorrectorsUsed;
-    stageDNoImproveStreak = 0;
-    stageDIsBestPass = true;
+    optimizationCycleBestCombinedMetric = optimizationCycleCombinedMetric;
+    optimizationCycleBestUbInternal = optimizationCycleUbCurrent;
+    optimizationCycleBestPbInternal = optimizationCyclePbCurrent;
+    optimizationCycleBestPhibInternal = phib.internalField();
+    optimizationCycleBestCorrector = optimizationCycleAdjointCorrectorsUsed;
+    optimizationCycleNoImproveStreak = 0;
+    optimizationCycleIsBestPass = true;
   }
-  else if (!stageDMagnitudeGuardTriggered)
+  else if (!optimizationCycleMagnitudeGuardTriggered)
   {
-    stageDNoImproveStreak++;
+    optimizationCycleNoImproveStreak++;
   }
 
-  const bool stageDConverged =
+  const bool optimizationCycleConverged =
   (
       (i + 1) >= 2
-   && stageDUNonlinearChange <= stageCAdjointUNonlinearTol
-   && stageDPNonlinearChange <= stageCAdjointPNonlinearTol
+   && optimizationCycleUNonlinearChange <= adjointCycleAdjointUNonlinearTol
+   && optimizationCyclePNonlinearChange <= adjointCycleAdjointPNonlinearTol
   );
 
   if
   (
-      !stageDMagnitudeGuardTriggered
-   && !stageDConverged
-   && stageDHeatNoImproveCheckEnabled
-   && stageDBestCorrector > 0
-   && stageDAdjointCorrectorsUsed > stageDBestCorrector
-   && stageDAdjointCorrectorsUsed >= stageDHeatNoImproveMinCorrectors
-   && stageDNoImproveStreak >= stageDHeatNoImprovePatience
+      !optimizationCycleMagnitudeGuardTriggered
+   && !optimizationCycleConverged
+   && optimizationCycleHeatNoImproveCheckEnabled
+   && optimizationCycleBestCorrector > 0
+   && optimizationCycleAdjointCorrectorsUsed > optimizationCycleBestCorrector
+   && optimizationCycleAdjointCorrectorsUsed >= optimizationCycleHeatNoImproveMinCorrectors
+   && optimizationCycleNoImproveStreak >= optimizationCycleHeatNoImprovePatience
   )
   {
-    stageDNoImproveDiverged = true;
-    stageDPendingRollback = true;
-    stageDHeatStopReason = "no-improve";
+    optimizationCycleNoImproveDiverged = true;
+    optimizationCyclePendingRollback = true;
+    optimizationCycleHeatStopReason = "no-improve";
   }
 
-  if (stageDConverged)
+  if (optimizationCycleConverged)
   {
-    stageDHeatStopReason = "converged";
+    optimizationCycleHeatStopReason = "converged";
   }
-  else if (!stageDPendingRollback && stageDAdjointCorrectorsUsed >= adjointHeatCorrectors)
+  else if (!optimizationCyclePendingRollback && optimizationCycleAdjointCorrectorsUsed >= adjointHeatCorrectors)
   {
-    stageDHeatStopReason = "max-correctors";
+    optimizationCycleHeatStopReason = "max-correctors";
   }
 
   if (Pstream::master())
   {
-    std::ofstream debugStageCLogFileStream(debugStageCLogFile, std::ios::app);
+    std::ofstream debugAdjointCycleLogFileStream(debugAdjointCycleLogFile, std::ios::app);
     auto fmtTraceScalar =
     [&](const scalar value)
     {
@@ -322,59 +323,59 @@ if (stageDObjectiveAdjointMode)
       return os.str();
     };
 
-    std::string stageDPassState("run");
-    if (stageDConverged)
+    std::string optimizationCyclePassState("run");
+    if (optimizationCycleConverged)
     {
-      stageDPassState = "converged";
+      optimizationCyclePassState = "converged";
     }
-    else if (stageDMagnitudeGuardTriggered || stageDNoImproveDiverged)
+    else if (optimizationCycleMagnitudeGuardTriggered || optimizationCycleNoImproveDiverged)
     {
-      stageDPassState = "rollback";
+      optimizationCyclePassState = "rollback";
     }
-    else if (stageDIsBestPass)
+    else if (optimizationCycleIsBestPass)
     {
-      stageDPassState = "best";
+      optimizationCyclePassState = "best";
     }
 
-    debugStageCLogFileStream
-      << "  pass=" << stageDAdjointCorrectorsUsed
-      << " state=" << stageDPassState
-      << " stop=" << stageDHeatStopReason
+    debugAdjointCycleLogFileStream
+      << "  pass=" << optimizationCycleAdjointCorrectorsUsed
+      << " state=" << optimizationCyclePassState
+      << " stop=" << optimizationCycleHeatStopReason
       << " UbInit=" << fmtTraceScalar(cmptMax(UbLinearSolvePerformance.initialResidual()))
       << " UbFinal=" << fmtTraceScalar(cmptMax(UbLinearSolvePerformance.finalResidual()))
       << " UbItr=" << cmptMax(UbLinearSolvePerformance.nIterations())
-      << " pbInit=" << fmtTraceScalar(stageDPbPassInitialResidual)
-      << " pbFinal=" << fmtTraceScalar(stageDPbPassFinalResidual)
-      << " pbItr=" << stageDPbPassIterations
-      << " dU=" << fmtTraceScalar(stageDUNonlinearChange)
-      << " dP=" << fmtTraceScalar(stageDPNonlinearChange)
-      << " |Ub|max=" << fmtTraceScalar(stageDUbMax)
-      << " pbRange=" << fmtTraceScalar(stageDPbRange)
-      << " pbMean=" << fmtTraceScalar(stageDPbMean)
-      << " |phib|sum=" << fmtTraceScalar(stageDPhibAbsSum)
-      << " phibNet=" << fmtTraceScalar(stageDPhibNet)
+      << " pbInit=" << fmtTraceScalar(optimizationCyclePbPassInitialResidual)
+      << " pbFinal=" << fmtTraceScalar(optimizationCyclePbPassFinalResidual)
+      << " pbItr=" << optimizationCyclePbPassIterations
+      << " dU=" << fmtTraceScalar(optimizationCycleUNonlinearChange)
+      << " dP=" << fmtTraceScalar(optimizationCyclePNonlinearChange)
+      << " |Ub|max=" << fmtTraceScalar(optimizationCycleUbMax)
+      << " pbRange=" << fmtTraceScalar(optimizationCyclePbRange)
+      << " pbMean=" << fmtTraceScalar(optimizationCyclePbMean)
+      << " |phib|sum=" << fmtTraceScalar(optimizationCyclePhibAbsSum)
+      << " phibNet=" << fmtTraceScalar(optimizationCyclePhibNet)
       << "\n";
   }
 
-  if (stageDConverged)
+  if (optimizationCycleConverged)
   {
     break;
   }
-  if (stageDPendingRollback)
+  if (optimizationCyclePendingRollback)
   {
-    Ub.primitiveFieldRef() = stageDBestUbInternal;
-    pb.primitiveFieldRef() = stageDBestPbInternal;
-    phib.primitiveFieldRef() = stageDBestPhibInternal;
+    Ub.primitiveFieldRef() = optimizationCycleBestUbInternal;
+    pb.primitiveFieldRef() = optimizationCycleBestPbInternal;
+    phib.primitiveFieldRef() = optimizationCycleBestPhibInternal;
     Ub.correctBoundaryConditions();
     pb.correctBoundaryConditions();
     fvOptions.correct(Ub);
-    if (stageDMagnitudeGuardTriggered)
+    if (optimizationCycleMagnitudeGuardTriggered)
     {
-      stageDHeatStopReason = "magnitude-guard-rollback";
+      optimizationCycleHeatStopReason = "magnitude-guard-rollback";
     }
-    else if (stageDNoImproveDiverged)
+    else if (optimizationCycleNoImproveDiverged)
     {
-      stageDHeatStopReason = "no-improve-rollback";
+      optimizationCycleHeatStopReason = "no-improve-rollback";
     }
     break;
   }

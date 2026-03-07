@@ -35,23 +35,23 @@ if (Pstream::master())
       stats.callCount > 0 ? stats.finalResidualSum/static_cast<scalar>(stats.callCount) : 0;
     const scalar avgIterations =
       stats.callCount > 0 ? static_cast<scalar>(stats.iterationSum)/static_cast<scalar>(stats.callCount) : 0;
-    const bool stageCFlowAdjointStalled =
+    const bool adjointCycleFlowAdjointStalled =
         customTurbulenceActive
-     && stageCFullAdjointVerification
+     && adjointCycleFullAdjointVerification
      &&
      (
-          stageCAdjointFlowDiverged
-       || (!stageCAdjointFlowConverged
-        && stageCAdjointCorrectorsUsed >= stageCAdjointCorrectors)
+          adjointCycleAdjointFlowDiverged
+       || (!adjointCycleAdjointFlowConverged
+        && adjointCycleAdjointCorrectorsUsed >= adjointCycleAdjointCorrectors)
      );
-    const bool stageCFlowSolve =
+    const bool adjointCycleFlowSolve =
         std::strcmp(solveName, "Ua adjoint momentum") == 0
      || std::strcmp(solveName, "pa adjoint pressure") == 0;
     const char* status = classifyLinearSolveStatus(stats);
     if
     (
-        stageCFlowAdjointStalled
-     && stageCFlowSolve
+        adjointCycleFlowAdjointStalled
+     && adjointCycleFlowSolve
      && std::strcmp(status, "WARN") != 0
     )
     {
@@ -95,6 +95,7 @@ if (Pstream::master())
   writeSolveStats("omega turbulence", omegaLinearSolveStats);
   writeSolveStats("T thermal", TLinearSolveStats);
   writeSolveStats("Ta adjoint thermal", TaLinearSolveStats);
+  writeSolveStats("Tb adjoint thermal", TbLinearSolveStats);
   writeSolveStats("Ub adjoint momentum", UbLinearSolveStats);
   writeSolveStats("pb adjoint pressure", pbLinearSolveStats);
   writeSolveStats("Ua adjoint momentum", UaLinearSolveStats);
@@ -109,80 +110,80 @@ if (Pstream::master())
   writeSolveStats("gsensPower filter", gsensPowerFilterLinearSolveStats);
   writeSolveStats("gsensVol filter", gsensVolFilterLinearSolveStats);
 
-  if (customTurbulenceActive && stageCFullAdjointVerification)
+  if (customTurbulenceActive && adjointCycleFullAdjointVerification)
   {
-    const bool stageCFlowAdjointStalled =
-        !stageCAdjointFlowConverged
-     && !stageCAdjointFlowDiverged
-     && stageCAdjointCorrectorsUsed >= stageCAdjointCorrectors;
-    const bool stageCUaTolMet =
-        stageCAdjointUNonlinearChange <= stageCAdjointUNonlinearTol;
-    const bool stageCPaTolMet =
-        stageCAdjointPNonlinearChange <= stageCAdjointPNonlinearTol;
-    const scalar stageCUaTargetRatio =
-        stageCAdjointUNonlinearChange/Foam::max(stageCAdjointUNonlinearTol, SMALL);
-    const scalar stageCPaTargetRatio =
-        stageCAdjointPNonlinearChange/Foam::max(stageCAdjointPNonlinearTol, SMALL);
-    const char* stageCFlowAdjointBlocker =
-        (stageCUaTolMet && stageCPaTolMet)
+    const bool adjointCycleFlowAdjointStalled =
+        !adjointCycleAdjointFlowConverged
+     && !adjointCycleAdjointFlowDiverged
+     && adjointCycleAdjointCorrectorsUsed >= adjointCycleAdjointCorrectors;
+    const bool adjointCycleUaTolMet =
+        adjointCycleAdjointUNonlinearChange <= adjointCycleAdjointUNonlinearTol;
+    const bool adjointCyclePaTolMet =
+        adjointCycleAdjointPNonlinearChange <= adjointCycleAdjointPNonlinearTol;
+    const scalar adjointCycleUaTargetRatio =
+        adjointCycleAdjointUNonlinearChange/Foam::max(adjointCycleAdjointUNonlinearTol, SMALL);
+    const scalar adjointCyclePaTargetRatio =
+        adjointCycleAdjointPNonlinearChange/Foam::max(adjointCycleAdjointPNonlinearTol, SMALL);
+    const char* adjointCycleFlowAdjointBlocker =
+        (adjointCycleUaTolMet && adjointCyclePaTolMet)
       ? "none"
-      : (stageCUaTargetRatio > 1.1*stageCPaTargetRatio)
+      : (adjointCycleUaTargetRatio > 1.1*adjointCyclePaTargetRatio)
         ? "Ua"
-        : (stageCPaTargetRatio > 1.1*stageCUaTargetRatio)
+        : (adjointCyclePaTargetRatio > 1.1*adjointCycleUaTargetRatio)
           ? "pa"
           : "Ua+pa";
-    const bool stageCNoImproveStop =
-        stageCAdjointStopReason.find("no-improve") != std::string::npos;
+    const bool adjointCycleNoImproveStop =
+        adjointCycleAdjointStopReason.find("no-improve") != std::string::npos;
     solverConvergenceLogFile
       << "\n"
-      << "[Stage-C Flow Adjoint Nonlinear Check]\n"
+      << "[Adjoint-Cycle Flow Adjoint Nonlinear Check]\n"
       << "  Status               : "
-      << ((stageCFlowAdjointStalled || stageCAdjointFlowDiverged) ? "WARN" : "OK") << "\n"
-      << "  Correctors Used      : " << stageCAdjointCorrectorsUsed
-      << " / " << stageCAdjointCorrectors << "\n"
+      << ((adjointCycleFlowAdjointStalled || adjointCycleAdjointFlowDiverged) ? "WARN" : "OK") << "\n"
+      << "  Correctors Used      : " << adjointCycleAdjointCorrectorsUsed
+      << " / " << adjointCycleAdjointCorrectors << "\n"
       << "  RMS Ua Change        : " << std::scientific << std::setprecision(3)
-      << stageCAdjointUNonlinearChange << "\n"
+      << adjointCycleAdjointUNonlinearChange << "\n"
       << "  Ua Target / Met      : " << std::scientific << std::setprecision(3)
-      << stageCAdjointUNonlinearTol << " / "
-      << (stageCUaTolMet ? "true" : "false") << "\n"
+      << adjointCycleAdjointUNonlinearTol << " / "
+      << (adjointCycleUaTolMet ? "true" : "false") << "\n"
       << "  RMS pa Change        : " << std::scientific << std::setprecision(3)
-      << stageCAdjointPNonlinearChange << "\n"
+      << adjointCycleAdjointPNonlinearChange << "\n"
       << "  pa Target / Met      : " << std::scientific << std::setprecision(3)
-      << stageCAdjointPNonlinearTol << " / "
-      << (stageCPaTolMet ? "true" : "false") << "\n"
-      << "  Dominant Blocker     : " << stageCFlowAdjointBlocker << "\n"
-      << "  Stop Reason          : " << stageCAdjointStopReason << "\n"
-      << "  Best Corrector       : " << stageCAdjointBestCorrector << "\n"
+      << adjointCycleAdjointPNonlinearTol << " / "
+      << (adjointCyclePaTolMet ? "true" : "false") << "\n"
+      << "  Dominant Blocker     : " << adjointCycleFlowAdjointBlocker << "\n"
+      << "  Stop Reason          : " << adjointCycleAdjointStopReason << "\n"
+      << "  Best Corrector       : " << adjointCycleAdjointBestCorrector << "\n"
       << "  Best Worst-Ratio     : " << std::scientific << std::setprecision(3)
-      << stageCAdjointBestCombinedMetric << "\n"
+      << adjointCycleAdjointBestCombinedMetric << "\n"
       << "  Stop Flag / At       : "
-      << (stageCNoImproveStop ? "stagnated" : "diverged")
-      << "=" << (stageCAdjointFlowDiverged ? "true" : "false")
-      << " / " << stageCAdjointDivergedCorrector << "\n"
+      << (adjointCycleNoImproveStop ? "stagnated" : "diverged")
+      << "=" << (adjointCycleAdjointFlowDiverged ? "true" : "false")
+      << " / " << adjointCycleAdjointDivergedCorrector << "\n"
       << "  Rolled Back / To     : "
-      << (stageCAdjointRolledBack ? "true" : "false")
-      << " / " << stageCAdjointRollbackCorrector << "\n"
+      << (adjointCycleAdjointRolledBack ? "true" : "false")
+      << " / " << adjointCycleAdjointRollbackCorrector << "\n"
       << "  |Ua|max / paRange    : " << std::scientific << std::setprecision(3)
-      << stageCAdjointUaMax << " / " << stageCAdjointPaRange << "\n"
+      << adjointCycleAdjointUaMax << " / " << adjointCycleAdjointPaRange << "\n"
       << "  paMean               : " << std::scientific << std::setprecision(3)
-      << stageCAdjointPaMean << "\n"
+      << adjointCycleAdjointPaMean << "\n"
       << "  |phia|sum / phiaNet  : " << std::scientific << std::setprecision(3)
-      << stageCAdjointPhiaAbsSum << " / " << stageCAdjointPhiaNet << "\n"
+      << adjointCycleAdjointPhiaAbsSum << " / " << adjointCycleAdjointPhiaNet << "\n"
       << "  pRefCell / Value     : " << paRefCell << " / "
       << std::scientific << std::setprecision(3) << paRefValue << "\n"
       << "  Config               : reset="
-      << (stageCResetAdjointState ? "true" : "false")
-      << " viscosity=" << (stageCUseNuEff ? "nuEff" : "nu")
+      << (adjointCycleResetAdjointState ? "true" : "false")
+      << " viscosity=" << (adjointCycleUseNuEff ? "nuEff" : "nu")
       << " TaSource="
-      << (stageCIncludeThermalMomentumSource ? "true" : "false")
+      << (adjointCycleIncludeThermalMomentumSource ? "true" : "false")
       << " legacyPaRelax="
-      << (stageCUseLegacyPressureRelax ? "true" : "false")
+      << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
       << " divergenceGuard="
-      << (stageCDivergenceCheck ? "true" : "false")
+      << (adjointCycleDivergenceCheck ? "true" : "false")
       << " stagnationGuard="
-      << (stageCStagnationCheck ? "true" : "false")
-      << " growth=" << stageCDivergenceGrowthFactor
-      << " minPass=" << stageCDivergenceMinCorrectors
-      << " patience=" << stageCStagnationPatience << "\n";
+      << (adjointCycleStagnationCheck ? "true" : "false")
+      << " growth=" << adjointCycleDivergenceGrowthFactor
+      << " minPass=" << adjointCycleDivergenceMinCorrectors
+      << " patience=" << adjointCycleStagnationPatience << "\n";
   }
 }
