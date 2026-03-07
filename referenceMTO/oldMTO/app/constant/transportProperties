@@ -32,9 +32,9 @@ voluse                 0.4;
 filter_Radius          2;
 solid_area             0;
 fluid_area             1;
-test_PD                0;
+test_PD                1;
 
-D_normalization        1.57572e-07;
+D_normalization        1e-10;			//PowerDiss0 ref: 1.57572e-07;
 D0                     16;
 D1                     10;
 geo_dim                2;
