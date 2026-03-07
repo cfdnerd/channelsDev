@@ -1,6 +1,6 @@
 Info<< "Initialization\n" << endl;
 const char* optimizationHistoryFile = "optimization.hst";
-const char* PD0SugLogFile = "PD0Sug.log";
+const char* suggestedPowerDiss0File = "suggestedPowerDiss0.log";
 const char* debugOptimizerJsonFile = "debugOptimizer.jsonl";
 const char* debugOptimizerLogFile = "debugOptimizer.log";
 const char* debugAdjointCycleLogFile = debugOptimizerLogFile;
@@ -11,7 +11,7 @@ const char* firstFailureSnapshotFile = "firstFailureSnapshot.log";
 if (Pstream::master())
 {
   std::remove(optimizationHistoryFile);
-  std::remove(PD0SugLogFile);
+  std::remove(suggestedPowerDiss0File);
   std::remove(debugOptimizerJsonFile);
   std::remove(debugOptimizerLogFile);
   std::remove(legacyDebugAdjointCycleLogFile);
@@ -340,6 +340,8 @@ N=x.size();//N:design freedom
 reduce(N, sumOp<scalar>()); 
 
 scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PDActLog(0),PD0Sug(0),PD0SugMaxCum(-GREAT),PowerDissActualOverBase(0),maxT(0),sumT(0);
+scalar PD0SugSumCum(0);
+label PD0SugCountCum(0);
 bool PD0SugLogInitialized(false);
 scalar thermalExcessObjective(0.0);
 scalar thermalTmaxKSConstraint(0.0);
