@@ -111,7 +111,6 @@ if (Pstream::master())
      historyFile
        << std::left
        << std::setw(8) << "Iter"
-       << std::setw(16) << "PDAct"
        << std::setw(16) << "PDActLog"
        << std::setw(16) << "PDCon"
        << std::setw(16) << "V"
@@ -123,7 +122,6 @@ if (Pstream::master())
      << std::right
      << std::setw(8) << opt
      << std::scientific << std::setprecision(8)
-     << std::setw(16) << PDAct
      << std::setw(16) << PDActLog
      << std::setw(16) << PowerDiss
      << std::setw(16) << V

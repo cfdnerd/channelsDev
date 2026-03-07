@@ -19,11 +19,10 @@ if (Pstream::master())
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
     << "# MTO_ThermalFluid optimization history\n"
-    << "# Cols: Iter PDAct PDActLog PDCon V MeanT MaxT\n"
-    << "# PDAct=PDCon*PowerDiss0*pow(mesh.V()[0],1/3), PDActLog=PDAct/pow(mesh.V()[0],1/3), PDCon=PowerDiss constraint value used by MMA\n"
+    << "# Cols: Iter PDActLog PDCon V MeanT MaxT\n"
+    << "# PDActLog=PDCon*PowerDiss0, PDCon=PowerDiss constraint value used by MMA\n"
     << std::left
     << std::setw(8) << "Iter"
-    << std::setw(16) << "PDAct"
     << std::setw(16) << "PDActLog"
     << std::setw(16) << "PDCon"
     << std::setw(16) << "V"
