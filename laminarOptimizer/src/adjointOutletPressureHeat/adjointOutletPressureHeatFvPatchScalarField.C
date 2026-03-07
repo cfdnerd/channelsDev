@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "adjointOutletPressureHeatFvPatchScalarField.H"
+#include "adjointOutletPressureHeat/adjointOutletPressureHeatFvPatchScalarField.H"
 #include "addToRunTimeSelectionTable.H"
 #include "fvPatchMapper.H"
 #include "volFields.H"

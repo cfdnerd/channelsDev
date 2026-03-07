@@ -1,4 +1,7 @@
-#include "MMA.h"
+#include "MMA/MMA.h"
+#define OMPI_SKIP_MPICXX 1
+#define MPICH_SKIP_MPICXX 1
+#include "mpi.h"
 
 void MMA::MMAsolver(std::vector<double> &xval,
               std::vector<double> &dfdx,
@@ -18,10 +21,10 @@ void MMA::MMAsolver(std::vector<double> &xval,
 }
 
 MMA::MMA(int NvarLocal, int Mcons)
-    : n(NvarLocal), m(Mcons), iter(1), y(m), lam(m), mu(m),
-      s(2 * m), low(n), upp(n), xmax(n, 1), xmin(n, 0), alpha(n), beta(n),
-      p0(n), q0(n), pij(n * m), qij(n * m), b(m),
-      grad(m), hess(m * m), a(m), c(m),xold1(n),xold2(n)
+    : n(NvarLocal), m(Mcons), iter(1), a(m), c(m), y(m), z(0.0), lam(m), mu(m),
+      s(2 * m), alpha(n), beta(n), p0(n), q0(n), pij(n * m), qij(n * m), b(m),
+      grad(m), hess(m * m), xmax(n, 1), xmin(n, 0), low(n), upp(n), xold1(n),
+      xold2(n)
 {
     int NvarGlab = 0;
     MPI_Allreduce(&n, &NvarGlab, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);

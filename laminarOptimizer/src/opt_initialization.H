@@ -152,12 +152,12 @@ LinearSolveStats gsensVolFilterLinearSolveStats;
 
 int i=0,opt=0;
 double del=0;
-scalar n(0),N(0),eta0,eta5,eta1,y0,y5;
+scalar n(0),N(0),eta0(0),eta5(0.5),eta1(1),y0(0),y5(0);
 n=x.size();//n:length of x in the i-th core
 N=x.size();//N:design freedom
 reduce(N, sumOp<scalar>()); 
 
-scalar C(0),V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
+scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
 scalar previousObjectiveValue(0);
 bool hasPreviousObjectiveValue(false);
 bool stopOptimization(false);

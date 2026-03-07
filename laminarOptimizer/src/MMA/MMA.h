@@ -1,7 +1,6 @@
 #ifndef MMA_H
 #define MMA_H
 
-#include "mpi.h"
 #include <vector>
 #include <cmath>
 // #include "fvCFD.H"

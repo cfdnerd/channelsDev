@@ -23,7 +23,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
-#include "adjointOutletVelocityPowerFvPatchVectorField.H"
+#include "adjointOutletVelocityPower/adjointOutletVelocityPowerFvPatchVectorField.H"
 #include "volFields.H"
 #include "addToRunTimeSelectionTable.H"
 #include "surfaceFields.H"
