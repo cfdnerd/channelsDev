@@ -17,7 +17,9 @@ if(GeoDim==2)
 {
  PowerDiss=PowerDiss/std::pow(mesh.V()[0],1.0/3);
 }
-const scalar powerDissLogged = PowerDiss*PowerDiss0*std::pow(mesh.V()[0],1.0/3);
+const scalar meshFactor = std::pow(mesh.V()[0],1.0/3);
+const scalar PDAct = PowerDiss*PowerDiss0*meshFactor;
+PDActLog = PDAct/meshFactor;
 
 if (Pstream::master())
 { 
@@ -27,23 +29,15 @@ if (Pstream::master())
      historyFile
        << std::left
        << std::setw(8) << "Iter"
-       << std::setw(16) << "PDAct"
-       << std::setw(16) << "PDNrm"
+       << std::setw(16) << "PDActLog"
        << std::setw(16) << "PDCon"
-       << std::setw(16) << "V"
-       << std::setw(16) << "MeanT"
-       << std::setw(16) << "MaxT"
        << '\n';
    }
    historyFile
      << std::right
      << std::setw(8) << opt
      << std::scientific << std::setprecision(8)
-     << std::setw(16) << powerDissLogged
-     << std::setw(16) << PowerDissActualOverBase
+     << std::setw(16) << PDActLog
      << std::setw(16) << PowerDiss
-     << std::setw(16) << V
-     << std::setw(16) << MeanT
-     << std::setw(16) << maxT
      << '\n';
 }

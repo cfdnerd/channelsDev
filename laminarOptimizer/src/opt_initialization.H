@@ -12,16 +12,12 @@ if (Pstream::master())
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
     << "# MTO_ThermalFluid optimization history\n"
-    << "# Cols: Iter PDAct PDNrm PDCon V MeanT MaxT\n"
-    << "# PDAct=PDCon*PowerDiss0*pow(mesh.V()[0],1/3), PDNrm=PowerDissActual/PowerDiss0, PDCon=PowerDiss constraint value used by MMA\n"
+    << "# Cols: Iter PDActLog PDCon\n"
+    << "# PDActLog=PDAct/pow(mesh.V()[0],1/3), PDCon=PowerDiss constraint value used by MMA\n"
     << std::left
     << std::setw(8) << "Iter"
-    << std::setw(16) << "PDAct"
-    << std::setw(16) << "PDNrm"
+    << std::setw(16) << "PDActLog"
     << std::setw(16) << "PDCon"
-    << std::setw(16) << "V"
-    << std::setw(16) << "MeanT"
-    << std::setw(16) << "MaxT"
     << '\n';
 
   std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::out);
@@ -157,7 +153,7 @@ n=x.size();//n:length of x in the i-th core
 N=x.size();//N:design freedom
 reduce(N, sumOp<scalar>()); 
 
-scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
+scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PDActLog(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
 scalar previousObjectiveValue(0);
 bool hasPreviousObjectiveValue(false);
 bool stopOptimization(false);
