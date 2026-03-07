@@ -29,8 +29,9 @@ if (Pstream::master())
    ofstream outfile2("PowerDiss.txt",std::ios::app);
    if(opt==1)
    {
-      outfile2<<"# Iter PowerDiss PowerDissRef\n";
-      outfile2<<"# PowerDiss=normalized constraint value; PowerDissRef=reference dissipation (no PowerDiss0 normalization)\n";
+      outfile2<<"# Optimization Log: Power Dissipation Metrics\n";
+      outfile2<<"# PowerDissNorm=constraint value (normalized); PowerDissRef=pre-normalization dissipation\n";
+      outfile2<<"# Iteration PowerDissNorm PowerDissRef\n";
    }
    outfile2<<opt<<" "<<PowerDiss<<" "<<PowerDissRef<<"\n";
    outfile2.close(); 

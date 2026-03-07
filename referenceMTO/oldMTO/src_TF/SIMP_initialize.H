@@ -1,7 +1,7 @@
 // 
     std::remove("Voluse.txt");
     std::remove("meanT.txt"); 
-    std::remove("Disspower.txt");  
+    std::remove("PowerDiss.txt");  
     std::remove("Time.txt");
 //    
     scalar C(0);
