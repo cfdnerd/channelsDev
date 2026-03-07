@@ -25,7 +25,7 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Thermal Adjoint Selector
     // --------------------------------------------------------------------- //
-    optThermalAdjointMode ta; // ta | tbOriginal | tbLaminar
+    optThermalAdjointMode tbOriginal; // ta | tbOriginal | tbLaminar
 
     // --------------------------------------------------------------------- //
     // Thermal Objective/Constraint Targets
@@ -40,7 +40,7 @@ convergenceControl
     // MMA Step Controls
     // --------------------------------------------------------------------- //
     optPowerConstraintWeight      1.0;
-    optVolumeConstraintWeight     1.0;
+    optVolumeConstraintWeight     1.5;
     optAdaptiveBaseMoveMin        0.08;
     optAdaptiveBaseMoveMax        0.20;
     optMmaMoveLimitFloor          1e-2;
