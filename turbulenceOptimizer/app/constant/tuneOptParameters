@@ -17,49 +17,47 @@ FoamFile
 
 convergenceControl
 {
-    // User-facing controls only. Advanced/internal controls are intentionally
-    // omitted here and use validated defaults from source code.
-    optRunMode production;         // `production` or `diagnostic`.
+    // --------------------------------------------------------------------- //
+    // Run Profile
+    // --------------------------------------------------------------------- //
+    optRunMode production; // production | diagnostic
 
-    // Basic convergence and stop behavior
-    optMinIterations    50;
-    optStallWindow      5;
-    optObjectiveTol     1e-3;
-    optConstraintTol    1e-3;
-    optStepTol          5e-3;
+    // --------------------------------------------------------------------- //
+    // Thermal Adjoint Selector
+    // --------------------------------------------------------------------- //
+    optThermalAdjointMode ta; // ta | tbOriginal | tbLaminar
 
-    // Step-acceptance/globalization controller retired by design.
-
-    // MMA trust-constrained behavior
-    optAdaptiveBaseMoveMin 0.08;
-    optAdaptiveBaseMoveMax 0.20;
-    optAdaptiveAsymIncMin 1.02;
-    optAdaptiveAsymIncMax 1.08;
-    optAdaptiveAsymDecMin 0.40;
-    optAdaptiveAsymDecMax 0.60;
-    optMmaMoveLimitFloor 1e-2;
-    optRecoveryEnable false;
-    optLaminarReferenceWarmupIterations 20;
-    optLaminarReferenceWarmupMoveLimit 0.15;
-    optLaminarReferenceWarmupResidualGrowthLimit 3.0;
-    optProductionIgnoreSensitivityReject true;
-    optProductionContinueAfterSafetyReject true;
-
-    // Thermal objective/constraints (user physical targets)
-    // Single thermal-adjoint selector for turbulence optimization:
-    // ta | tbOriginal | tbLaminar
-    optThermalAdjointMode ta;
-    optThermalExcessTref 1.0;
+    // --------------------------------------------------------------------- //
+    // Thermal Objective/Constraint Targets
+    // --------------------------------------------------------------------- //
+    optThermalExcessTref          1.0;
     optThermalExcessSoftplusScale 0.5;
-    optThermalTmaxLimit 15.0;
-    optThermalTminLimit 0.0;
-    optThermalKSBeta    24.0;
+    optThermalTmaxLimit           15.0;
+    optThermalTminLimit           0.0;
+    optThermalKSBeta              24.0;
 
-    // Diagnostics toggles
-    optGradientCheckEnable               true;
-    optClosureDerivativeFDEnable         true;
-    optClosureDerivativeFDStageCheckEnable true;
-    optPersistFirstFailureSnapshot       true;
+    // --------------------------------------------------------------------- //
+    // MMA Step Controls
+    // --------------------------------------------------------------------- //
+    optAdaptiveBaseMoveMin        0.08;
+    optAdaptiveBaseMoveMax        0.20;
+    optMmaMoveLimitFloor          1e-2;
+
+    // --------------------------------------------------------------------- //
+    // Laminar-Reference Warmup
+    // --------------------------------------------------------------------- //
+    optLaminarReferenceWarmupIterations        20;
+    optLaminarReferenceWarmupMoveLimit         0.15;
+    optLaminarReferenceWarmupResidualGrowthLimit 3.0;
+
+    // --------------------------------------------------------------------- //
+    // Convergence Stop
+    // --------------------------------------------------------------------- //
+    optMinIterations              50;
+    optStallWindow                5;
+    optObjectiveTol               1e-3;
+    optConstraintTol              1e-3;
+    optStepTol                    5e-3;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
