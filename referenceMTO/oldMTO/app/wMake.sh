@@ -1,5 +1,5 @@
 git pull
-cd ../src/
+cd ../src_TF/
 rm -rf Make/linux*
 wmake -j
 cd ../app/
