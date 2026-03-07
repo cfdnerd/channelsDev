@@ -19,12 +19,14 @@ if (Pstream::master())
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
     << "# MTO_ThermalFluid optimization history\n"
-    << "# Cols: Iter PDActLog PDCon V MeanT MaxT\n"
-    << "# PDActLog=PDCon*PowerDiss0, PDCon=PowerDiss constraint value used by MMA\n"
+    << "# Cols: Iter PDActLog PDCon PD0Sug V MeanT MaxT\n"
+    << "# PDActLog=PDCon*PowerDiss0, PDCon=PowerDiss used by MMA\n"
+    << "# PD0Sug=PowerDiss0*(PDCon/PowerDissMax) when PDCon>PowerDissRelax; else PowerDiss0\n"
     << std::left
     << std::setw(8) << "Iter"
     << std::setw(16) << "PDActLog"
     << std::setw(16) << "PDCon"
+    << std::setw(16) << "PD0Sug"
     << std::setw(16) << "V"
     << std::setw(16) << "MeanT"
     << std::setw(16) << "MaxT"
@@ -335,7 +337,7 @@ n=x.size();//n:length of x in the i-th core
 N=x.size();//N:design freedom
 reduce(N, sumOp<scalar>()); 
 
-scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PDActLog(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
+scalar V(0),area=gSum(mesh.V()),MeanT(0),PowerDiss(0),PowerDissActual(0),PDActLog(0),PD0Sug(0),PowerDissActualOverBase(0),maxT(0),sumT(0);
 scalar thermalExcessObjective(0.0);
 scalar thermalTmaxKSConstraint(0.0);
 scalar thermalTminKSConstraint(0.0);

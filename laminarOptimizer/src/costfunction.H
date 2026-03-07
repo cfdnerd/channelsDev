@@ -25,6 +25,11 @@ if(GeoDim==2)
 PowerDissActual = PowerDissActualOverBase*PowerDiss0;
 const scalar PDAct = PowerDiss*PowerDiss0*meshFactor;
 PDActLog = PDAct/meshFactor;
+PD0Sug = PowerDiss0;
+if (PowerDiss > PowerDissRelax && PowerDissMax > SMALL)
+{
+  PD0Sug = PowerDiss0*(PowerDiss/Foam::max(PowerDissMax, SMALL));
+}
 
 if (Pstream::master())
 { 
@@ -36,6 +41,7 @@ if (Pstream::master())
        << std::setw(8) << "Iter"
        << std::setw(16) << "PDActLog"
        << std::setw(16) << "PDCon"
+       << std::setw(16) << "PD0Sug"
        << std::setw(16) << "V"
        << std::setw(16) << "MeanT"
        << std::setw(16) << "MaxT"
@@ -47,6 +53,7 @@ if (Pstream::master())
      << std::scientific << std::setprecision(8)
      << std::setw(16) << PDActLog
      << std::setw(16) << PowerDiss
+     << std::setw(16) << PD0Sug
      << std::setw(16) << V
      << std::setw(16) << MeanT
      << std::setw(16) << maxT
