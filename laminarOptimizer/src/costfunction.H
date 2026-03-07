@@ -31,6 +31,9 @@ if (Pstream::master())
        << std::setw(8) << "Iter"
        << std::setw(16) << "PDActLog"
        << std::setw(16) << "PDCon"
+       << std::setw(16) << "V"
+       << std::setw(16) << "MeanT"
+       << std::setw(16) << "MaxT"
        << '\n';
    }
    historyFile
@@ -39,5 +42,8 @@ if (Pstream::master())
      << std::scientific << std::setprecision(8)
      << std::setw(16) << PDActLog
      << std::setw(16) << PowerDiss
+     << std::setw(16) << V
+     << std::setw(16) << MeanT
+     << std::setw(16) << maxT
      << '\n';
 }
