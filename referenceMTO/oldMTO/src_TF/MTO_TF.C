@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
     #include "createFvOptions.H"
     #include "initContinuityErrs.H"
     #include "SIMP_initialize.H"
-    while (simple.loop())
+    while (simple.loop(runTime))
     {
         Info<< "Time = " << runTime.timeName() << nl << endl;
         #include "primal_equation.H"
@@ -119,4 +119,3 @@ double fun(double gamma[],double del,double eta,int allcells)
      delete fg;
      return {z};
 }
-

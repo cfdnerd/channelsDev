@@ -280,10 +280,9 @@ volScalarField gsens_U
 dictionary Fun1=mesh.solutionDict().subDict("power_dissipation");
 int nObjPatch=Fun1.lookupOrDefault<scalar>("numberConstraintPatches",2);//number of patch 
 wordList conPatchNames = Fun1.lookup("constraintPatchesNames");//function name
-label conPatchList[nObjPatch];//patch list
+List<label> conPatchList(nObjPatch);//patch list
 int iLoop;
 for (iLoop=0; iLoop<nObjPatch; iLoop++)
 {
     conPatchList[iLoop] = mesh.boundaryMesh().findPatchID(conPatchNames[iLoop]);
 }   
-
