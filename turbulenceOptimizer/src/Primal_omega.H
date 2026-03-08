@@ -75,12 +75,26 @@ if (customTurbulenceActive)
       + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
   }
 
+  const bool positivityPreservingLinearizationEnabled =
+    static_cast<bool>(optPositivityPreservingKOmegaLinearizationEnable);
+
   // Positivity-preserving source treatment:
   // split raw sources into positive explicit part and negative implicit sink.
-  const volScalarField omegaPatankarRef(Foam::max(omega, omegaMin));
+  const volScalarField omegaPatankarRef
+  (
+    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    ? Foam::sqrt(sqr(omega) + sqr(omegaMin))
+    : Foam::max(omega, omegaMin)
+  );
+  const volScalarField omegaNutDenominator
+  (
+    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    ? Foam::sqrt(sqr(nut) + sqr(nutFloor))
+    : Foam::max(nut, nutFloor)
+  );
   const volScalarField omegaProductionRaw
   (
-    gammaField*turbulenceProductionMask*PkField/Foam::max(nut, nutFloor)
+    gammaField*turbulenceProductionMask*PkField/omegaNutDenominator
   );
   const volScalarField omegaProductionPositive
   (
@@ -124,30 +138,58 @@ if (customTurbulenceActive)
     omegaCrossDiffNegative/omegaPatankarRef
   );
 
-  fvScalarMatrix omegaEqn
-  (
-      fvm::div(phi, omega)
-    - fvm::laplacian(nu + alphaOmegaField*nut, omega)
-   ==
-      omegaProductionPositive
-    + omegaCrossDiffPositive
-    - fvm::Sp(omegaProductionNegativeCoeff, omega)
-    - fvm::Sp(omegaCrossDiffNegativeCoeff, omega)
-    - fvm::Sp(betaField*omegaDestructionState, omega)
-    - fvm::Sp(turbulenceDampingCoeff*alpha, omega)
-    - fvm::Sp(turbulenceSuppressionRate, omega)
-  );
+  if (positivityPreservingLinearizationEnabled)
+  {
+    fvScalarMatrix omegaEqn
+    (
+        fvm::div(phi, omega)
+      - fvm::laplacian(nu + alphaOmegaField*nut, omega)
+     ==
+        omegaProductionPositive
+      + omegaCrossDiffPositive
+      - fvm::Sp(omegaProductionNegativeCoeff, omega)
+      - fvm::Sp(omegaCrossDiffNegativeCoeff, omega)
+      - fvm::Sp(betaField*omegaDestructionState, omega)
+      - fvm::Sp(turbulenceDampingCoeff*alpha, omega)
+      - fvm::Sp(turbulenceSuppressionRate, omega)
+    );
 
-  omegaEqn.relax();
+    omegaEqn.relax();
 
-  const auto omegaLinearSolvePerformance = omegaEqn.solve();
-  recordLinearSolve
-  (
-      omegaLinearSolveStats,
-      omegaLinearSolvePerformance.initialResidual(),
-      omegaLinearSolvePerformance.finalResidual(),
-      omegaLinearSolvePerformance.nIterations()
-  );
+    const auto omegaLinearSolvePerformance = omegaEqn.solve();
+    recordLinearSolve
+    (
+        omegaLinearSolveStats,
+        omegaLinearSolvePerformance.initialResidual(),
+        omegaLinearSolvePerformance.finalResidual(),
+        omegaLinearSolvePerformance.nIterations()
+    );
+  }
+  else
+  {
+    fvScalarMatrix omegaEqn
+    (
+        fvm::div(phi, omega)
+      - fvm::laplacian(nu + alphaOmegaField*nut, omega)
+     ==
+        omegaProductionRaw
+      + omegaCrossDiffField
+      - fvm::Sp(betaField*omegaDestructionState, omega)
+      - fvm::Sp(turbulenceDampingCoeff*alpha, omega)
+      - fvm::Sp(turbulenceSuppressionRate, omega)
+    );
+
+    omegaEqn.relax();
+
+    const auto omegaLinearSolvePerformance = omegaEqn.solve();
+    recordLinearSolve
+    (
+        omegaLinearSolveStats,
+        omegaLinearSolvePerformance.initialResidual(),
+        omegaLinearSolvePerformance.finalResidual(),
+        omegaLinearSolvePerformance.nIterations()
+    );
+  }
 
   const scalar omegaMinAfter = gMin(omega);
   const scalar omegaMaxAfter = gMax(omega);

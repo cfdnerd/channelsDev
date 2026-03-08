@@ -44,6 +44,31 @@ convergenceControl
     optPowerConstraintWeight      1;
     optVolumeConstraintWeight     1;
 
+    // --------------------------------------------------------------------- //
+    // Formulation Patches
+    // --------------------------------------------------------------------- //
+    // Patch 1: log-regularized turbulence closure/source denominators.
+    optPatch1LogRegularizationEnable true;
+    optPatch1SmoothDenominatorEnable true;
+    optPositivityPreservingKOmegaLinearizationEnable true;
+
+    // Patch 3: smooth projection (tanh) for Heaviside continuation.
+    optPatch3SmoothProjectionEnable true;
+    optPatch3ProjectionBetaScale    1.0;
+
+    // Patch 4: trust-ratio-based adaptive MMA move limit.
+    optPatch4AdaptiveMoveLimitEnable true;
+    optPatch4MoveLimitMin            0.05;
+    optPatch4MoveLimitMax            0.30;
+    optPatch4TrustRatioShrink        0.25;
+    optPatch4TrustRatioGrow          0.75;
+    optPatch4MoveLimitShrinkFactor   0.70;
+    optPatch4MoveLimitGrowFactor     1.15;
+    optPatch4NegativeTrustExtraDamp  0.50;
+
+    // Patch 5: dedicated thermal-envelope sensitivity maps.
+    optPatch5DedicatedThermalEnvelopeAdjoints true;
+
     // Convergence Stop
     // --------------------------------------------------------------------- //
     optMinIterations              50;

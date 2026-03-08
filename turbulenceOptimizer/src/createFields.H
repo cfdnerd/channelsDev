@@ -260,6 +260,66 @@ Switch optDualConsistentStateMapEnforce
 (
   convergenceControl.lookupOrDefault<Switch>("optDualConsistentStateMapEnforce", true)
 );
+Switch optPatch1LogRegularizationEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optPatch1LogRegularizationEnable", true)
+);
+Switch optPatch1SmoothDenominatorEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optPatch1SmoothDenominatorEnable", true)
+);
+Switch optPositivityPreservingKOmegaLinearizationEnable
+(
+  convergenceControl.lookupOrDefault<Switch>
+  (
+    "optPositivityPreservingKOmegaLinearizationEnable",
+    true
+  )
+);
+Switch optPatch3SmoothProjectionEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optPatch3SmoothProjectionEnable", true)
+);
+scalar optPatch3ProjectionBetaScale
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch3ProjectionBetaScale", 1.0)
+);
+Switch optPatch4AdaptiveMoveLimitEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optPatch4AdaptiveMoveLimitEnable", true)
+);
+scalar optPatch4MoveLimitMin
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitMin", 0.05)
+);
+scalar optPatch4MoveLimitMax
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitMax", 0.30)
+);
+scalar optPatch4TrustRatioShrink
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4TrustRatioShrink", 0.25)
+);
+scalar optPatch4TrustRatioGrow
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4TrustRatioGrow", 0.75)
+);
+scalar optPatch4MoveLimitShrinkFactor
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitShrinkFactor", 0.70)
+);
+scalar optPatch4MoveLimitGrowFactor
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitGrowFactor", 1.15)
+);
+scalar optPatch4NegativeTrustExtraDamp
+(
+  convergenceControl.lookupOrDefault<scalar>("optPatch4NegativeTrustExtraDamp", 0.50)
+);
+Switch optPatch5DedicatedThermalEnvelopeAdjoints
+(
+  convergenceControl.lookupOrDefault<Switch>("optPatch5DedicatedThermalEnvelopeAdjoints", true)
+);
 
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
@@ -327,6 +387,62 @@ if (optSensitivityGradientL2Eps <= 0.0)
   FatalErrorInFunction
     << "optSensitivityGradientL2Eps must be > 0. Found "
     << optSensitivityGradientL2Eps
+    << exit(FatalError);
+}
+if (optPatch3ProjectionBetaScale <= 0.0)
+{
+  FatalErrorInFunction
+    << "optPatch3ProjectionBetaScale must be > 0. Found "
+    << optPatch3ProjectionBetaScale
+    << exit(FatalError);
+}
+if (optPatch4MoveLimitMin <= 0.0 || optPatch4MoveLimitMax <= 0.0)
+{
+  FatalErrorInFunction
+    << "optPatch4MoveLimitMin and optPatch4MoveLimitMax must be > 0. Found "
+    << "min=" << optPatch4MoveLimitMin
+    << ", max=" << optPatch4MoveLimitMax
+    << exit(FatalError);
+}
+if (optPatch4MoveLimitMax < optPatch4MoveLimitMin)
+{
+  FatalErrorInFunction
+    << "optPatch4MoveLimitMax must be >= optPatch4MoveLimitMin. Found "
+    << "min=" << optPatch4MoveLimitMin
+    << ", max=" << optPatch4MoveLimitMax
+    << exit(FatalError);
+}
+if
+(
+    optPatch4TrustRatioShrink < 0.0
+ || optPatch4TrustRatioGrow < 0.0
+ || optPatch4TrustRatioGrow < optPatch4TrustRatioShrink
+)
+{
+  FatalErrorInFunction
+    << "Patch 4 trust-ratio thresholds must satisfy 0 <= shrink <= grow. Found "
+    << "shrink=" << optPatch4TrustRatioShrink
+    << ", grow=" << optPatch4TrustRatioGrow
+    << exit(FatalError);
+}
+if
+(
+    optPatch4MoveLimitShrinkFactor <= 0.0
+ || optPatch4MoveLimitShrinkFactor > 1.0
+ || optPatch4MoveLimitGrowFactor < 1.0
+)
+{
+  FatalErrorInFunction
+    << "Patch 4 move-limit factors must satisfy 0 < shrink <= 1 and grow >= 1. Found "
+    << "shrinkFactor=" << optPatch4MoveLimitShrinkFactor
+    << ", growFactor=" << optPatch4MoveLimitGrowFactor
+    << exit(FatalError);
+}
+if (optPatch4NegativeTrustExtraDamp <= 0.0 || optPatch4NegativeTrustExtraDamp > 1.0)
+{
+  FatalErrorInFunction
+    << "optPatch4NegativeTrustExtraDamp must satisfy 0 < value <= 1. Found "
+    << optPatch4NegativeTrustExtraDamp
     << exit(FatalError);
 }
 

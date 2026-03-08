@@ -66,9 +66,16 @@ if (customTurbulenceActive)
       + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
   }
 
+  const bool positivityPreservingLinearizationEnabled =
+    static_cast<bool>(optPositivityPreservingKOmegaLinearizationEnable);
   // Patankar-style source split: keep explicit source non-negative and treat
   // any negative part implicitly as a sink coefficient.
-  const volScalarField kPatankarRef(Foam::max(k, kMin));
+  const volScalarField kPatankarRef
+  (
+    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    ? Foam::sqrt(sqr(k) + sqr(kMin))
+    : Foam::max(k, kMin)
+  );
   const volScalarField kProductionRaw(turbulenceProductionMask*PkField);
   const volScalarField kProductionPositive
   (
@@ -88,26 +95,53 @@ if (customTurbulenceActive)
   );
   const volScalarField kProductionNegativeCoeff(kProductionNegative/kPatankarRef);
 
-  fvScalarMatrix kEqn
-  (
-      fvm::div(phi, k)
-    - fvm::laplacian(nu + alphaKField*nut, k)
-   ==
-      kProductionPositive
-    - fvm::Sp(kProductionNegativeCoeff, k)
-    - fvm::Sp
+  auto solveKWithLinearization =
+  [&]()
+  {
+    if (positivityPreservingLinearizationEnabled)
+    {
+      fvScalarMatrix kEqn
       (
-        betaStarCoeff
-       *omegaDestructionState,
-        k
-      )
-    - fvm::Sp(turbulenceDampingCoeff*alpha, k)
-    - fvm::Sp(turbulenceSuppressionRate, k)
-  );
+          fvm::div(phi, k)
+        - fvm::laplacian(nu + alphaKField*nut, k)
+       ==
+          kProductionPositive
+        - fvm::Sp(kProductionNegativeCoeff, k)
+        - fvm::Sp
+          (
+            betaStarCoeff
+           *omegaDestructionState,
+            k
+          )
+        - fvm::Sp(turbulenceDampingCoeff*alpha, k)
+        - fvm::Sp(turbulenceSuppressionRate, k)
+      );
+      kEqn.relax();
+      return kEqn.solve();
+    }
+    else
+    {
+      fvScalarMatrix kEqn
+      (
+          fvm::div(phi, k)
+        - fvm::laplacian(nu + alphaKField*nut, k)
+       ==
+          kProductionRaw
+        - fvm::Sp
+          (
+            betaStarCoeff
+           *omegaDestructionState,
+            k
+          )
+        - fvm::Sp(turbulenceDampingCoeff*alpha, k)
+        - fvm::Sp(turbulenceSuppressionRate, k)
+      );
+      kEqn.relax();
+      return kEqn.solve();
+    }
+  };
 
-  kEqn.relax();
-
-  const auto kLinearSolvePerformance = kEqn.solve();
+  const auto kLinearSolvePerformance = solveKWithLinearization();
   recordLinearSolve
   (
       kLinearSolveStats,
