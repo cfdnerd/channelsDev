@@ -94,20 +94,6 @@ label optObjectiveWorsenWindow
 (
   convergenceControl.lookupOrDefault<label>("optObjectiveWorsenWindow", 0)
 );
-scalar optClipGuardFluidFraction
-(
-  convergenceControl.lookupOrDefault<scalar>("optClipGuardFluidFraction", 1.0)
-);
-// Retired dictionary tuning knob: keep a fixed no-progress tolerance.
-scalar optClipGuardNoProgressTol(5e-4);
-label optClipGuardWindow
-(
-  convergenceControl.lookupOrDefault<label>("optClipGuardWindow", 0)
-);
-// Retired dictionary tuning knobs: fixed hard-reject envelopes.
-scalar optClipHardRejectFluidFraction(2.0);
-scalar optClipHardRejectGrayFraction(2.0);
-scalar optClipHardRejectFluidJump(GREAT);
 Switch optRecoveryEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optRecoveryEnable", false)
@@ -260,8 +246,6 @@ Switch optRequireClosureDerivativeChecks
 (
   convergenceControl.lookupOrDefault<Switch>("optRequireClosureDerivativeChecks", true)
 );
-// Retired dictionary tuning knob.
-Switch optClipGuardRejectInsteadOfStop(false);
 word optRunMode
 (
   convergenceControl.lookupOrDefault<word>("optRunMode", "production")
@@ -277,10 +261,6 @@ Switch optFirstFailureSnapshotEnable
 Switch optAdjointRollbackGuardsEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optAdjointRollbackGuardsEnable", true)
-);
-Switch optClosureBoundedOmegaLimiterEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optClosureBoundedOmegaLimiterEnable", true)
 );
 Switch optContinuationEventDriven
 (

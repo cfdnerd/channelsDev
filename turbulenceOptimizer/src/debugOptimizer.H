@@ -665,71 +665,31 @@ const scalar maxClipFraction = Foam::max
 const scalar maxFluidClipFraction = Foam::max(kFloorFluidFraction, omegaFloorFluidFraction);
 const scalar maxGrayClipFraction = Foam::max(kFloorGrayFraction, omegaFloorGrayFraction);
 const scalar maxTransitionClipFraction = Foam::max(maxGrayClipFraction, maxFluidClipFraction);
-const bool clipGuardEnabled =
-  customTurbulenceActive && optClipGuardWindow > 0;
-const bool clipGuardActive =
-  clipGuardEnabled
-  && constraintWorsenCountingActive
-  && maxConstraintViolation > optConstraintTol
-  && maxFluidClipFraction >= optClipGuardFluidFraction;
-const label candidateClipGuardStreak = clipGuardActive ? clipGuardStreak + 1 : 0;
-const scalar clipGuardNoProgressTolClamped =
-  Foam::max(optClipGuardNoProgressTol, scalar(1e-8));
-const bool clipGuardNoProgressActive =
-  clipGuardActive
-  && hasPreviousGuardConstraintViolation
-  && guardConstraintViolationDelta > -clipGuardNoProgressTolClamped;
-const label candidateClipGuardNoProgressStreak =
-  clipGuardNoProgressActive ? clipGuardNoProgressStreak + 1 : 0;
-const bool clipGuardTriggered =
-  clipGuardEnabled
-  && candidateClipGuardStreak >= optClipGuardWindow
-  && candidateClipGuardNoProgressStreak >= optClipGuardWindow;
-const bool clipGuardRejectMode =
-  static_cast<bool>(optClipGuardRejectInsteadOfStop);
-const bool clipGuardForcedReject =
-  clipGuardTriggered
-  && clipGuardRejectMode
-  && (
-       guardConstraintViolationDelta > optConstraintWorsenTol
-    || objectiveWorsening
-     );
-const scalar clipHardRejectFluidFractionClamped =
-  Foam::max(Foam::min(optClipHardRejectFluidFraction, scalar(1.0)), scalar(0.0));
-const scalar clipHardRejectGrayFractionClamped =
-  Foam::max(Foam::min(optClipHardRejectGrayFraction, scalar(1.0)), scalar(0.0));
-const scalar clipHardRejectFluidJumpClamped =
-  Foam::max(optClipHardRejectFluidJump, scalar(0.0));
-const bool clipHardRejectByFraction =
-  customTurbulenceActive
-  && optimizationCycleTurbulentOptimizationMode
-  && (
-       maxFluidClipFraction >= clipHardRejectFluidFractionClamped
-    || maxGrayClipFraction >= clipHardRejectGrayFractionClamped
-     );
-const bool clipHardRejectByJump =
-  customTurbulenceActive
-  && optimizationCycleTurbulentOptimizationMode
-  && hasPreviousClipDiagnostics
-  && clipHardRejectFluidJumpClamped > SMALL
-  && maxFluidClipFraction >= Foam::max(scalar(0.5)*clipHardRejectFluidFractionClamped, optClipGuardFluidFraction)
-  && (maxFluidClipFraction - previousMaxFluidClipFraction) >= clipHardRejectFluidJumpClamped;
-const bool clipHardForcedReject =
-  clipHardRejectByFraction || clipHardRejectByJump;
-const bool clipForcedReject =
-  clipGuardForcedReject || clipHardForcedReject;
-const scalar clipMeritExcess =
-  Foam::max(maxFluidClipFraction - optClipGuardFluidFraction, scalar(0));
-const scalar clipPenaltyPreScheduleScale =
-  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.0));
-const scalar clipPenaltyRejectScale =
-  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.0));
-const scalar meritClipPenaltyScheduleScale =
-  constraintWorsenScheduleReady ? scalar(1.0) : clipPenaltyPreScheduleScale;
-const scalar meritClipPenaltyRejectScale =
-  meritRejectStreak > 0 ? clipPenaltyRejectScale : scalar(1.0);
-const scalar meritClipPenaltyActive =
-  scalar(0.0)*meritClipPenaltyScheduleScale*meritClipPenaltyRejectScale;
+const scalar clipGuardFluidFractionThreshold = scalar(1.0);
+const label clipGuardWindowDisabled(0);
+const scalar clipGuardNoProgressTolClamped = scalar(0.0);
+const scalar clipGuardNoProgressTolReference(5e-4);
+const bool clipGuardEnabled = false;
+const bool clipGuardActive = false;
+const label candidateClipGuardStreak = 0;
+const bool clipGuardNoProgressActive = false;
+const label candidateClipGuardNoProgressStreak = 0;
+const bool clipGuardTriggered = false;
+const bool clipGuardRejectMode = false;
+const bool clipGuardForcedReject = false;
+const scalar clipHardRejectFluidFractionClamped = scalar(1.0);
+const scalar clipHardRejectGrayFractionClamped = scalar(1.0);
+const scalar clipHardRejectFluidJumpClamped = GREAT;
+const bool clipHardRejectByFraction = false;
+const bool clipHardRejectByJump = false;
+const bool clipHardForcedReject = false;
+const bool clipForcedReject = false;
+const scalar clipMeritExcess = scalar(0.0);
+const scalar clipPenaltyPreScheduleScale = scalar(1.0);
+const scalar clipPenaltyRejectScale = scalar(1.0);
+const scalar meritClipPenaltyScheduleScale = scalar(1.0);
+const scalar meritClipPenaltyRejectScale = scalar(1.0);
+const scalar meritClipPenaltyActive = scalar(0.0);
 const scalar powerViolationPositive =
   Foam::max(powerConstraintFinalMargin, scalar(0.0));
 const scalar volumeViolationPositive =
@@ -1023,7 +983,7 @@ const bool feasibilityRestorationAccepted =
   feasibilityRestorationConstraintImproved
   && feasibilityRestorationObjectiveAcceptable;
 const bool clipHeavyState =
-     maxFluidClipFraction >= optClipGuardFluidFraction
+     maxFluidClipFraction >= clipGuardFluidFractionThreshold
   || maxGrayClipFraction >= optRogueClipGrayThreshold;
 const bool restorationStrictlyImproving =
      objectiveDelta <= 0.0
@@ -1104,7 +1064,7 @@ const bool meritDeteriorating =
 const bool clipRecoverySignal =
   customTurbulenceActive
   && (
-       maxFluidClipFraction >= 0.9*optClipGuardFluidFraction
+       maxFluidClipFraction >= 0.9*clipGuardFluidFractionThreshold
     || maxGrayClipFraction >= 0.85
   );
 (void)clipRecoverySignal;
@@ -1523,7 +1483,7 @@ const scalar sensitivityClipPenalty =
   Foam::min
   (
     scalar(1.0),
-    maxFluidClipFraction/Foam::max(optClipGuardFluidFraction, scalar(1e-3))
+    maxFluidClipFraction/Foam::max(clipGuardFluidFractionThreshold, scalar(1e-3))
   );
 const scalar sensitivityResidualPenalty =
   Foam::min
@@ -1572,7 +1532,7 @@ const bool sensitivityQualityFailCurrent =
 const bool sensitivityQualityHardFailCurrent =
   sensitivityQualityFailCurrent
   && (
-       maxFluidClipFraction >= optClipHardRejectFluidFraction
+       maxFluidClipFraction >= clipHardRejectFluidFractionClamped
     || sensitivityFinitePenalty > 0.0
     || residualGrowthGatePassed == false
      );
@@ -1697,7 +1657,7 @@ if (!meritAccepted)
   if (continuationClipBackoffEligible || continuationFieldEnvelopeBackoffEligible)
   {
     const bool severeClipLock =
-         maxFluidClipFraction >= Foam::max(scalar(2.0)*optClipGuardFluidFraction, scalar(0.20))
+         maxFluidClipFraction >= Foam::max(scalar(2.0)*clipGuardFluidFractionThreshold, scalar(0.20))
       || maxGrayClipFraction >= scalar(0.92);
     const label streakBackoffSteps =
       Foam::min(Foam::max(meritRejectStreak, label(1)), label(6));
@@ -1715,7 +1675,7 @@ if (!meritAccepted)
     if
     (
          severeClipLock
-      && meritRejectStreak >= optClipGuardWindow
+      && meritRejectStreak >= clipGuardWindowDisabled
       && continuationIteration > 35
     )
     {
@@ -2010,7 +1970,7 @@ else
     && rogueDirectionSwitchCount > 0
     && !clipForcedReject
     && guardConstraintViolationDelta
-       < -Foam::max(optConstraintWorsenTol, optClipGuardNoProgressTol);
+       < -Foam::max(optConstraintWorsenTol, clipGuardNoProgressTolReference);
   if (rogueDirectionSwitchRearmEligible)
   {
     rogueDirectionSwitchCount =
@@ -2366,7 +2326,7 @@ if (Pstream::master())
     ? "WARN"
     : "OK";
   const scalar severeTransitionFluidThreshold =
-    Foam::max(scalar(0.08), scalar(0.8)*optClipGuardFluidFraction);
+    Foam::max(scalar(0.08), scalar(0.8)*clipGuardFluidFractionThreshold);
   const bool severeTransitionClip =
     customTurbulenceActive
     && maxGrayClipFraction >= 0.85
@@ -2668,10 +2628,10 @@ if (Pstream::master())
   (
     "Clip guard",
     "fluid="+fmtScalar(maxFluidClipFraction),
-    "streak="+fmtCount(reportedClipGuardStreak)+"/"+fmtCount(optClipGuardWindow)
+    "streak="+fmtCount(reportedClipGuardStreak)+"/"+fmtCount(clipGuardWindowDisabled)
       + " noProg=" + fmtCount(reportedClipGuardNoProgressStreak)
-      + "/" + fmtCount(optClipGuardWindow),
-    "thr="+fmtScalar(optClipGuardFluidFraction)
+      + "/" + fmtCount(clipGuardWindowDisabled),
+    "thr="+fmtScalar(clipGuardFluidFractionThreshold)
       + " noProgTol=" + fmtScalar(clipGuardNoProgressTolClamped),
     "trigger="+std::string(clipGuardTriggered ? "yes" : "no")
       + " rejMode=" + std::string(clipGuardRejectMode ? "yes" : "no")
@@ -2990,11 +2950,11 @@ if (Pstream::master())
       << ",\"clipGuardEnabled\":" << (clipGuardEnabled ? 1 : 0)
       << ",\"clipGuardActive\":" << (clipGuardActive ? 1 : 0)
       << ",\"clipGuardNoProgressActive\":" << (clipGuardNoProgressActive ? 1 : 0)
-      << ",\"clipGuardFluidFractionThreshold\":" << optClipGuardFluidFraction
+      << ",\"clipGuardFluidFractionThreshold\":" << clipGuardFluidFractionThreshold
       << ",\"clipGuardStreak\":" << reportedClipGuardStreak
       << ",\"clipGuardNoProgressStreak\":" << reportedClipGuardNoProgressStreak
       << ",\"clipGuardNoProgressTol\":" << clipGuardNoProgressTolClamped
-      << ",\"clipGuardWindow\":" << optClipGuardWindow
+      << ",\"clipGuardWindow\":" << clipGuardWindowDisabled
       << ",\"clipGuardTriggered\":" << (clipGuardTriggered ? 1 : 0)
       << ",\"clipGuardRejectMode\":" << (clipGuardRejectMode ? 1 : 0)
       << ",\"clipGuardForcedReject\":" << (clipGuardForcedReject ? 1 : 0)

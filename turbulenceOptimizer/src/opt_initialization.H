@@ -108,13 +108,6 @@ if (optimizationCycleTurbulentOptimizationMode && static_cast<bool>(optFormulati
       << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
-  if (static_cast<bool>(smoothTurbulenceClipping))
-  {
-    FatalErrorInFunction
-      << "Rule violation: smooth turbulence clipping must remain disabled. "
-      << "Use first-principles/formulation fixes and fail-fast diagnostics."
-      << exit(FatalError);
-  }
   if
   (
       static_cast<bool>(optRequireGradientChecks)

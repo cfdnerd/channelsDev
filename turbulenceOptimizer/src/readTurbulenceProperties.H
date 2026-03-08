@@ -80,8 +80,6 @@ scalar omegaWallFactor
 dimensionedScalar nutMax(customTurbulenceProperties.lookup("nutMax"));
 dimensionedScalar yMin(customTurbulenceProperties.lookup("yMin"));
 dimensionedScalar nutFloor(customTurbulenceProperties.lookup("nutFloor"));
-// Clipping policy is disabled by rule: use fail-fast diagnostics instead.
-Switch smoothTurbulenceClipping(false);
 scalar turbulenceDampingCoeff(readScalar(customTurbulenceProperties.lookup("turbulenceDampingCoeff")));
 if (kMin.value() <= SMALL)
 {
@@ -474,7 +472,6 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
         << ", clipWeighting=false"
         << "). "
-        << "Smooth clipping=disabled (policy). "
         << "Porous-aware transport="
         << (porousAwareTurbulenceTransport ? "true" : "false")
         << " (prodExp=" << porousTurbulenceProductionExponent
@@ -482,9 +479,6 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", sinkExp=" << porousTurbulenceSuppressionExponent
         << ", sinkS=" << porousTurbulenceSuppressionCoeff
         << ", sinkA=" << porousTurbulenceAlphaSinkCoeff << "). "
-        << "omegaLimiterBounded="
-        << (optClosureBoundedOmegaLimiterEnable ? "true" : "false")
-        << ". "
         << "Bounded closure state="
         << (optimizationCycleClosureConsistencyUseBoundedState ? "true" : "false")
         << " logState=" << (optimizationCycleUseLogClosureState ? "true" : "false")

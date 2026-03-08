@@ -213,10 +213,7 @@ const bool preMmaSensitivityFail =
   && preMmaSensitivityQualityScore <= sensitivityFailThresholdActive;
 const bool preMmaHardFail =
   preMmaSensitivityFail
-  && (
-       previousMaxFluidClipFraction >= optClipHardRejectFluidFraction
-    || preMmaFinitePenalty > 0.0
-     );
+  && preMmaFinitePenalty > 0.0;
 
 sensitivityQualityScore = preMmaSensitivityQualityScore;
 sensitivityQualityWarn = preMmaSensitivityWarn;

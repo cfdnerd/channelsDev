@@ -1,7 +1,4 @@
 {
-  const bool closureBoundedOmegaLimiterEnabled =
-    static_cast<bool>(optClosureBoundedOmegaLimiterEnable);
-
   const scalar kMinState = gMin(k);
   const scalar omegaMinState = gMin(omega);
   if (!(kMinState > 0.0) || !(omegaMinState > 0.0))
@@ -127,34 +124,11 @@
       omegaLimiter.dimensions(),
       SMALL
     );
-    const dimensionedScalar omegaBoundEps
-    (
-      "omegaBoundEps",
-      omegaLimiter.dimensions(),
-      Foam::max(1e-3*Foam::max(omegaMin.value(), SMALL), SMALL)
-    );
-    const volScalarField omegaBoundBlendDen
-    (
-      Foam::sqrt
-      (
-        sqr(omegaLimiter - smallOmegaLimiter)
-        + sqr(omegaBoundEps)
-      )
-    );
-    const volScalarField boundedOmegaLimiter
-    (
-      0.5*(omegaLimiter + smallOmegaLimiter + omegaBoundBlendDen)
-    );
     const volScalarField omegaLimiterPositive
     (
       Foam::max(omegaLimiter, smallOmegaLimiter)
     );
-    const volScalarField omegaNutDenominator
-    (
-      closureBoundedOmegaLimiterEnabled
-      ? boundedOmegaLimiter
-      : omegaLimiterPositive
-    );
+    const volScalarField omegaNutDenominator(omegaLimiterPositive);
     const volScalarField rawNut(a1Coeff*kStateRef/omegaNutDenominator);
     nut = rawNut;
     const scalar nutMinValue = gMin(nut);
@@ -204,28 +178,11 @@
           + omegaLimiterBlendDenState
         )
       );
-      const volScalarField omegaBoundBlendDenState
-      (
-        Foam::sqrt
-        (
-          sqr(omegaLimiterState - smallOmegaLimiter)
-          + sqr(omegaBoundEps)
-        )
-      );
-      const volScalarField boundedOmegaLimiterState
-      (
-        0.5*(omegaLimiterState + smallOmegaLimiter + omegaBoundBlendDenState)
-      );
       const volScalarField omegaLimiterStatePositive
       (
         Foam::max(omegaLimiterState, smallOmegaLimiter)
       );
-      const volScalarField omegaNutDenominatorState
-      (
-        closureBoundedOmegaLimiterEnabled
-        ? boundedOmegaLimiterState
-        : omegaLimiterStatePositive
-      );
+      const volScalarField omegaNutDenominatorState(omegaLimiterStatePositive);
       const volScalarField rawNutState(a1Coeff*kState/omegaNutDenominatorState);
       return volScalarField
       (
