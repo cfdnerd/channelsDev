@@ -440,9 +440,6 @@ const scalar omegaGlobalMax =
 const scalar nutGlobalMax = customTurbulenceActive ? gMax(nut) : 0;
 
 const scalar objectiveRelativeDelta = Foam::mag(objectiveDelta)/Foam::max(Foam::mag(objectiveValue), SMALL);
-const bool objectiveWorsening =
-  opt > 0
-  && objectiveDelta > optObjectiveWorsenTol;
 const scalar maxConstraintViolationCore =
   Foam::max(Foam::max(powerConstraintMargin, volumeConstraintMargin), scalar(0));
 const scalar thermalConstraintViolation =
@@ -463,198 +460,8 @@ const scalar guardConstraintViolationDelta =
   hasPreviousGuardConstraintViolation
   ? guardConstraintViolation - previousGuardConstraintViolation
   : 0;
-const bool powerConstraintMarginWorsening =
-  hasPreviousPowerConstraintMargin
-  && powerConstraintMargin > optConstraintTol
-  && powerConstraintMarginDelta > optConstraintWorsenTol;
-const bool powerConstraintFinalWorsening =
-  hasPreviousPowerConstraintFinalMargin
-  && powerConstraintFinalMargin > optConstraintTol
-  && powerConstraintFinalMarginDelta > optConstraintWorsenTol;
-const bool powerConstraintWorsening =
-  powerConstraintMarginWorsening;
-const bool maxConstraintViolationWorsening =
-  hasPreviousMaxConstraintViolation
-  && maxConstraintViolation > optConstraintTol
-  && maxConstraintViolationDelta > optConstraintWorsenTol;
-const bool guardConstraintViolationWorsening =
-  hasPreviousGuardConstraintViolation
-  && guardConstraintViolation > optConstraintTol
-  && guardConstraintViolationDelta > optConstraintWorsenTol;
-const bool constraintWorsenGuardEnabled = optConstraintWorsenWindow > 0;
-const label scheduleIterationCurrent =
-  Foam::max(opt, label(1));
-const label scheduleIterationPrevious =
-  Foam::max(opt - 1, label(0));
-const scalar powerConstraintScheduleDenomCurrent =
-  Foam::max(PowerDissRelax - scalar(0.2)*scheduleIterationCurrent, PowerDissMax);
-const scalar powerConstraintScheduleDenomPrevious =
-  Foam::max(PowerDissRelax - scalar(0.2)*scheduleIterationPrevious, PowerDissMax);
-const bool powerConstraintScheduleSettled =
-  powerConstraintScheduleDenomCurrent <= PowerDissMax + SMALL;
-const bool powerConstraintScheduleTightening =
-  powerConstraintScheduleDenomCurrent + SMALL < powerConstraintScheduleDenomPrevious;
-const bool constraintWorsenScheduleReady =
-  powerConstraintScheduleSettled && !powerConstraintScheduleTightening;
-const bool constraintWorsenScheduleReadyTransition =
-  constraintWorsenScheduleReady
-  && hasPreviousConstraintWorsenScheduleReady
-  && !previousConstraintWorsenScheduleReady;
-const scalar powerConstraintScheduleStep = 0.2;
-const scalar powerConstraintScheduleGap =
-  Foam::max(powerConstraintScheduleDenomCurrent - PowerDissMax, scalar(0));
-const label powerConstraintScheduleIterationsToSettle =
-  powerConstraintScheduleGap > SMALL
-  ? static_cast<label>(powerConstraintScheduleGap/powerConstraintScheduleStep + 0.999999)
-  : 0;
-const scalar optimizationIterationsRemainingRaw =
-  Foam::max(runTime.endTime().value() - static_cast<scalar>(opt), scalar(0));
-const label optimizationIterationsRemaining =
-  static_cast<label>(optimizationIterationsRemainingRaw + 0.000001);
-const label scheduleHorizonLagIterations =
-  Foam::max(powerConstraintScheduleIterationsToSettle - optimizationIterationsRemaining, label(0));
-const label constraintScheduleHorizonLagTolerance =
-  Foam::max(optConstraintScheduleHorizonLagTolerance, label(0));
-const bool powerConstraintScheduleWillSettleInRun =
-  powerConstraintScheduleIterationsToSettle <= optimizationIterationsRemaining;
-const bool continuationFreezePhaseActive =
-  powerConstraintScheduleSettled || !powerConstraintScheduleWillSettleInRun;
-const scalar convergenceConstraintViolation =
-  powerConstraintScheduleSettled ? maxConstraintViolation : guardConstraintViolation;
-const scalar scheduleHorizonConstraintViolation =
-  powerConstraintScheduleSettled ? maxConstraintViolation : guardConstraintViolation;
-const bool constraintWorsenCountingActive =
-  constraintWorsenGuardEnabled
-  && scheduleIterationCurrent >= optConstraintWorsenMinIterations
-  && constraintWorsenScheduleReady;
-if (constraintWorsenCountingActive && !hasGuardConstraintViolationAtCountStart)
-{
-  guardConstraintViolationAtCountStart = guardConstraintViolation;
-  guardConstraintViolationMinSinceCountStart = guardConstraintViolation;
-  hasGuardConstraintViolationAtCountStart = true;
-  guardConstraintViolationCountStartIter = opt;
-}
-else if (constraintWorsenCountingActive)
-{
-  guardConstraintViolationMinSinceCountStart =
-    Foam::min(guardConstraintViolationMinSinceCountStart, guardConstraintViolation);
-}
-else if (!constraintWorsenCountingActive)
-{
-  guardConstraintViolationAtCountStart = 0;
-  guardConstraintViolationMinSinceCountStart = 0;
-  hasGuardConstraintViolationAtCountStart = false;
-  guardConstraintViolationCountStartIter = -1;
-}
-const scalar guardConstraintViolationNetRise =
-  hasGuardConstraintViolationAtCountStart
-  ? guardConstraintViolation - guardConstraintViolationAtCountStart
-  : 0;
-const scalar guardConstraintViolationReboundRise =
-  hasGuardConstraintViolationAtCountStart
-  ? guardConstraintViolation - guardConstraintViolationMinSinceCountStart
-  : 0;
-const label guardConstraintViolationCountAge =
-  hasGuardConstraintViolationAtCountStart && guardConstraintViolationCountStartIter >= 0
-  ? Foam::max(opt - guardConstraintViolationCountStartIter, 0)
-  : 0;
-const label maxGuardConstraintViolationAgeInRun =
-  guardConstraintViolationCountAge + optimizationIterationsRemaining;
-const scalar effectiveConstraintWorsenNetRiseTol =
-  Foam::max
-  (
-    optConstraintWorsenNetRiseTol,
-    optConstraintWorsenTol*Foam::max(optConstraintWorsenWindow, label(1))
-  );
-const label effectiveConstraintWorsenNetRiseMinAge =
-  Foam::max
-  (
-    label(1),
-    Foam::min
-    (
-      Foam::min
-      (
-        optConstraintWorsenNetRiseMinAge,
-        Foam::max(optConstraintWorsenWindow, label(1))
-      ),
-      Foam::max(maxGuardConstraintViolationAgeInRun, label(1))
-    )
-  );
-const label effectiveConstraintReboundMinAge =
-  Foam::max
-  (
-    label(1),
-    Foam::min
-    (
-      Foam::max
-      (
-        Foam::max(optConstraintReboundMinAge, label(1)),
-        effectiveConstraintWorsenNetRiseMinAge
-      ),
-      Foam::max(maxGuardConstraintViolationAgeInRun, label(1))
-    )
-  );
-const label effectiveConstraintReboundWindow =
-  Foam::max(optConstraintReboundWindow, label(1));
-const scalar effectiveConstraintReboundRiseTol =
-  Foam::max
-  (
-    optConstraintReboundRiseTol,
-    optConstraintWorsenTol*Foam::max(effectiveConstraintReboundWindow, label(1))
-  );
-const label candidatePowerConstraintWorsenStreak =
-  (constraintWorsenCountingActive && powerConstraintFinalWorsening)
-  ? powerConstraintWorsenStreak + 1
-  : 0;
-const label candidateMaxViolationWorsenStreak =
-  (constraintWorsenCountingActive && guardConstraintViolationWorsening)
-  ? maxViolationWorsenStreak + 1
-  : 0;
-const label candidateObjectiveWorsenStreak =
-  (
-      constraintWorsenCountingActive
-   && maxConstraintViolationWorsening
-   && objectiveWorsening
-  )
-  ? objectiveWorsenStreak + 1
-  : 0;
-const bool constraintWorsenGuardTriggered =
-  constraintWorsenCountingActive
-  && candidateMaxViolationWorsenStreak >= optConstraintWorsenWindow;
-const bool constraintWorsenNetRiseTriggered =
-  constraintWorsenCountingActive
-  && hasGuardConstraintViolationAtCountStart
-  && guardConstraintViolationCountAge >= effectiveConstraintWorsenNetRiseMinAge
-  && guardConstraintViolation > optConstraintTol
-  && guardConstraintViolationDelta > optConstraintWorsenTol
-  && guardConstraintViolationNetRise >= effectiveConstraintWorsenNetRiseTol;
-const bool constraintWorsenReboundTriggered =
-  constraintWorsenCountingActive
-  && optConstraintReboundWindow > 0
-  && hasGuardConstraintViolationAtCountStart
-  && guardConstraintViolationCountAge >= effectiveConstraintReboundMinAge
-  && candidateMaxViolationWorsenStreak >= effectiveConstraintReboundWindow
-  && guardConstraintViolation > optConstraintTol
-  && guardConstraintViolationDelta > optConstraintWorsenTol
-  && guardConstraintViolationReboundRise >= effectiveConstraintReboundRiseTol;
-const scalar constraintReboundNetRiseCorroborationTol =
-  0.5*effectiveConstraintWorsenNetRiseTol;
-const bool constraintWorsenReboundCorroborated =
-  objectiveWorsening
-  || candidateMaxViolationWorsenStreak > effectiveConstraintReboundWindow
-  || guardConstraintViolationNetRise >= constraintReboundNetRiseCorroborationTol;
-const bool constraintWorsenReboundStopTriggered =
-  constraintWorsenReboundTriggered && constraintWorsenReboundCorroborated;
-const bool constraintScheduleHorizonGuardTriggered =
-  static_cast<bool>(optConstraintScheduleHorizonGuard)
-  && constraintWorsenGuardEnabled
-  && opt >= optConstraintWorsenMinIterations
-  && !constraintWorsenScheduleReady
-  && scheduleHorizonLagIterations > constraintScheduleHorizonLagTolerance
-  && scheduleHorizonConstraintViolation > optConstraintTol;
-const bool objectiveWorsenGuardTriggered =
-  optObjectiveWorsenWindow > 0
-  && candidateObjectiveWorsenStreak >= optObjectiveWorsenWindow;
+const scalar convergenceConstraintViolation = maxConstraintViolation;
+const scalar guardConstraintViolationNetRise = guardConstraintViolationDelta;
 const scalar turbulenceClipObsFraction = 0.25;
 const scalar turbulenceClipWarnFraction = 0.70;
 const scalar maxClipFraction = Foam::max
@@ -665,27 +472,8 @@ const scalar maxClipFraction = Foam::max
 const scalar maxFluidClipFraction = Foam::max(kFloorFluidFraction, omegaFloorFluidFraction);
 const scalar maxGrayClipFraction = Foam::max(kFloorGrayFraction, omegaFloorGrayFraction);
 const scalar maxTransitionClipFraction = Foam::max(maxGrayClipFraction, maxFluidClipFraction);
-const scalar clipGuardFluidFractionThreshold = scalar(1.0);
-const label clipGuardWindowDisabled(0);
-const scalar clipGuardNoProgressTolClamped = scalar(0.0);
-const scalar clipGuardNoProgressTolReference(5e-4);
-const bool clipGuardEnabled = false;
-const bool clipGuardActive = false;
-const label candidateClipGuardStreak = 0;
-const bool clipGuardNoProgressActive = false;
-const label candidateClipGuardNoProgressStreak = 0;
-const bool clipGuardTriggered = false;
-const bool clipGuardRejectMode = false;
-const bool clipGuardForcedReject = false;
-const scalar clipHardRejectFluidFractionClamped = scalar(1.0);
-const scalar clipHardRejectGrayFractionClamped = scalar(1.0);
-const scalar clipHardRejectFluidJumpClamped = GREAT;
-const bool clipHardRejectByFraction = false;
-const bool clipHardRejectByJump = false;
-const bool clipHardForcedReject = false;
-const bool clipForcedReject = false;
-const scalar clipMeritExcess = scalar(0.0);
-const scalar meritClipPenaltyActive = scalar(0.0);
+const bool clipHardSafetyStop = false;
+const bool clipSafetyStop = false;
 const scalar powerViolationPositive =
   Foam::max(powerConstraintFinalMargin, scalar(0.0));
 const scalar volumeViolationPositive =
@@ -700,33 +488,6 @@ const scalar thermalTminViolationPositive =
   : scalar(0.0);
 const scalar thermalEnvelopeViolation =
   Foam::max(thermalTmaxViolationPositive, thermalTminViolationPositive);
-const scalar meritConstraintTermLinear =
-  scalar(0.0)*guardConstraintViolation;
-const scalar meritConstraintTerm = meritConstraintTermLinear;
-const scalar meritThermalEnvelopeTerm =
-  static_cast<bool>(optThermalEnvelopeConstraintEnable)
-  ? optThermalEnvelopePenalty*thermalEnvelopeViolation
-  : scalar(0.0);
-const scalar meritValue =
-  objectiveValue
-  + meritConstraintTerm
-  + meritThermalEnvelopeTerm
-  + meritClipPenaltyActive*clipMeritExcess;
-const scalar meritAcceptanceTol =
-  hasPreviousAcceptedMerit
-  ? (scalar(0.0) + scalar(0.0)*Foam::mag(previousAcceptedMerit))
-  : 0;
-const scalar rejectMoveScaleClamped =
-  Foam::max(Foam::min(scalar(1.0), scalar(0.99)), scalar(0.1));
-const scalar recoverMoveScaleClamped =
-  Foam::max(scalar(1.0), scalar(1.0));
-(void)recoverMoveScaleClamped;
-const scalar meritTrustMoveMinClamped =
-  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.01));
-const scalar continuationLowTrustThresholdReport =
-  Foam::max(Foam::min(optContinuationLowTrustThreshold, scalar(1.0)), meritTrustMoveMinClamped);
-const bool continuationFrozenAny =
-  continuationFrozenByReject || continuationFrozenByLowTrust || continuationFrozenByClipHold;
 
 scalar predictedObjectiveDeltaLocal = 0;
 scalar predictedPowerDeltaLocal = 0;
@@ -757,107 +518,15 @@ const scalar predictedPowerDelta = predictedPowerDeltaLocal/powerConstraintWeigh
 const scalar predictedVolumeDelta = predictedVolumeDeltaLocal/volumeConstraintWeightSafe;
 const scalar predictedThermalTmaxDelta = predictedThermalTmaxDeltaLocal;
 const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
-const scalar predictedThermalTmaxViolationPositive =
-  Foam::max(thermalTmaxViolationPositive + predictedThermalTmaxDelta, scalar(0.0));
-const scalar predictedThermalTminViolationPositive =
-  Foam::max(thermalTminViolationPositive + predictedThermalTminDelta, scalar(0.0));
-const scalar predictedGuardConstraintDelta =
-  Foam::max
-  (
-    Foam::max(predictedPowerDelta, predictedVolumeDelta),
-    Foam::max(predictedThermalTmaxDelta, predictedThermalTminDelta)
-  );
-const scalar predictedConstraintMeritDeltaLinear =
-  scalar(0.0)*predictedGuardConstraintDelta;
-const scalar predictedConstraintMeritDelta = predictedConstraintMeritDeltaLinear;
-const scalar predictedThermalEnvelopeMeritDelta =
-  static_cast<bool>(optThermalEnvelopeConstraintEnable)
-  ? optThermalEnvelopePenalty
-    *(
-       Foam::max(predictedThermalTmaxViolationPositive, predictedThermalTminViolationPositive)
-      - thermalEnvelopeViolation
-     )
-  : scalar(0.0);
-const scalar predictedMeritDelta =
-  predictedObjectiveDelta + predictedConstraintMeritDelta + predictedThermalEnvelopeMeritDelta;
-const scalar predictedMeritReduction =
-  -predictedMeritDelta;
-const scalar actualMeritReduction =
-  hasPreviousAcceptedMerit ? previousAcceptedMerit - meritValue : 0.0;
+const scalar predictedObjectiveReduction = -predictedObjectiveDelta;
+const scalar actualObjectiveReduction =
+  hasPreviousObjectiveValue ? previousObjectiveValue - objectiveValue : 0.0;
 const bool trustRatioDefined =
-  hasPreviousAcceptedMerit && predictedMeritReduction > SMALL;
+  hasPreviousObjectiveValue && predictedObjectiveReduction > SMALL;
 const scalar trustRatio =
   trustRatioDefined
-  ? actualMeritReduction/Foam::max(predictedMeritReduction, SMALL)
+  ? actualObjectiveReduction/Foam::max(predictedObjectiveReduction, SMALL)
   : 1.0;
-const bool trustRatioAccepted =
-  !static_cast<bool>(false)
-  || !hasPreviousAcceptedMerit
-  || !trustRatioDefined
-  || trustRatio >= scalar(0.0);
-const bool trustRatioAcceptedWithSensitivityGuard = trustRatioAccepted;
-(void)trustRatioAcceptedWithSensitivityGuard;
-const bool filterAcceptanceEnabled =
-  static_cast<bool>(false)
-  && optimizationCycleTurbulentOptimizationMode
-  && label(0) > 0;
-bool filterDominated = false;
-if (filterAcceptanceEnabled)
-{
-  for (std::size_t fi = 0; fi < filterConstraintArchive.size(); ++fi)
-  {
-    if
-    (
-         guardConstraintViolation >= filterConstraintArchive[fi] - scalar(0.0)
-      && objectiveValue >= filterObjectiveArchive[fi] - scalar(0.0)
-    )
-    {
-      filterDominated = true;
-      break;
-    }
-  }
-}
-const bool filterAccepted = !filterAcceptanceEnabled || !filterDominated;
-const label filterDeadlockRejectThreshold =
-  Foam::max(label(0), label(4));
-const bool filterDeadlockBypass =
-(
-     filterAcceptanceEnabled
-  && !optDiagnosticMode
-  && !filterAccepted
-  && hasPreviousAcceptedMerit
-  && static_cast<bool>(false)
-  && meritRejectStreak >= filterDeadlockRejectThreshold
-  && constraintWorsenScheduleReady
-  && !clipForcedReject
-  && !objectiveWorsening
-  && guardConstraintViolationDelta <= optConstraintWorsenTol
-  && meritValue <= previousAcceptedMerit + scalar(2.0)*meritAcceptanceTol
-)
-||
-(
-     filterAcceptanceEnabled
-  && !optDiagnosticMode
-  && !filterAccepted
-  && hasPreviousAcceptedMerit
-  && static_cast<bool>(false)
-  && meritRejectStreak >= 3*filterDeadlockRejectThreshold
-  && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
-  && !clipForcedReject
-  && guardConstraintViolationDelta
-     < -Foam::max(scalar(0.05)*Foam::max(optConstraintTol, SMALL), scalar(1e-5))
-  && (
-       !static_cast<bool>(optThermalEnvelopeConstraintEnable)
-    || thermalTmaxConstraintMarginDelta <= scalar(0.0)
-     )
-);
-const bool filterAcceptedForMerit =
-  filterAccepted || filterDeadlockBypass;
-const bool meritAcceptedPreGate =
-  !static_cast<bool>(false)
-  || !hasPreviousAcceptedMerit
-  || meritValue <= previousAcceptedMerit + meritAcceptanceTol;
-(void)meritAcceptedPreGate;
 const scalar objectiveAbsValue = Foam::mag(objectiveValue);
 const scalar thermalFieldAbsMaxObserved =
   Foam::max(Foam::mag(TLocalMin), Foam::mag(TLocalMax));
@@ -868,286 +537,19 @@ const bool thermalFieldEnvelopeViolated =
      !std::isfinite(static_cast<double>(TLocalMin))
   || !std::isfinite(static_cast<double>(TLocalMax))
   || thermalFieldAbsMaxObserved > Foam::max(optThermalFieldAbsMax, scalar(0.0));
-const bool fieldEnvelopeForcedReject =
+const bool fieldEnvelopeStop =
   optimizationCycleTurbulentOptimizationMode
   && (objectiveEnvelopeViolated || thermalFieldEnvelopeViolated);
-const bool constraintNonDeteriorationAccepted =
-     !hasPreviousGuardConstraintViolation
-  || guardConstraintViolation <= previousGuardConstraintViolation + optConstraintWorsenTol;
-const bool clipJumpHealthGatePassed =
-     !hasPreviousClipDiagnostics
-  || !clipHardRejectByJump;
 const scalar residualGrowthAcceptLimit =
   optDiagnosticMode
   ? scalar(1.2)
   : scalar(2.0);
-const bool residualGrowthGatePassed =
+const bool residualGrowthWithinLimit =
      !hasPreviousMaxLinearFinalResidual
   || maxLinearFinalResidual <= linearSolveWarnResidual
   || linearResidualGrowthRatio <= residualGrowthAcceptLimit;
-const bool healthGatesPassed =
-  !fieldEnvelopeForcedReject;
-const scalar feasibilityRestorationClipSlack =
-  Foam::max(scalar(0.0), scalar(0.0));
-const scalar feasibilityRestorationGrayClipLimit =
-  Foam::max(Foam::min(optRogueClipGrayThreshold + feasibilityRestorationClipSlack, scalar(1.0)), scalar(0.0));
-const bool feasibilityRestorationClipCompatible =
-     !clipForcedReject
-  || (
-       static_cast<bool>(false)
-    && !clipHardForcedReject
-    && (
-         !hasPreviousClipDiagnostics
-      || maxFluidClipFraction <= previousMaxFluidClipFraction + feasibilityRestorationClipSlack
-       )
-    && maxGrayClipFraction <= feasibilityRestorationGrayClipLimit
-    && guardConstraintViolationDelta < 0
-     );
-const bool feasibilityRestorationEligible =
-     static_cast<bool>(false)
-  && !optDiagnosticMode
-  && optimizationCycleTurbulentOptimizationMode
-  && hasPreviousGuardConstraintViolation
-  && meritRejectStreak >= Foam::max(label(0), label(1))
-  && feasibilityRestorationClipCompatible;
-const label feasibilityRestorationRejectExcess =
-  Foam::max
-  (
-    meritRejectStreak - Foam::max(label(0), label(1)),
-    label(0)
-  );
-const scalar feasibilityRestorationObjectiveRelTolAdaptive =
-  Foam::min
-  (
-    scalar(0.60),
-    Foam::max
-    (
-      scalar(0.0),
-      scalar(0.05) + scalar(0.02)*feasibilityRestorationRejectExcess
-    )
-  );
-const scalar feasibilityRestorationObjectiveAbsTolAdaptive =
-  Foam::max
-  (
-    scalar(0.0),
-    scalar(0.5)*meritAcceptanceTol + scalar(2e-3)*feasibilityRestorationRejectExcess
-  );
-const bool feasibilityRestorationConstraintImproved =
-  feasibilityRestorationEligible
-  && (
-      guardConstraintViolation
-     <= previousGuardConstraintViolation
-      - Foam::max
-        (
-          scalar(0.0),
-          scalar(0.1)*optConstraintWorsenTol
-        )
-     );
-const bool feasibilityRestorationObjectiveAcceptable =
-  feasibilityRestorationEligible
-  && (
-       objectiveDelta <= Foam::max(feasibilityRestorationObjectiveAbsTolAdaptive, optObjectiveWorsenTol)
-    || (
-         hasPreviousObjectiveValue
-      && objectiveDelta > 0
-      && objectiveDelta/Foam::max(Foam::mag(previousObjectiveValue), SMALL)
-         <= Foam::max(feasibilityRestorationObjectiveRelTolAdaptive, scalar(0.0))
-       )
-     );
-const bool feasibilityRestorationAccepted =
-  feasibilityRestorationConstraintImproved
-  && feasibilityRestorationObjectiveAcceptable;
-const bool clipHeavyState =
-     maxFluidClipFraction >= clipGuardFluidFractionThreshold
-  || maxGrayClipFraction >= optRogueClipGrayThreshold;
-const bool restorationStrictlyImproving =
-     objectiveDelta <= 0.0
-  && guardConstraintViolationDelta < 0.0
-  && healthGatesPassed;
-const bool feasibilityRestorationAcceptedGuarded =
-  feasibilityRestorationAccepted
-  && (!clipHeavyState || restorationStrictlyImproving);
-(void)feasibilityRestorationAcceptedGuarded;
-const bool deadlockConstraintPriorityEligible =
-     feasibilityRestorationEligible
-  && hasPreviousAcceptedMerit
-  && static_cast<bool>(false)
-  && meritRejectStreak >= filterDeadlockRejectThreshold
-  && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
-  && !clipForcedReject
-  && !fieldEnvelopeForcedReject
-  && healthGatesPassed
-  && (filterAcceptedForMerit || meritRejectStreak >= 2*filterDeadlockRejectThreshold)
-  && maxConstraintViolation > optConstraintTol;
-(void)deadlockConstraintPriorityEligible;
-const bool deadlockConstraintDominatedByVolume =
-  volumeViolationPositive >= powerViolationPositive
-  && volumeViolationPositive >= thermalEnvelopeViolation;
-const bool deadlockConstraintProgress =
-     guardConstraintViolation
-     <= previousGuardConstraintViolation
-       - Foam::max
-         (
-           scalar(0.0),
-           scalar(0.1)*optConstraintWorsenTol
-         )
-  || volumeConstraintMarginDelta
-     <= -Foam::max
-        (
-          scalar(0.5)*scalar(0.0),
-          scalar(0.1)*Foam::max(optConstraintTol, SMALL)
-        )
-  || (
-       deadlockConstraintDominatedByVolume
-    && predictedVolumeDelta
-       <= -Foam::max
-          (
-            scalar(0.5)*optConstraintTol,
-            scalar(0.0)
-          )
-     );
-(void)deadlockConstraintProgress;
-const scalar deadlockObjectiveAbsTol =
-  Foam::max
-  (
-    scalar(5.0)*feasibilityRestorationObjectiveAbsTolAdaptive,
-    scalar(2.0)*meritAcceptanceTol
-  );
-const scalar deadlockObjectiveRelTol =
-  Foam::min(scalar(0.75), scalar(2.0)*feasibilityRestorationObjectiveRelTolAdaptive);
-const bool deadlockObjectiveAcceptable =
-     objectiveDelta <= Foam::max(deadlockObjectiveAbsTol, optObjectiveWorsenTol)
-  || (
-       hasPreviousObjectiveValue
-    && objectiveDelta > 0
-    && objectiveDelta/Foam::max(Foam::mag(previousObjectiveValue), SMALL)
-       <= Foam::max(deadlockObjectiveRelTol, scalar(0.0))
-     );
-(void)deadlockObjectiveAcceptable;
-// Step-acceptance controller retired: always advance MMA design updates unless
-// a hard safety envelope is violated.
-const bool globalizationFrameworkEnabled(false);
-(void)globalizationFrameworkEnabled;
-const bool meritAccepted =
-     !fieldEnvelopeForcedReject
-  && !clipHardForcedReject
-  && healthGatesPassed;
-const bool meritDeteriorating =
-  false;
-const bool clipRecoverySignal =
-  customTurbulenceActive
-  && (
-       maxFluidClipFraction >= 0.9*clipGuardFluidFractionThreshold
-    || maxGrayClipFraction >= 0.85
-  );
-(void)clipRecoverySignal;
-const bool meritRecoverySignal = false;
-(void)meritRecoverySignal;
-meritRecoveryRequest = false;
-const label rogueRejectTriggerClamped =
-  Foam::max(optRogueRejectStreakTrigger, label(1));
-const label rogueGraceIterationsClamped =
-  Foam::max(optRogueGraceIterations, label(0));
-const label rogueDirectionSwitchCooldownClamped =
-  Foam::max(optRogueDirectionSwitchCooldown, label(1));
-const label rogueDirectionSwitchMaxCountClamped =
-  Foam::max(optRogueDirectionSwitchMaxCount, label(0));
-const scalar rogueClipFluidThresholdClamped =
-  Foam::max(Foam::min(optRogueClipFluidThreshold, scalar(1.0)), scalar(0.0));
-const scalar rogueClipGrayThresholdClamped =
-  Foam::max(Foam::min(optRogueClipGrayThreshold, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchStepScaleClamped =
-  Foam::max(optRogueDirectionSwitchStepScale, scalar(0.0));
-const scalar rogueDirectionSwitchConstraintBlendClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchConstraintBlend, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchNoiseScaleClamped =
-  Foam::max(optRogueDirectionSwitchNoiseScale, scalar(0.0));
-const scalar rogueDirectionSwitchClipDampFluidFractionClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchClipDampFluidFraction, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchClipDampGrayFractionClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchClipDampGrayFraction, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchClipDampScaleClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchClipDampScale, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchSevereClipFluidFractionClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchSevereClipFluidFraction, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchSevereClipGrayFractionClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchSevereClipGrayFraction, scalar(1.0)), scalar(0.0));
-const scalar rogueDirectionSwitchSevereClipScaleClamped =
-  Foam::max(Foam::min(optRogueDirectionSwitchSevereClipScale, scalar(1.0)), scalar(0.0));
-const label candidateMeritRejectStreak =
-  meritAccepted ? 0 : meritRejectStreak + 1;
-const label rogueClipRejectGate =
-  Foam::max(rogueRejectTriggerClamped - 1, label(1));
-const bool rogueRejectSignal =
-  !meritAccepted
-  && candidateMeritRejectStreak >= rogueRejectTriggerClamped;
-const bool rogueClipSignal =
-  customTurbulenceActive
-  && candidateMeritRejectStreak >= rogueClipRejectGate
-  && maxFluidClipFraction >= rogueClipFluidThresholdClamped
-  && maxGrayClipFraction >= rogueClipGrayThresholdClamped;
-const bool rogueSignal =
-  optimizationCycleTurbulentOptimizationMode
-  && !meritAccepted
-  && (rogueRejectSignal || rogueClipSignal);
-bool rogueDirectionGraceActive = false;
-bool rogueDirectionVerified = false;
-bool rogueDirectionSwitchTriggered = false;
-bool rogueDirectionWatchStarted = false;
-bool rogueDirectionWatchGraceAdvanced = false;
-bool rogueDirectionWatchCleared = false;
-label rogueDirectionWatchStartIterationReport = rogueDirectionWatchStartIteration;
-if
-(
-    optimizationCycleTurbulentOptimizationMode
- && static_cast<bool>(optRogueDirectionSwitchEnable)
- && !optDiagnosticMode
-)
-{
-  if (rogueSignal)
-  {
-    if (!rogueDirectionWatchActive)
-    {
-      rogueDirectionWatchActive = true;
-      rogueDirectionWatchGraceRemaining = rogueGraceIterationsClamped;
-      rogueDirectionWatchStartIteration = opt;
-      rogueDirectionWatchStartIterationReport = rogueDirectionWatchStartIteration;
-      rogueDirectionWatchStarted = true;
-    }
-    else if (rogueDirectionWatchGraceRemaining > 0)
-    {
-      rogueDirectionWatchGraceRemaining -= 1;
-      rogueDirectionWatchStartIterationReport = rogueDirectionWatchStartIteration;
-      rogueDirectionWatchGraceAdvanced = true;
-    }
-    rogueDirectionGraceActive = rogueDirectionWatchGraceRemaining > 0;
-    rogueDirectionVerified = !rogueDirectionGraceActive;
-  }
-  else
-  {
-    rogueDirectionWatchCleared = rogueDirectionWatchActive;
-    rogueDirectionWatchActive = false;
-    rogueDirectionWatchGraceRemaining = 0;
-    rogueDirectionWatchStartIteration = -1;
-  }
-
-  const bool rogueDirectionSwitchCooldownSatisfied =
-    opt - rogueDirectionLastSwitchIteration >= rogueDirectionSwitchCooldownClamped;
-  const bool rogueDirectionSwitchBudgetAvailable =
-    rogueDirectionSwitchCount < rogueDirectionSwitchMaxCountClamped;
-  rogueDirectionSwitchTriggered =
-    rogueDirectionVerified
-    && !meritAccepted
-    && rogueDirectionSwitchCooldownSatisfied
-    && rogueDirectionSwitchBudgetAvailable;
-}
-else
-{
-  rogueDirectionWatchCleared = rogueDirectionWatchActive;
-  rogueDirectionWatchActive = false;
-  rogueDirectionWatchGraceRemaining = 0;
-  rogueDirectionWatchStartIteration = -1;
-}
+const bool healthChecksPassed =
+  !fieldEnvelopeStop;
 const scalar objectiveConsistencyRatio =
   Foam::mag(objectiveDelta - predictedObjectiveDelta)
   /Foam::max(Foam::max(Foam::mag(objectiveDelta), Foam::mag(predictedObjectiveDelta)), SMALL);
@@ -1174,686 +576,60 @@ const bool convergenceCandidate =
   maxAbsXhChangeLocal <= optStepTol;
 const label candidateOptimizerConvergedStreak =
   convergenceCandidate ? optimizerConvergedStreak + 1 : 0;
-label continuationClipBackoffStepsApplied(0);
-bool rogueDirectionSwitchApplied(false);
-bool rogueDirectionSwitchBudgetRearmed(false);
-bool rogueDirectionObjectiveUsable(false);
-bool rogueDirectionConstraintUsable(false);
-scalar rogueDirectionSwitchStepAmplitudeApplied(0.0);
-scalar rogueDirectionObjectiveNormApplied(0.0);
-scalar rogueDirectionConstraintNormApplied(0.0);
-scalar rogueDirectionSwitchClipStepScaleApplied(1.0);
 
-if (!meritAccepted)
+previousObjectiveValue = objectiveValue;
+hasPreviousObjectiveValue = true;
+previousPowerConstraintMargin = powerConstraintMargin;
+hasPreviousPowerConstraintMargin = true;
+previousPowerConstraintFinalMargin = powerConstraintFinalMargin;
+hasPreviousPowerConstraintFinalMargin = true;
+previousVolumeConstraintMargin = volumeConstraintMargin;
+hasPreviousVolumeConstraintMargin = true;
+previousThermalTmaxConstraintMargin = thermalTmaxConstraintMargin;
+hasPreviousThermalTmaxConstraintMargin = static_cast<bool>(optThermalEnvelopeConstraintEnable);
+previousThermalTminConstraintMargin = thermalTminConstraintMargin;
+hasPreviousThermalTminConstraintMargin = static_cast<bool>(optThermalEnvelopeConstraintEnable);
+previousMaxConstraintViolation = maxConstraintViolation;
+hasPreviousMaxConstraintViolation = true;
+previousGuardConstraintViolation = guardConstraintViolation;
+hasPreviousGuardConstraintViolation = true;
+optimizerConvergedStreak = candidateOptimizerConvergedStreak;
+
+if (fieldEnvelopeStop)
 {
-  for (i=0; i<n; i++)
-  {
-    x[i] = xOld[i];
-    xp[i] = xpOld[i];
-    xh[i] = xhOld[i];
-  }
-  x.correctBoundaryConditions();
-  xp.correctBoundaryConditions();
-  xh.correctBoundaryConditions();
-  alpha=alphaMax*qu*(1-xh)/(qu+xh);
-  DT=(ks+(kf-ks)*xh*(1+qu)/(qu+xh))/rhoCp;
-  if (optimizationCycleTurbulentOptimizationMode)
-  {
-    U.primitiveFieldRef() = UOldInternal;
-    p.primitiveFieldRef() = pOldInternal;
-    T.primitiveFieldRef() = TOldInternal;
-    k.primitiveFieldRef() = kOldInternal;
-    omega.primitiveFieldRef() = omegaOldInternal;
-    nut.primitiveFieldRef() = nutOldInternal;
-    alphat.primitiveFieldRef() = alphatOldInternal;
-
-    U.correctBoundaryConditions();
-    p.correctBoundaryConditions();
-    T.correctBoundaryConditions();
-    k.correctBoundaryConditions();
-    omega.correctBoundaryConditions();
-    nut.correctBoundaryConditions();
-    alphat.correctBoundaryConditions();
-
-    if (customTurbulenceActive)
-    {
-      kClosureState.primitiveFieldRef() = kOldInternal;
-      omegaClosureState.primitiveFieldRef() = omegaOldInternal;
-      kClosureState.correctBoundaryConditions();
-      omegaClosureState.correctBoundaryConditions();
-    }
-  }
-
-  meritStepRejected = true;
-  meritRejectStreak += 1;
-  clipGuardStreak = candidateClipGuardStreak;
-  clipGuardNoProgressStreak = candidateClipGuardNoProgressStreak;
-  meritTrustMoveScale =
-    Foam::max(meritTrustMoveScale*rejectMoveScaleClamped, meritTrustMoveMinClamped);
-  if (trustRatioDefined && trustRatio < scalar(0.0))
-  {
-    meritTrustMoveScale =
-      Foam::max(scalar(0.8)*meritTrustMoveScale, meritTrustMoveMinClamped);
-  }
-  const bool deadlockTrustEscapeEligible =
-       optimizationCycleTurbulentOptimizationMode
-    && !optDiagnosticMode
-    && meritRejectStreak >= 3*filterDeadlockRejectThreshold
-    && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
-    && !clipForcedReject
-    && !fieldEnvelopeForcedReject;
-  if (deadlockTrustEscapeEligible)
-  {
-    meritTrustMoveScale =
-      Foam::min(Foam::max(meritTrustMoveScale, scalar(0.10)), scalar(0.25));
-  }
-  const bool continuationClipBackoffEligible =
-       optimizationCycleTurbulentOptimizationMode
-    && clipForcedReject
-    && guardConstraintViolationDelta > optConstraintWorsenTol
-    && continuationIteration > 1;
-  const bool continuationFieldEnvelopeBackoffEligible =
-       optimizationCycleTurbulentOptimizationMode
-    && fieldEnvelopeForcedReject
-    && continuationIteration > 1;
-  if (continuationClipBackoffEligible || continuationFieldEnvelopeBackoffEligible)
-  {
-    const bool severeClipLock =
-         maxFluidClipFraction >= Foam::max(scalar(2.0)*clipGuardFluidFractionThreshold, scalar(0.20))
-      || maxGrayClipFraction >= scalar(0.92);
-    const label streakBackoffSteps =
-      Foam::min(Foam::max(meritRejectStreak, label(1)), label(6));
-    label targetContinuationIteration =
-      Foam::max(continuationIteration - streakBackoffSteps, label(1));
-    if (continuationIteration > 80)
-    {
-      targetContinuationIteration = Foam::min(targetContinuationIteration, label(79));
-    }
-    if (continuationFieldEnvelopeBackoffEligible)
-    {
-      targetContinuationIteration =
-        Foam::max(continuationIteration - Foam::max(streakBackoffSteps, label(8)), label(1));
-    }
-    if
-    (
-         severeClipLock
-      && meritRejectStreak >= clipGuardWindowDisabled
-      && continuationIteration > 35
-    )
-    {
-      targetContinuationIteration = Foam::min(targetContinuationIteration, label(35));
-    }
-    else if (severeClipLock && meritRejectStreak >= 3 && continuationIteration > 63)
-    {
-      targetContinuationIteration = Foam::min(targetContinuationIteration, label(63));
-    }
-    const label clipBackoffSteps =
-      Foam::max(continuationIteration - targetContinuationIteration, label(0));
-    if (clipBackoffSteps > 0)
-    {
-      continuationIteration = targetContinuationIteration;
-      continuationClipBackoffStepsApplied = clipBackoffSteps;
-      meritRejectStopEligibleStreak = 0;
-    }
-  }
-  if (rogueDirectionSwitchTriggered)
-  {
-    const scalar rogueDirectionDerivativeAbsCap = 1e60;
-    scalar objectiveDirectionAbsMaxLocal = 0.0;
-    scalar constraintDirectionAbsMaxLocal = 0.0;
-    for (i=0; i<n; i++)
-    {
-      const scalar objectiveValue = Foam::mag(static_cast<scalar>(dfdx[i]));
-      const scalar constraintValue =
-        Foam::mag(static_cast<scalar>(dgdx[mmaPowerConstraintIndex][i]));
-      if (std::isfinite(static_cast<double>(objectiveValue)))
-      {
-        objectiveDirectionAbsMaxLocal =
-          Foam::max(objectiveDirectionAbsMaxLocal, objectiveValue);
-      }
-      if (std::isfinite(static_cast<double>(constraintValue)))
-      {
-        constraintDirectionAbsMaxLocal =
-          Foam::max(constraintDirectionAbsMaxLocal, constraintValue);
-      }
-    }
-    reduce(objectiveDirectionAbsMaxLocal, maxOp<scalar>());
-    reduce(constraintDirectionAbsMaxLocal, maxOp<scalar>());
-    rogueDirectionObjectiveUsable =
-         objectiveDirectionAbsMaxLocal > SMALL
-      && objectiveDirectionAbsMaxLocal < rogueDirectionDerivativeAbsCap
-      && std::isfinite(static_cast<double>(objectiveDirectionAbsMaxLocal));
-    rogueDirectionConstraintUsable =
-         constraintDirectionAbsMaxLocal > SMALL
-      && constraintDirectionAbsMaxLocal < rogueDirectionDerivativeAbsCap
-      && std::isfinite(static_cast<double>(constraintDirectionAbsMaxLocal));
-
-    scalar objectiveDirectionNorm = 1.0;
-    if (rogueDirectionObjectiveUsable)
-    {
-      scalar objectiveDirectionNormSqScaledLocal = 0.0;
-      for (i=0; i<n; i++)
-      {
-        const scalar objectiveScaled =
-          static_cast<scalar>(dfdx[i])/objectiveDirectionAbsMaxLocal;
-        if (std::isfinite(static_cast<double>(objectiveScaled)))
-        {
-          objectiveDirectionNormSqScaledLocal += sqr(objectiveScaled);
-        }
-      }
-      reduce(objectiveDirectionNormSqScaledLocal, sumOp<scalar>());
-      objectiveDirectionNorm =
-        objectiveDirectionAbsMaxLocal
-       *Foam::sqrt(Foam::max(objectiveDirectionNormSqScaledLocal, SMALL));
-      if (!std::isfinite(static_cast<double>(objectiveDirectionNorm)))
-      {
-        rogueDirectionObjectiveUsable = false;
-        objectiveDirectionNorm = 1.0;
-      }
-    }
-
-    scalar constraintDirectionNorm = 1.0;
-    if (rogueDirectionConstraintUsable)
-    {
-      scalar constraintDirectionNormSqScaledLocal = 0.0;
-      for (i=0; i<n; i++)
-      {
-        const scalar constraintScaled =
-          static_cast<scalar>(dgdx[mmaPowerConstraintIndex][i])/constraintDirectionAbsMaxLocal;
-        if (std::isfinite(static_cast<double>(constraintScaled)))
-        {
-          constraintDirectionNormSqScaledLocal += sqr(constraintScaled);
-        }
-      }
-      reduce(constraintDirectionNormSqScaledLocal, sumOp<scalar>());
-      constraintDirectionNorm =
-        constraintDirectionAbsMaxLocal
-       *Foam::sqrt(Foam::max(constraintDirectionNormSqScaledLocal, SMALL));
-      if (!std::isfinite(static_cast<double>(constraintDirectionNorm)))
-      {
-        rogueDirectionConstraintUsable = false;
-        constraintDirectionNorm = 1.0;
-      }
-    }
-
-    const bool rogueDirectionHasBasis =
-      rogueDirectionObjectiveUsable || rogueDirectionConstraintUsable;
-    const scalar directionSwitchMoveFloor = Foam::max(optimizerMoveLimitActive, scalar(0.05));
-    scalar rogueDirectionSwitchClipScale = 1.0;
-    const bool rogueDirectionSevereClipDampingActive =
-         maxFluidClipFraction >= rogueDirectionSwitchSevereClipFluidFractionClamped
-      || maxGrayClipFraction >= rogueDirectionSwitchSevereClipGrayFractionClamped;
-    const bool rogueDirectionClipDampingActive =
-         maxFluidClipFraction >= rogueDirectionSwitchClipDampFluidFractionClamped
-      || maxGrayClipFraction >= rogueDirectionSwitchClipDampGrayFractionClamped;
-    if (rogueDirectionSevereClipDampingActive)
-    {
-      rogueDirectionSwitchClipScale =
-        Foam::min(rogueDirectionSwitchClipScale, rogueDirectionSwitchSevereClipScaleClamped);
-    }
-    else if (rogueDirectionClipDampingActive)
-    {
-      rogueDirectionSwitchClipScale =
-        Foam::min(rogueDirectionSwitchClipScale, rogueDirectionSwitchClipDampScaleClamped);
-    }
-    const scalar directionSwitchStepAmplitude =
-      rogueDirectionSwitchClipScale
-     *rogueDirectionSwitchStepScaleClamped
-     *(rogueDirectionHasBasis ? directionSwitchMoveFloor : scalar(0.25)*directionSwitchMoveFloor);
-    rogueDirectionSwitchStepAmplitudeApplied = directionSwitchStepAmplitude;
-    rogueDirectionSwitchClipStepScaleApplied = rogueDirectionSwitchClipScale;
-    rogueDirectionObjectiveNormApplied =
-      rogueDirectionObjectiveUsable ? objectiveDirectionNorm : scalar(0.0);
-    rogueDirectionConstraintNormApplied =
-      rogueDirectionConstraintUsable ? constraintDirectionNorm : scalar(0.0);
-
-    for (i=0; i<n; i++)
-    {
-      const scalar objectiveDirection =
-        rogueDirectionObjectiveUsable
-        ? -static_cast<scalar>(dfdx[i])/objectiveDirectionNorm
-        : scalar(0.0);
-      const scalar constraintDirection =
-        rogueDirectionConstraintUsable
-        ? -static_cast<scalar>(dgdx[mmaPowerConstraintIndex][i])/constraintDirectionNorm
-        : scalar(0.0);
-      const scalar blendedDirection =
-        Foam::max
-        (
-          Foam::min
-          (
-              (scalar(1.0) - rogueDirectionSwitchConstraintBlendClamped)*objectiveDirection
-            + rogueDirectionSwitchConstraintBlendClamped*constraintDirection,
-            scalar(1.0)
-          ),
-          scalar(-1.0)
-        );
-      const scalar signPattern =
-        ((i + opt + Pstream::myProcNo()) % 2 == 0) ? scalar(1.0) : scalar(-1.0);
-      const scalar switchedValue =
-        xhOld[i]
-        + directionSwitchStepAmplitude
-         *(
-            blendedDirection
-          + rogueDirectionSwitchNoiseScaleClamped*signPattern
-          );
-      const scalar boundedSwitchedValue =
-        Foam::max(Foam::min(switchedValue, scalar(1.0)), scalar(0.0));
-      xh[i] = boundedSwitchedValue;
-      x[i] = boundedSwitchedValue;
-      xp[i] = boundedSwitchedValue;
-    }
-
-    if (solid_area)
-    {
-      forAll(cells_solid, cellI)
-      {
-        const label c = cells_solid[cellI];
-        xh[c] = 0.0;
-        x[c] = 0.0;
-        xp[c] = 0.0;
-      }
-    }
-    if (fluid_area)
-    {
-      forAll(cells_fluid, cellI)
-      {
-        const label c = cells_fluid[cellI];
-        xh[c] = 1.0;
-        x[c] = 1.0;
-        xp[c] = 1.0;
-      }
-    }
-
-    x.correctBoundaryConditions();
-    xp.correctBoundaryConditions();
-    xh.correctBoundaryConditions();
-    alpha=alphaMax*qu*(1-xh)/(qu+xh);
-    DT=(ks+(kf-ks)*xh*(1+qu)/(qu+xh))/rhoCp;
-
-    rogueDirectionSwitchApplied = true;
-    rogueDirectionSwitchCount += 1;
-    rogueDirectionLastSwitchIteration = opt;
-    rogueDirectionWatchActive = false;
-    rogueDirectionWatchGraceRemaining = 0;
-    rogueDirectionWatchStartIteration = -1;
-    stopOptimization = false;
-    optimizerStopReason = word("rogueDirectionSwitch");
-    meritRejectStopEligibleStreak = 0;
-  }
-  const bool meritScheduleRebaseEligible =
-       hasPreviousAcceptedMerit
-    && (
-         (
-              scheduleIterationCurrent > acceptedMeritScheduleIteration
-           && !constraintWorsenScheduleReady
-         )
-         || constraintWorsenScheduleReadyTransition
-       );
-  if (meritScheduleRebaseEligible)
-  {
-    previousAcceptedMerit = meritValue;
-    acceptedMeritScheduleIteration = scheduleIterationCurrent;
-    previousGuardConstraintViolation = guardConstraintViolation;
-    hasPreviousGuardConstraintViolation = true;
-    previousMaxConstraintViolation = maxConstraintViolation;
-    hasPreviousMaxConstraintViolation = true;
-    meritScheduleRebaseCount += 1;
-  }
-  if (rogueDirectionSwitchApplied)
-  {
-    stopOptimization = false;
-    optimizerStopReason = word("rogueDirectionSwitch");
-  }
-  else if
-  (
-       !optDiagnosticMode
-    && static_cast<bool>(optProductionContinueAfterSafetyReject)
-    && !fieldEnvelopeForcedReject
-    && !clipHardForcedReject
-  )
-  {
-    stopOptimization = false;
-    optimizerStopReason = word("safetyRejectRecovered");
-    meritRecoveryRequest = true;
-  }
-  else
-  {
-    if (fieldEnvelopeForcedReject)
-    {
-      stopOptimization = true;
-      optimizerStopReason = word("fieldEnvelopeReject");
-    }
-    else
-    {
-      if (clipHardForcedReject)
-      {
-        stopOptimization = true;
-        optimizerStopReason = word("clipHardReject");
-      }
-      else if (clipGuardTriggered && !clipGuardRejectMode)
-      {
-        stopOptimization = true;
-        optimizerStopReason = word("turbulenceClipLock");
-      }
-      else
-      {
-        stopOptimization = true;
-        optimizerStopReason = word("safetyReject");
-      }
-    }
-  }
-  if
-  (
-      optDiagnosticMode
-   && (
-        !healthGatesPassed
-      )
-  )
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("diagnosticHealthFail");
-  }
+  stopOptimization = true;
+  optimizerStopReason = word("fieldEnvelopeViolation");
+}
+else if (clipHardSafetyStop)
+{
+  stopOptimization = true;
+  optimizerStopReason = word("clipHardViolation");
+}
+else if (!healthChecksPassed)
+{
+  stopOptimization = true;
+  optimizerStopReason = word("healthViolation");
 }
 else
 {
-  meritStepRejected = false;
-  meritRejectStreak = 0;
-  meritRejectStopEligibleStreak = 0;
-  meritTrustMoveScale = 1.0;
-  const bool rogueDirectionSwitchRearmEligible =
-       optimizationCycleTurbulentOptimizationMode
-    && static_cast<bool>(optRogueDirectionSwitchEnable)
-    && !optDiagnosticMode
-    && rogueDirectionSwitchCount > 0
-    && !clipForcedReject
-    && guardConstraintViolationDelta
-       < -Foam::max(optConstraintWorsenTol, clipGuardNoProgressTolReference);
-  if (rogueDirectionSwitchRearmEligible)
-  {
-    rogueDirectionSwitchCount =
-      Foam::max(rogueDirectionSwitchCount - 1, label(0));
-    rogueDirectionSwitchBudgetRearmed = true;
-    rogueDirectionWatchActive = false;
-    rogueDirectionWatchGraceRemaining = 0;
-    rogueDirectionWatchStartIteration = -1;
-  }
+  stopOptimization = optimizerConvergedStreak >= optStallWindow;
+  optimizerStopReason = stopOptimization ? word("converged") : word("running");
+}
 
-  previousObjectiveValue = objectiveValue;
-  hasPreviousObjectiveValue = true;
-  previousPowerConstraintMargin = powerConstraintMargin;
-  hasPreviousPowerConstraintMargin = true;
-  previousPowerConstraintFinalMargin = powerConstraintFinalMargin;
-  hasPreviousPowerConstraintFinalMargin = true;
-  previousVolumeConstraintMargin = volumeConstraintMargin;
-  hasPreviousVolumeConstraintMargin = true;
-  previousThermalTmaxConstraintMargin = thermalTmaxConstraintMargin;
-  hasPreviousThermalTmaxConstraintMargin = static_cast<bool>(optThermalEnvelopeConstraintEnable);
-  previousThermalTminConstraintMargin = thermalTminConstraintMargin;
-  hasPreviousThermalTminConstraintMargin = static_cast<bool>(optThermalEnvelopeConstraintEnable);
-  previousMaxConstraintViolation = maxConstraintViolation;
-  hasPreviousMaxConstraintViolation = true;
-  previousGuardConstraintViolation = guardConstraintViolation;
-  hasPreviousGuardConstraintViolation = true;
-  previousAcceptedMerit = meritValue;
-  hasPreviousAcceptedMerit = true;
-  acceptedMeritScheduleIteration = scheduleIterationCurrent;
-  continuationDeadlockRecoveryCount = 0;
-  if (filterAcceptanceEnabled)
-  {
-    const scalar constraintCandidate = guardConstraintViolation;
-    const scalar objectiveCandidate = objectiveValue;
-    std::vector<scalar> filterConstraintPruned;
-    std::vector<scalar> filterObjectivePruned;
-    filterConstraintPruned.reserve(filterConstraintArchive.size() + 1);
-    filterObjectivePruned.reserve(filterObjectiveArchive.size() + 1);
-    for (std::size_t fi = 0; fi < filterConstraintArchive.size(); ++fi)
-    {
-      const bool dominatedByCandidate =
-           filterConstraintArchive[fi] >= constraintCandidate - scalar(0.0)
-        && filterObjectiveArchive[fi] >= objectiveCandidate - scalar(0.0);
-      if (!dominatedByCandidate)
-      {
-        filterConstraintPruned.push_back(filterConstraintArchive[fi]);
-        filterObjectivePruned.push_back(filterObjectiveArchive[fi]);
-      }
-    }
-    filterConstraintPruned.push_back(constraintCandidate);
-    filterObjectivePruned.push_back(objectiveCandidate);
-    while (static_cast<label>(filterConstraintPruned.size()) > label(0))
-    {
-      filterConstraintPruned.erase(filterConstraintPruned.begin());
-      filterObjectivePruned.erase(filterObjectivePruned.begin());
-    }
-    filterConstraintArchive.swap(filterConstraintPruned);
-    filterObjectiveArchive.swap(filterObjectivePruned);
-  }
-  powerConstraintWorsenStreak = candidatePowerConstraintWorsenStreak;
-  maxViolationWorsenStreak = candidateMaxViolationWorsenStreak;
-  objectiveWorsenStreak = candidateObjectiveWorsenStreak;
-  clipGuardStreak = candidateClipGuardStreak;
-  clipGuardNoProgressStreak = candidateClipGuardNoProgressStreak;
-  optimizerConvergedStreak = candidateOptimizerConvergedStreak;
-  acceptedDfdx = dfdx;
-  acceptedDgdx = dgdx;
-  hasAcceptedGradientSnapshot = true;
-  hasAcceptedStateSnapshot = true;
-
-  if (constraintScheduleHorizonGuardTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("constraintScheduleHorizon");
-  }
-  else if (constraintWorsenGuardTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("constraintWorsening");
-  }
-  else if (constraintWorsenNetRiseTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("constraintNetRise");
-  }
-  else if (constraintWorsenReboundStopTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("constraintReboundRise");
-  }
-  else if (objectiveWorsenGuardTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("objectiveBacktrack");
-  }
-  else if (clipGuardTriggered && !clipGuardRejectMode)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("turbulenceClipLock");
-  }
-  else
-  {
-    stopOptimization = optimizerConvergedStreak >= optStallWindow;
-    optimizerStopReason = stopOptimization ? word("converged") : word("running");
-  }
-}
-const bool globalizationRejectStopEligible =
-  !static_cast<bool>(optRejectStopRequireConstraintWindow)
-  || constraintWorsenCountingActive
-  || (
-       scheduleIterationCurrent >= optConstraintWorsenMinIterations
-    && (
-         constraintWorsenScheduleReady
-      || constraintScheduleHorizonGuardTriggered
-       )
-     );
-const bool rejectIndicatesDeterioration =
-     guardConstraintViolationDelta > 0
-  || objectiveWorsening
-  || meritDeteriorating;
-const bool continuationClipBackoffRecoveryActive =
-  continuationClipBackoffStepsApplied > 0;
-const bool meritRejectCountsTowardStop =
-  meritStepRejected
-  && !rogueDirectionSwitchApplied
-  && !continuationClipBackoffRecoveryActive
-  && (
-       !clipForcedReject
-    || rejectIndicatesDeterioration
-     );
-if (meritRejectCountsTowardStop && globalizationRejectStopEligible)
-{
-  meritRejectStopEligibleStreak += 1;
-}
-else if (!meritRejectCountsTowardStop || !globalizationRejectStopEligible)
-{
-  meritRejectStopEligibleStreak = 0;
-}
-if
-(
-    static_cast<bool>(false)
- && label(0) > 0
- && meritRejectStopEligibleStreak >= label(0)
-)
-{
-  if (globalizationRejectStopEligible)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("globalizationRejectStreak");
-  }
-  else
-  {
-    stopOptimization = false;
-    optimizerStopReason = word("globalizationReject");
-  }
-}
-const bool continuationFrozenDuringIteration =
-  continuationFrozenByReject || continuationFrozenByLowTrust || continuationFrozenByClipHold;
-const bool scheduleHorizonNoSlackUnderFreeze =
-  !constraintWorsenScheduleReady
-  && continuationFrozenDuringIteration
-  && powerConstraintScheduleIterationsToSettle > 0
-  && optimizationIterationsRemaining > 0
-  && powerConstraintScheduleIterationsToSettle >= optimizationIterationsRemaining;
-const bool scheduleHorizonCatchUpNeeded =
-  static_cast<bool>(optConstraintScheduleHorizonGuard)
-  && (
-       (
-            !constraintWorsenScheduleReady
-         && !powerConstraintScheduleWillSettleInRun
-         && scheduleHorizonLagIterations > 0
-       )
-    || scheduleHorizonNoSlackUnderFreeze
-     )
-  && scheduleHorizonConstraintViolation > optConstraintTol;
-const bool scheduleHorizonDeadlockOnReject =
-  meritStepRejected && scheduleHorizonCatchUpNeeded;
-const bool deadlockRecoveryBlockedByGlobalization =
-  meritStepRejected
-  && (
-       fieldEnvelopeForcedReject
-    || clipHardForcedReject
-    || (clipGuardTriggered && !clipGuardRejectMode)
-    || continuationClipBackoffRecoveryActive
-    || clipForcedReject
-    || objectiveWorsening
-    || guardConstraintViolationDelta > optConstraintWorsenTol
-     );
-label deadlockCatchUpRequest(0);
-if (scheduleHorizonCatchUpNeeded)
-{
-  const bool continuationDeadlockRecoveryEligible =
-    scheduleHorizonDeadlockOnReject
-    && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
-    && static_cast<bool>(optContinuationDeadlockRecoveryEnable)
-    && !optDiagnosticMode
-    && continuationDeadlockRecoveryCount < optContinuationDeadlockRecoveryMaxOverrides
-    && !deadlockRecoveryBlockedByGlobalization;
-  if (continuationDeadlockRecoveryEligible)
-  {
-    const label deadlockRecoveryLagBufferClamped =
-      Foam::max(optContinuationDeadlockRecoveryLagBuffer, label(0));
-    deadlockCatchUpRequest =
-      scheduleHorizonLagIterations + deadlockRecoveryLagBufferClamped;
-    const label deadlockCatchUpSteps =
-      Foam::min
-      (
-        deadlockCatchUpRequest,
-        Foam::max(optContinuationDeadlockRecoveryMaxCatchUpSteps, label(0))
-      );
-    continuationAdvanceOverrideOnReject = true;
-    continuationAdvanceCatchUpSteps =
-      Foam::max(continuationAdvanceCatchUpSteps, deadlockCatchUpSteps);
-    continuationDeadlockRecoveryCount += 1;
-    stopOptimization = false;
-    if (rogueDirectionSwitchApplied)
-    {
-      optimizerStopReason = word("rogueDirectionSwitch");
-    }
-    else
-    {
-      optimizerStopReason = meritStepRejected ? word("globalizationReject") : word("running");
-    }
-  }
-  else if (scheduleHorizonDeadlockOnReject && !deadlockRecoveryBlockedByGlobalization)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("constraintScheduleHorizonReject");
-  }
-}
-const bool diagnosticHealthEvent =
-     fieldEnvelopeForcedReject
-  || clipHardForcedReject
-  || !healthGatesPassed;
-if (optDiagnosticMode && diagnosticHealthEvent)
+if (optDiagnosticMode && !residualGrowthWithinLimit)
 {
   stopOptimization = true;
-  optimizerStopReason = word("diagnosticHealthFail");
+  optimizerStopReason = word("diagnosticResidualGrowth");
 }
 
-const label reportedPowerConstraintWorsenStreak =
-  meritStepRejected ? candidatePowerConstraintWorsenStreak : powerConstraintWorsenStreak;
-const label reportedMaxViolationWorsenStreak =
-  meritStepRejected ? candidateMaxViolationWorsenStreak : maxViolationWorsenStreak;
-const label reportedObjectiveWorsenStreak =
-  meritStepRejected ? candidateObjectiveWorsenStreak : objectiveWorsenStreak;
-const label reportedClipGuardStreak =
-  meritStepRejected ? candidateClipGuardStreak : clipGuardStreak;
-const label reportedClipGuardNoProgressStreak =
-  meritStepRejected ? candidateClipGuardNoProgressStreak : clipGuardNoProgressStreak;
-const label reportedOptimizerConvergedStreak =
-  meritStepRejected ? candidateOptimizerConvergedStreak : optimizerConvergedStreak;
-const label reportedContinuationDeadlockRecoveryCount =
-  continuationDeadlockRecoveryCount;
-const label reportedContinuationAdvanceCatchUpSteps =
-  continuationAdvanceCatchUpSteps;
-const label reportedDeadlockCatchUpRequest =
-  deadlockCatchUpRequest;
-const bool reportedContinuationFrozenByLowTrust =
-  continuationFrozenByLowTrust;
-const bool reportedContinuationFrozenAny =
-  continuationFrozenAny;
-const label rogueDirectionSwitchCooldownRemaining =
-  Foam::max
-  (
-    rogueDirectionSwitchCooldownClamped - (opt - rogueDirectionLastSwitchIteration),
-    label(0)
-  );
-
-previousMaxFluidClipFraction = maxFluidClipFraction;
-previousGuardConstraintViolationDelta = guardConstraintViolationDelta;
-hasPreviousClipDiagnostics = true;
+const label reportedOptimizerConvergedStreak = optimizerConvergedStreak;
 previousTrustRatio = trustRatio;
 hasPreviousTrustRatio = trustRatioDefined;
-previousHealthGateFailed = !healthGatesPassed;
-previousThermalEnvelopeViolation = thermalEnvelopeViolation;
 previousMaxLinearFinalResidual = maxLinearFinalResidual;
 hasPreviousMaxLinearFinalResidual = true;
 const bool firstFailureHealthEvent =
-     optimizerStopReason != word("converged")
-  && (
-       fieldEnvelopeForcedReject
-    || clipHardForcedReject
-    || !healthGatesPassed
-     );
+     stopOptimization
+  && optimizerStopReason != word("converged");
 const bool triggerFirstFailureSnapshot =
      static_cast<bool>(optFirstFailureSnapshotEnable)
   && !firstFailureSnapshotWritten
@@ -1890,7 +666,7 @@ if (Pstream::master())
     ? "WARN"
     : "OK";
   const scalar severeTransitionFluidThreshold =
-    Foam::max(scalar(0.08), scalar(0.8)*clipGuardFluidFractionThreshold);
+    scalar(0.08);
   const bool severeTransitionClip =
     customTurbulenceActive
     && maxGrayClipFraction >= 0.85
@@ -1928,8 +704,8 @@ if (Pstream::master())
       << " residualGrowthRatio=" << linearResidualGrowthRatio
       << " trustRatioDefined=" << (trustRatioDefined ? 1 : 0)
       << " trustRatio=" << trustRatio
-      << " predictedMeritReduction=" << predictedMeritReduction
-      << " actualMeritReduction=" << actualMeritReduction
+      << " predictedObjectiveReduction=" << predictedObjectiveReduction
+      << " actualObjectiveReduction=" << actualObjectiveReduction
       << " gradientConsistencyRatio=" << gradientConsistencyRatio
       << " maxFluidClip=" << maxFluidClipFraction
       << " maxGrayClip=" << maxGrayClipFraction
@@ -1939,11 +715,6 @@ if (Pstream::master())
   }
 
   std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::app);
-  std::ofstream optimizerDirectionEventLogFile;
-  if (static_cast<bool>(optRogueDirectionSwitchEnable))
-  {
-    optimizerDirectionEventLogFile.open(optimizerDirectionEventFile, std::ios::app);
-  }
   const int itemWidth = 18;
   const int valueWidth = 34;
   const int tableWidth = itemWidth + 4*valueWidth;
@@ -1992,96 +763,6 @@ if (Pstream::master())
       << "\n";
   };
 
-  if (rogueDirectionWatchStarted && optimizerDirectionEventLogFile.is_open())
-  {
-    optimizerDirectionEventLogFile
-      << "Iter=" << opt
-      << " Event=watch_start"
-      << " signal=rogue"
-      << " rejectSignal=" << (rogueRejectSignal ? 1 : 0)
-      << " clipSignal=" << (rogueClipSignal ? 1 : 0)
-      << " graceRemaining=" << rogueDirectionWatchGraceRemaining
-      << " rejectStreak=" << candidateMeritRejectStreak
-      << " fluidClip=" << maxFluidClipFraction
-      << " grayClip=" << maxGrayClipFraction
-      << '\n';
-  }
-  if (rogueDirectionWatchGraceAdvanced && optimizerDirectionEventLogFile.is_open())
-  {
-    optimizerDirectionEventLogFile
-      << "Iter=" << opt
-      << " Event=watch_grace_countdown"
-      << " graceRemaining=" << rogueDirectionWatchGraceRemaining
-      << " watchStart=" << rogueDirectionWatchStartIterationReport
-      << " rejectStreak=" << candidateMeritRejectStreak
-      << '\n';
-  }
-  if
-  (
-      rogueDirectionWatchCleared
-   && !rogueDirectionSwitchApplied
-   && optimizerDirectionEventLogFile.is_open()
-  )
-  {
-    optimizerDirectionEventLogFile
-      << "Iter=" << opt
-      << " Event=watch_cleared"
-      << " reason=signal_recovered"
-      << " rejectSignal=" << (rogueRejectSignal ? 1 : 0)
-      << " clipSignal=" << (rogueClipSignal ? 1 : 0)
-      << '\n';
-  }
-  if (rogueDirectionSwitchApplied)
-  {
-    if (optimizerDirectionEventLogFile.is_open())
-    {
-      optimizerDirectionEventLogFile
-        << "Iter=" << opt
-        << " Event=switch_applied"
-        << " reason=rogue_verified"
-        << " switchCount=" << rogueDirectionSwitchCount
-        << " maxSwitchCount=" << rogueDirectionSwitchMaxCountClamped
-        << " cooldown=" << rogueDirectionSwitchCooldownClamped
-        << " stepAmplitude=" << rogueDirectionSwitchStepAmplitudeApplied
-        << " clipStepScale=" << rogueDirectionSwitchClipStepScaleApplied
-        << " objectiveUsable=" << (rogueDirectionObjectiveUsable ? 1 : 0)
-        << " constraintUsable=" << (rogueDirectionConstraintUsable ? 1 : 0)
-        << " objectiveNorm=" << rogueDirectionObjectiveNormApplied
-        << " constraintNorm=" << rogueDirectionConstraintNormApplied
-        << " constraintBlend=" << rogueDirectionSwitchConstraintBlendClamped
-        << " noiseScale=" << rogueDirectionSwitchNoiseScaleClamped
-        << " rejectStreak=" << meritRejectStreak
-        << " fluidClip=" << maxFluidClipFraction
-        << " grayClip=" << maxGrayClipFraction
-        << '\n';
-    }
-
-    Info<< "\n============================================================\n"
-        << "Optimizer Direction Switch Event\n"
-        << "Iteration: " << opt << '\n'
-        << "Switch count: " << rogueDirectionSwitchCount
-        << "/" << rogueDirectionSwitchMaxCountClamped << '\n'
-        << "Step amplitude: " << rogueDirectionSwitchStepAmplitudeApplied << '\n'
-        << "Clip step scale: " << rogueDirectionSwitchClipStepScaleApplied << '\n'
-        << "Objective usable: " << (rogueDirectionObjectiveUsable ? "yes" : "no")
-        << " | Constraint usable: " << (rogueDirectionConstraintUsable ? "yes" : "no") << '\n'
-        << "Blend (constraint): " << rogueDirectionSwitchConstraintBlendClamped << '\n'
-        << "Reject streak: " << meritRejectStreak
-        << " | fluidClip: " << maxFluidClipFraction
-        << " | grayClip: " << maxGrayClipFraction << '\n'
-        << "============================================================\n" << endl;
-  }
-  if (rogueDirectionSwitchBudgetRearmed && optimizerDirectionEventLogFile.is_open())
-  {
-    optimizerDirectionEventLogFile
-      << "Iter=" << opt
-      << " Event=switch_budget_rearmed"
-      << " reason=accepted_feasibility_progress"
-      << " switchCount=" << rogueDirectionSwitchCount
-      << " guardConstraintDelta=" << guardConstraintViolationDelta
-      << '\n';
-  }
-
   debugLogFile
     << "\n"
     << "====================================================================================================\n"
@@ -2115,120 +796,13 @@ if (Pstream::master())
     "pFinal="+fmtScalar(powerConstraintFinalMargin),
     "rise="+fmtScalar(guardConstraintViolationNetRise)
   );
-  writeRow("Viol streak", "dMax+="+fmtCount(reportedMaxViolationWorsenStreak), "dPower+="+fmtCount(reportedPowerConstraintWorsenStreak));
-  writeRow
-  (
-    "Viol guard",
-    std::string("en=") + (constraintWorsenGuardEnabled ? "yes" : "no")
-      + " cnt=" + (
-          constraintWorsenCountingActive ? "yes"
-          : (
-              !constraintWorsenGuardEnabled ? "no"
-              : (
-                  opt < optConstraintWorsenMinIterations
-                  ? "waitIter"
-                  : (constraintWorsenScheduleReady ? "no" : "waitSched")
-                )
-            )
-        ),
-    std::string("phase=") + (powerConstraintScheduleSettled ? "settled" : "tightening")
-      + " tol=" + fmtScalar(optConstraintWorsenTol),
-    "streak="+fmtCount(reportedMaxViolationWorsenStreak)+"/"+fmtCount(optConstraintWorsenWindow),
-    "schedIter="+fmtCount(scheduleIterationCurrent)
-      + "/" + fmtCount(optConstraintWorsenMinIterations)
-      + " den=" + fmtScalar(powerConstraintScheduleDenomCurrent)
-  );
-  writeRow
-  (
-    "Sched horizon",
-    "toSettle="+fmtCount(powerConstraintScheduleIterationsToSettle),
-    "itersLeft="+fmtCount(optimizationIterationsRemaining),
-    "settlesInRun="+std::string(powerConstraintScheduleWillSettleInRun ? "yes" : "no"),
-    "lag="+fmtCount(scheduleHorizonLagIterations)
-      + " tol=" + fmtCount(constraintScheduleHorizonLagTolerance)
-      + " trigger=" + std::string(constraintScheduleHorizonGuardTriggered ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Guard rise",
-    std::string("start=")
-      + (hasGuardConstraintViolationAtCountStart ? fmtScalar(guardConstraintViolationAtCountStart) : "n/a"),
-    "rise="+fmtScalar(guardConstraintViolationNetRise)+" d="+fmtScalar(guardConstraintViolationDelta),
-    "tol="+fmtScalar(effectiveConstraintWorsenNetRiseTol)
-      + " age=" + fmtCount(guardConstraintViolationCountAge)
-      + "/" + fmtCount(effectiveConstraintWorsenNetRiseMinAge),
-    "trigger="+std::string(constraintWorsenNetRiseTriggered ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Rebound rise",
-    std::string("min=")
-      + (hasGuardConstraintViolationAtCountStart ? fmtScalar(guardConstraintViolationMinSinceCountStart) : "n/a"),
-    "rise="+fmtScalar(guardConstraintViolationReboundRise)
-      + " streak=" + fmtCount(reportedMaxViolationWorsenStreak),
-    "win="+fmtCount(effectiveConstraintReboundWindow)
-      + " age=" + fmtCount(guardConstraintViolationCountAge)
-      + "/" + fmtCount(effectiveConstraintReboundMinAge),
-    "tol="+fmtScalar(effectiveConstraintReboundRiseTol)
-      + " trig=" + std::string(constraintWorsenReboundStopTriggered ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Rebound gate",
-    "objW="+std::string(objectiveWorsening ? "yes" : "no"),
-    "streak="+fmtCount(reportedMaxViolationWorsenStreak)+">"+fmtCount(effectiveConstraintReboundWindow),
-    "netRise="+fmtScalar(guardConstraintViolationNetRise)
-      + " tol=" + fmtScalar(constraintReboundNetRiseCorroborationTol),
-    "corr="+std::string(constraintWorsenReboundCorroborated ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Obj guard",
-    "worsen="+std::string(objectiveWorsening ? "yes" : "no")
-      + " dObj=" + fmtScalar(objectiveDelta),
-    "streak="+fmtCount(reportedObjectiveWorsenStreak)+"/"+fmtCount(optObjectiveWorsenWindow),
-    "tol="+fmtScalar(optObjectiveWorsenTol),
-    "trigger="+std::string(objectiveWorsenGuardTriggered ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Clip guard",
-    "fluid="+fmtScalar(maxFluidClipFraction),
-    "streak="+fmtCount(reportedClipGuardStreak)+"/"+fmtCount(clipGuardWindowDisabled)
-      + " noProg=" + fmtCount(reportedClipGuardNoProgressStreak)
-      + "/" + fmtCount(clipGuardWindowDisabled),
-    "thr="+fmtScalar(clipGuardFluidFractionThreshold)
-      + " noProgTol=" + fmtScalar(clipGuardNoProgressTolClamped),
-    "trigger="+std::string(clipGuardTriggered ? "yes" : "no")
-      + " rejMode=" + std::string(clipGuardRejectMode ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Clip hard",
-    "frac="+std::string(clipHardRejectByFraction ? "yes" : "no")
-      + " jump=" + std::string(clipHardRejectByJump ? "yes" : "no"),
-    "fThr="+fmtScalar(clipHardRejectFluidFractionClamped)
-      + " gThr=" + fmtScalar(clipHardRejectGrayFractionClamped),
-    "dFluid="+fmtScalar(maxFluidClipFraction - previousMaxFluidClipFraction)
-      + " dThr=" + fmtScalar(clipHardRejectFluidJumpClamped),
-    "forced="+std::string(clipHardForcedReject ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Recovery",
-    "active="+std::string(constraintRecoveryActive ? "yes" : "no"),
-    "streak="+fmtCount(reportedMaxViolationWorsenStreak)+"/"+fmtCount(optRecoveryWorsenStreak),
-    "contScale="+fmtScalar(continuationRampScaleActive)+" delStep="+fmtScalar(delRampStepActive),
-    "move="+fmtScalar(optimizerMoveLimitActive)
-  );
   writeRow
   (
     "Model agree",
-    "predRed="+fmtScalar(predictedMeritReduction),
-    "actRed="+fmtScalar(actualMeritReduction),
-    "trust="+fmtScalar(trustRatio)
-      + " def=" + std::string(trustRatioDefined ? "yes" : "no"),
-    "trustOK="+std::string(trustRatioAccepted ? "yes" : "no")
+    "predObjRed="+fmtScalar(predictedObjectiveReduction),
+    "actObjRed="+fmtScalar(actualObjectiveReduction),
+    "trust="+fmtScalar(trustRatio),
+    "defined="+std::string(trustRatioDefined ? "yes" : "no")
   );
   writeRow
   (
@@ -2243,16 +817,8 @@ if (Pstream::master())
     "Linear health",
     "maxFinal="+fmtScalar(maxLinearFinalResidual),
     "growth="+fmtScalar(linearResidualGrowthRatio),
-    "growthGate="+std::string(residualGrowthGatePassed ? "yes" : "no"),
-    "healthGate="+std::string(healthGatesPassed ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Acceptance",
-    "stepAccepted="+std::string(meritAccepted ? "yes" : "no"),
-    "stepRejected="+std::string(meritStepRejected ? "yes" : "no"),
-    "clipForced="+std::string(clipForcedReject ? "yes" : "no"),
-    "hardReject="+std::string(clipHardForcedReject ? "yes" : "no")
+    "growthCheck="+std::string(residualGrowthWithinLimit ? "yes" : "no"),
+    "healthCheck="+std::string(healthChecksPassed ? "yes" : "no")
   );
   writeRow
   (
@@ -2263,56 +829,9 @@ if (Pstream::master())
     "tAbs="+fmtScalar(thermalFieldAbsMaxObserved)
       + " lim=" + fmtScalar(optThermalFieldAbsMax)
       + " viol=" + std::string(thermalFieldEnvelopeViolated ? "yes" : "no"),
-    "forcedReject="+std::string(fieldEnvelopeForcedReject ? "yes" : "no"),
-    "clipReject="+std::string(clipForcedReject ? "yes" : "no")
-      + " hard=" + std::string(clipHardForcedReject ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Step ctrl",
-    "rejectStreak="+fmtCount(meritRejectStreak),
-    "stepRejected="+std::string(meritStepRejected ? "yes" : "no"),
-    "stopElig="+std::string(globalizationRejectStopEligible ? "yes" : "no"),
-    "hCatch="+std::string(scheduleHorizonCatchUpNeeded ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Rogue dir",
-    "enabled="+std::string(static_cast<bool>(optRogueDirectionSwitchEnable) ? "yes" : "no")
-      + " signal=" + std::string(rogueSignal ? "yes" : "no")
-      + " rejSig=" + std::string(rogueRejectSignal ? "yes" : "no")
-      + " clipSig=" + std::string(rogueClipSignal ? "yes" : "no"),
-    "watch="+std::string(rogueDirectionWatchActive ? "yes" : "no")
-      + " grace=" + fmtCount(rogueDirectionWatchGraceRemaining)
-      + " active=" + std::string(rogueDirectionGraceActive ? "yes" : "no")
-      + " verified=" + std::string(rogueDirectionVerified ? "yes" : "no"),
-    "switchTrig="+std::string(rogueDirectionSwitchTriggered ? "yes" : "no")
-      + " applied=" + std::string(rogueDirectionSwitchApplied ? "yes" : "no")
-      + " count=" + fmtCount(rogueDirectionSwitchCount)
-      + "/" + fmtCount(rogueDirectionSwitchMaxCountClamped),
-    "coolRem="+fmtCount(rogueDirectionSwitchCooldownRemaining)
-      + " rearm=" + std::string(rogueDirectionSwitchBudgetRearmed ? "yes" : "no")
-      + " usObj=" + std::string(rogueDirectionObjectiveUsable ? "yes" : "no")
-      + " usCon=" + std::string(rogueDirectionConstraintUsable ? "yes" : "no")
-      + " cScale=" + fmtScalar(rogueDirectionSwitchClipStepScaleApplied)
-      + " last=" + fmtCount(rogueDirectionLastSwitchIteration)
-      + " start=" + fmtCount(rogueDirectionWatchStartIterationReport)
-  );
-  writeRow
-  (
-    "Cont gate",
-    "schedIter="+fmtCount(continuationScheduleIterationActive),
-    "rawIter="+fmtCount(opt),
-    "freezeOnReject="+std::string(static_cast<bool>(optFreezeContinuationOnReject) ? "yes" : "no")
-      + " lowTrust=" + std::string(static_cast<bool>(optFreezeContinuationOnLowTrust) ? "yes" : "no")
-      + " clipHold=" + std::string(static_cast<bool>(optContinuationClipHoldEnable) ? "yes" : "no"),
-    "frozen="+std::string(reportedContinuationFrozenAny ? "yes" : "no")
-      + " rej=" + std::string(continuationFrozenByReject ? "yes" : "no")
-      + " low=" + std::string(reportedContinuationFrozenByLowTrust ? "yes" : "no")
-      + " clip=" + std::string(continuationFrozenByClipHold ? "yes" : "no")
-      + " phase=" + std::string(continuationFreezePhaseActive ? "active" : "inactive")
-      + " thr=" + fmtScalar(continuationLowTrustThresholdReport)
-      + " cUp=" + fmtCount(reportedContinuationAdvanceCatchUpSteps)
+    "envelopeStop="+std::string(fieldEnvelopeStop ? "yes" : "no"),
+    "clipStop="+std::string(clipSafetyStop ? "yes" : "no")
+      + " hard=" + std::string(clipHardSafetyStop ? "yes" : "no")
   );
   writeRow("Stop", "candidate="+std::string(convergenceCandidate ? "yes" : "no"), "stop="+std::string(stopOptimization ? "yes" : "no"), "reason="+std::string(optimizerStopReason.c_str()));
   writeRow("Outcome", "state="+std::string(stopOutcome), "success="+std::string(stopSuccessful ? "yes" : "no"), "failure="+std::string(stopFailure ? "yes" : "no"));
@@ -2354,8 +873,7 @@ if (Pstream::master())
     "controls",
     "moveLimit="+fmtScalar(optimizerMoveLimitActive),
     "mode="+std::string(static_cast<bool>(optAdaptiveMoveLimitEnable) ? "adaptive" : "fixed"),
-    "moveHits="+fmtCount(xMoveLimitHitCountLocal),
-    "trustScale="+fmtScalar(meritTrustMoveScale)
+    "moveHits="+fmtCount(xMoveLimitHitCountLocal)
   );
   writeRow("bound clamps", "lower="+fmtCount(xLowerBoundCountLocal), "upper="+fmtCount(xUpperBoundCountLocal), "nonFiniteX="+fmtCount(xNonFiniteCountLocal));
 
@@ -2417,11 +935,7 @@ if (Pstream::master())
     "continuation",
     "alphaMax="+fmtScalar(alphaMax.value()),
     "qu="+fmtScalar(qu),
-    "schedIter="+fmtCount(continuationScheduleIterationActive),
-    "frozen="+std::string(reportedContinuationFrozenAny ? "yes" : "no")
-      + " rej=" + std::string(continuationFrozenByReject ? "yes" : "no")
-      + " low=" + std::string(reportedContinuationFrozenByLowTrust ? "yes" : "no")
-      + " clip=" + std::string(continuationFrozenByClipHold ? "yes" : "no")
+    "schedIter="+fmtCount(continuationScheduleIterationActive)
   );
   writeRow("thermal props", "heatSource="+fmtScalar(heatSource.value()), "thermalSrc="+fmtScalar(thermalSource.value()), "rhoCp="+fmtScalar(rhoCp.value()));
 
@@ -2445,169 +959,21 @@ if (Pstream::master())
       << ",\"convergenceConstraintViolation\":" << convergenceConstraintViolation
       << ",\"guardConstraintViolation\":" << guardConstraintViolation
       << ",\"guardConstraintViolationDelta\":" << guardConstraintViolationDelta
-      << ",\"guardConstraintViolationAtCountStart\":" << guardConstraintViolationAtCountStart
-      << ",\"guardConstraintViolationMinSinceCountStart\":" << guardConstraintViolationMinSinceCountStart
-      << ",\"guardConstraintViolationNetRise\":" << guardConstraintViolationNetRise
-      << ",\"guardConstraintViolationReboundRise\":" << guardConstraintViolationReboundRise
-      << ",\"maxConstraintViolationWorsening\":" << (maxConstraintViolationWorsening ? 1 : 0)
-      << ",\"guardConstraintViolationWorsening\":" << (guardConstraintViolationWorsening ? 1 : 0)
-      << ",\"maxConstraintViolationWorsenStreak\":" << reportedMaxViolationWorsenStreak
-      << ",\"powerConstraintMarginWorsening\":" << (powerConstraintMarginWorsening ? 1 : 0)
-      << ",\"powerConstraintWorsening\":" << (powerConstraintWorsening ? 1 : 0)
       << ",\"powerConstraintFinalMargin\":" << powerConstraintFinalMargin
       << ",\"powerConstraintFinalMarginDelta\":" << powerConstraintFinalMarginDelta
-      << ",\"powerConstraintFinalWorsening\":" << (powerConstraintFinalWorsening ? 1 : 0)
-      << ",\"powerConstraintWorsenStreak\":" << reportedPowerConstraintWorsenStreak
-      << ",\"constraintWorsenGuardEnabled\":" << (constraintWorsenGuardEnabled ? 1 : 0)
-      << ",\"constraintWorsenCountingActive\":" << (constraintWorsenCountingActive ? 1 : 0)
-      << ",\"constraintWorsenNetRiseTol\":" << effectiveConstraintWorsenNetRiseTol
-      << ",\"constraintWorsenNetRiseMinAge\":" << optConstraintWorsenNetRiseMinAge
-      << ",\"constraintWorsenNetRiseEffectiveMinAge\":" << effectiveConstraintWorsenNetRiseMinAge
-      << ",\"constraintWorsenNetRiseAge\":" << guardConstraintViolationCountAge
-      << ",\"constraintWorsenNetRiseMaxAgeInRun\":" << maxGuardConstraintViolationAgeInRun
-      << ",\"constraintWorsenNetRiseDelta\":" << guardConstraintViolationDelta
-      << ",\"constraintWorsenNetRiseTriggered\":" << (constraintWorsenNetRiseTriggered ? 1 : 0)
-      << ",\"constraintWorsenReboundWindow\":" << effectiveConstraintReboundWindow
-      << ",\"constraintWorsenReboundMinAge\":" << effectiveConstraintReboundMinAge
-      << ",\"constraintWorsenReboundRiseTol\":" << effectiveConstraintReboundRiseTol
-      << ",\"constraintWorsenReboundRawTriggered\":" << (constraintWorsenReboundTriggered ? 1 : 0)
-      << ",\"constraintWorsenReboundCorroborated\":" << (constraintWorsenReboundCorroborated ? 1 : 0)
-      << ",\"constraintWorsenReboundNetRiseCorroborationTol\":" << constraintReboundNetRiseCorroborationTol
-      << ",\"constraintWorsenReboundTriggered\":" << (constraintWorsenReboundStopTriggered ? 1 : 0)
-      << ",\"constraintWorsenScheduleSettled\":" << (powerConstraintScheduleSettled ? 1 : 0)
-      << ",\"constraintWorsenScheduleTightening\":" << (powerConstraintScheduleTightening ? 1 : 0)
-      << ",\"constraintWorsenScheduleReady\":" << (constraintWorsenScheduleReady ? 1 : 0)
-      << ",\"constraintWorsenScheduleReadyTransition\":" << (constraintWorsenScheduleReadyTransition ? 1 : 0)
-      << ",\"constraintWorsenScheduleIterationsToSettle\":" << powerConstraintScheduleIterationsToSettle
-      << ",\"optimizationIterationsRemaining\":" << optimizationIterationsRemaining
-      << ",\"constraintScheduleHorizonLagIterations\":" << scheduleHorizonLagIterations
-      << ",\"constraintScheduleHorizonLagTolerance\":" << constraintScheduleHorizonLagTolerance
-      << ",\"constraintWorsenScheduleWillSettleInRun\":" << (powerConstraintScheduleWillSettleInRun ? 1 : 0)
-      << ",\"constraintScheduleHorizonGuardEnabled\":" << (static_cast<bool>(optConstraintScheduleHorizonGuard) ? 1 : 0)
-      << ",\"constraintScheduleHorizonGuardTriggered\":" << (constraintScheduleHorizonGuardTriggered ? 1 : 0)
-      << ",\"powerConstraintScheduleDenom\":" << powerConstraintScheduleDenomCurrent
-      << ",\"constraintWorsenGuardTriggered\":" << (constraintWorsenGuardTriggered ? 1 : 0)
-      << ",\"objectiveWorsening\":" << (objectiveWorsening ? 1 : 0)
-      << ",\"objectiveWorsenTol\":" << optObjectiveWorsenTol
-      << ",\"objectiveWorsenStreak\":" << reportedObjectiveWorsenStreak
-      << ",\"objectiveWorsenWindow\":" << optObjectiveWorsenWindow
-      << ",\"objectiveWorsenGuardTriggered\":" << (objectiveWorsenGuardTriggered ? 1 : 0)
-      << ",\"clipGuardEnabled\":" << (clipGuardEnabled ? 1 : 0)
-      << ",\"clipGuardActive\":" << (clipGuardActive ? 1 : 0)
-      << ",\"clipGuardNoProgressActive\":" << (clipGuardNoProgressActive ? 1 : 0)
-      << ",\"clipGuardFluidFractionThreshold\":" << clipGuardFluidFractionThreshold
-      << ",\"clipGuardStreak\":" << reportedClipGuardStreak
-      << ",\"clipGuardNoProgressStreak\":" << reportedClipGuardNoProgressStreak
-      << ",\"clipGuardNoProgressTol\":" << clipGuardNoProgressTolClamped
-      << ",\"clipGuardWindow\":" << clipGuardWindowDisabled
-      << ",\"clipGuardTriggered\":" << (clipGuardTriggered ? 1 : 0)
-      << ",\"clipGuardRejectMode\":" << (clipGuardRejectMode ? 1 : 0)
-      << ",\"clipGuardForcedReject\":" << (clipGuardForcedReject ? 1 : 0)
-      << ",\"clipHardRejectFluidFraction\":" << clipHardRejectFluidFractionClamped
-      << ",\"clipHardRejectGrayFraction\":" << clipHardRejectGrayFractionClamped
-      << ",\"clipHardRejectFluidJump\":" << clipHardRejectFluidJumpClamped
-      << ",\"clipHardRejectByFraction\":" << (clipHardRejectByFraction ? 1 : 0)
-      << ",\"clipHardRejectByJump\":" << (clipHardRejectByJump ? 1 : 0)
-      << ",\"clipHardForcedReject\":" << (clipHardForcedReject ? 1 : 0)
-      << ",\"clipForcedReject\":" << (clipForcedReject ? 1 : 0)
+      << ",\"volumeConstraintMarginDelta\":" << volumeConstraintMarginDelta
       << ",\"objectiveAbsValue\":" << objectiveAbsValue
       << ",\"objectiveAbsMax\":" << optObjectiveAbsMax
       << ",\"objectiveEnvelopeViolated\":" << (objectiveEnvelopeViolated ? 1 : 0)
       << ",\"thermalFieldAbsMaxObserved\":" << thermalFieldAbsMaxObserved
       << ",\"thermalFieldAbsMax\":" << optThermalFieldAbsMax
       << ",\"thermalFieldEnvelopeViolated\":" << (thermalFieldEnvelopeViolated ? 1 : 0)
-      << ",\"fieldEnvelopeForcedReject\":" << (fieldEnvelopeForcedReject ? 1 : 0)
-      << ",\"constraintNonDeteriorationAccepted\":" << (constraintNonDeteriorationAccepted ? 1 : 0)
-      << ",\"clipJumpHealthGatePassed\":" << (clipJumpHealthGatePassed ? 1 : 0)
-      << ",\"residualGrowthGatePassed\":" << (residualGrowthGatePassed ? 1 : 0)
-      << ",\"healthGatesPassed\":" << (healthGatesPassed ? 1 : 0)
+      << ",\"fieldEnvelopeStop\":" << (fieldEnvelopeStop ? 1 : 0)
       << ",\"maxLinearFinalResidual\":" << maxLinearFinalResidual
       << ",\"linearResidualGrowthRatio\":" << linearResidualGrowthRatio
-      << ",\"acceptanceEnabled\":0"
-      << ",\"stepAccepted\":" << (meritAccepted ? 1 : 0)
-      << ",\"stepRejected\":" << (meritStepRejected ? 1 : 0)
-      << ",\"rejectStreak\":" << meritRejectStreak
-      << ",\"globalizationRejectStopEligible\":" << (globalizationRejectStopEligible ? 1 : 0)
-      << ",\"rejectCountsTowardStop\":" << (meritRejectCountsTowardStop ? 1 : 0)
-      << ",\"scheduleHorizonCatchUpNeeded\":" << (scheduleHorizonCatchUpNeeded ? 1 : 0)
-      << ",\"scheduleHorizonNoSlackUnderFreeze\":" << (scheduleHorizonNoSlackUnderFreeze ? 1 : 0)
-      << ",\"scheduleHorizonDeadlockOnReject\":" << (scheduleHorizonDeadlockOnReject ? 1 : 0)
-      << ",\"deadlockRecoveryBlockedByGlobalization\":"
-      << (deadlockRecoveryBlockedByGlobalization ? 1 : 0)
-      << ",\"continuationDeadlockRecoveryEnabled\":" << (static_cast<bool>(optContinuationDeadlockRecoveryEnable) ? 1 : 0)
-      << ",\"continuationDeadlockRecoveryCount\":" << reportedContinuationDeadlockRecoveryCount
-      << ",\"continuationDeadlockRecoveryMaxOverrides\":" << optContinuationDeadlockRecoveryMaxOverrides
-      << ",\"continuationDeadlockRecoveryMaxCatchUpSteps\":" << optContinuationDeadlockRecoveryMaxCatchUpSteps
-      << ",\"continuationDeadlockRecoveryLagBuffer\":" << optContinuationDeadlockRecoveryLagBuffer
-      << ",\"continuationDeadlockCatchUpRequest\":" << reportedDeadlockCatchUpRequest
-      << ",\"continuationAdvanceOverrideOnReject\":" << (continuationAdvanceOverrideOnReject ? 1 : 0)
-      << ",\"continuationAdvanceCatchUpSteps\":" << reportedContinuationAdvanceCatchUpSteps
-      << ",\"continuationClipBackoffStepsApplied\":" << continuationClipBackoffStepsApplied
       << ",\"trustRatioDefined\":" << (trustRatioDefined ? 1 : 0)
       << ",\"trustRatio\":" << trustRatio
-      << ",\"trustRatioAccepted\":" << (trustRatioAccepted ? 1 : 0)
-      << ",\"predictedMeritDelta\":" << predictedMeritDelta
-      << ",\"predictedMeritReduction\":" << predictedMeritReduction
-      << ",\"actualMeritReduction\":" << actualMeritReduction
-      << ",\"meritValue\":" << meritValue
-      << ",\"previousAcceptedMerit\":" << (hasPreviousAcceptedMerit ? previousAcceptedMerit : meritValue)
-      << ",\"trustMoveScale\":" << meritTrustMoveScale
-      << ",\"trustMoveMin\":" << meritTrustMoveMinClamped
-      << ",\"recoveryRequest\":" << (meritRecoveryRequest ? 1 : 0)
-      << ",\"rogueDirectionSwitchEnabled\":" << (static_cast<bool>(optRogueDirectionSwitchEnable) ? 1 : 0)
-      << ",\"rogueRejectSignal\":" << (rogueRejectSignal ? 1 : 0)
-      << ",\"rogueClipSignal\":" << (rogueClipSignal ? 1 : 0)
-      << ",\"rogueSignal\":" << (rogueSignal ? 1 : 0)
-      << ",\"rogueDirectionWatchActive\":" << (rogueDirectionWatchActive ? 1 : 0)
-      << ",\"rogueDirectionGraceRemaining\":" << rogueDirectionWatchGraceRemaining
-      << ",\"rogueDirectionGraceActive\":" << (rogueDirectionGraceActive ? 1 : 0)
-      << ",\"rogueDirectionVerified\":" << (rogueDirectionVerified ? 1 : 0)
-      << ",\"rogueDirectionWatchStartIteration\":" << rogueDirectionWatchStartIteration
-      << ",\"rogueDirectionWatchStartIterationReport\":" << rogueDirectionWatchStartIterationReport
-      << ",\"rogueDirectionSwitchTriggered\":" << (rogueDirectionSwitchTriggered ? 1 : 0)
-      << ",\"rogueDirectionSwitchApplied\":" << (rogueDirectionSwitchApplied ? 1 : 0)
-      << ",\"rogueDirectionObjectiveUsable\":" << (rogueDirectionObjectiveUsable ? 1 : 0)
-      << ",\"rogueDirectionConstraintUsable\":" << (rogueDirectionConstraintUsable ? 1 : 0)
-      << ",\"rogueDirectionSwitchBudgetRearmed\":" << (rogueDirectionSwitchBudgetRearmed ? 1 : 0)
-      << ",\"rogueDirectionSwitchCount\":" << rogueDirectionSwitchCount
-      << ",\"rogueDirectionSwitchMaxCount\":" << rogueDirectionSwitchMaxCountClamped
-      << ",\"rogueDirectionSwitchCooldown\":" << rogueDirectionSwitchCooldownClamped
-      << ",\"rogueDirectionSwitchCooldownRemaining\":" << rogueDirectionSwitchCooldownRemaining
-      << ",\"rogueDirectionLastSwitchIteration\":" << rogueDirectionLastSwitchIteration
-      << ",\"rogueDirectionSwitchClipDampFluidFraction\":"
-      << rogueDirectionSwitchClipDampFluidFractionClamped
-      << ",\"rogueDirectionSwitchClipDampGrayFraction\":"
-      << rogueDirectionSwitchClipDampGrayFractionClamped
-      << ",\"rogueDirectionSwitchClipDampScale\":"
-      << rogueDirectionSwitchClipDampScaleClamped
-      << ",\"rogueDirectionSwitchSevereClipFluidFraction\":"
-      << rogueDirectionSwitchSevereClipFluidFractionClamped
-      << ",\"rogueDirectionSwitchSevereClipGrayFraction\":"
-      << rogueDirectionSwitchSevereClipGrayFractionClamped
-      << ",\"rogueDirectionSwitchSevereClipScale\":"
-      << rogueDirectionSwitchSevereClipScaleClamped
-      << ",\"rogueDirectionSwitchClipStepScaleApplied\":"
-      << rogueDirectionSwitchClipStepScaleApplied
-      << ",\"rogueDirectionSwitchStepAmplitudeApplied\":"
-      << rogueDirectionSwitchStepAmplitudeApplied
-      << ",\"freezeContinuationOnRejectEnabled\":" << (static_cast<bool>(optFreezeContinuationOnReject) ? 1 : 0)
-      << ",\"freezeContinuationOnLowTrustEnabled\":" << (static_cast<bool>(optFreezeContinuationOnLowTrust) ? 1 : 0)
-      << ",\"continuationLowTrustThreshold\":" << continuationLowTrustThresholdReport
-      << ",\"rejectStopRequireConstraintWindow\":" << (static_cast<bool>(optRejectStopRequireConstraintWindow) ? 1 : 0)
-      << ",\"earlyRecoveryOnRejectEnabled\":" << (static_cast<bool>(optEarlyRecoveryOnGlobalizationReject) ? 1 : 0)
-      << ",\"recoveryEnabled\":" << (static_cast<bool>(optRecoveryEnable) ? 1 : 0)
-      << ",\"recoveryActive\":" << (constraintRecoveryActive ? 1 : 0)
-      << ",\"recoveryWorsenStreak\":" << optRecoveryWorsenStreak
-      << ",\"recoveryMoveLimitScale\":" << optRecoveryMoveLimitScale
-      << ",\"recoveryContinuationRampScale\":" << optRecoveryContinuationRampScale
-      << ",\"recoveryContinuationRampScaleActive\":" << continuationRampScaleActive
-      << ",\"recoveryDelRampStepActive\":" << delRampStepActive
       << ",\"continuationScheduleIteration\":" << continuationScheduleIterationActive
-      << ",\"continuationFrozenByReject\":" << (continuationFrozenByReject ? 1 : 0)
-      << ",\"continuationFrozenByLowTrust\":" << (reportedContinuationFrozenByLowTrust ? 1 : 0)
-      << ",\"continuationFrozenByClipHold\":" << (continuationFrozenByClipHold ? 1 : 0)
-      << ",\"continuationFrozen\":" << (reportedContinuationFrozenAny ? 1 : 0)
-      << ",\"continuationFreezePhaseActive\":" << (continuationFreezePhaseActive ? 1 : 0)
       << ",\"closureDerivativeFDEnabled\":" << (static_cast<bool>(optClosureDerivativeFDEnable) ? 1 : 0)
       << ",\"closureDerivativeFDRelStep\":" << optClosureDerivativeFDRelStep
       << ",\"gradientConsistencyRatio\":" << gradientConsistencyRatio
@@ -2619,10 +985,6 @@ if (Pstream::master())
       << ",\"predictedVolumeDelta\":" << predictedVolumeDelta
       << ",\"predictedThermalTmaxDelta\":" << predictedThermalTmaxDelta
       << ",\"predictedThermalTminDelta\":" << predictedThermalTminDelta
-      << ",\"constraintWorsenMinIterations\":" << optConstraintWorsenMinIterations
-      << ",\"constraintWorsenScheduleIteration\":" << scheduleIterationCurrent
-      << ",\"constraintWorsenWindow\":" << optConstraintWorsenWindow
-      << ",\"constraintWorsenTol\":" << optConstraintWorsenTol
       << ",\"xStepMax\":" << maxAbsXChangeLocal
       << ",\"xhStepMax\":" << maxAbsXhChangeLocal
       << ",\"xStepL2OverSqrtN\":" << normalizedL2XChange
@@ -2695,9 +1057,6 @@ if (Pstream::master())
       << "\""
       << ",\"asymInc\":" << mma_inc
       << ",\"asymDec\":" << mma_dec
-      << ",\"recoveryActive\":" << (constraintRecoveryActive ? 1 : 0)
-      << ",\"trustMoveScale\":" << meritTrustMoveScale
-      << ",\"stepRejected\":" << (meritStepRejected ? 1 : 0)
       << ",\"moveLimitHitCount\":" << xMoveLimitHitCountLocal
       << ",\"lowerBoundCount\":" << xLowerBoundCountLocal
       << ",\"upperBoundCount\":" << xUpperBoundCountLocal
@@ -2716,8 +1075,6 @@ if (Pstream::master())
       << ",\"volumeConstraintMax\":" << gsensVolLocalMax
       << ",\"volumeConstraintL2\":" << gsensVolL2
       << ",\"volumeConstraintNonFiniteCount\":" << gsensVolNonFiniteCountLocal
-      << ",\"hasAcceptedGradientSnapshot\":" << (hasAcceptedGradientSnapshot ? 1 : 0)
-      << ",\"hasAcceptedStateSnapshot\":" << (hasAcceptedStateSnapshot ? 1 : 0)
     << "}"
     << ",\"solver\":{"
       << "\"primalFlowSweeps\":" << effectivePrimalCorrectors
@@ -2794,16 +1151,9 @@ if (Pstream::master())
       << ",\"qu\":" << qu
       << ",\"scheduleIteration\":" << continuationScheduleIterationActive
       << ",\"rawIteration\":" << opt
-      << ",\"frozenByReject\":" << (continuationFrozenByReject ? 1 : 0)
-      << ",\"frozenByLowTrust\":" << (reportedContinuationFrozenByLowTrust ? 1 : 0)
-      << ",\"frozenByClipHold\":" << (continuationFrozenByClipHold ? 1 : 0)
-      << ",\"frozen\":" << (reportedContinuationFrozenAny ? 1 : 0)
       << ",\"heatSource\":" << heatSource.value()
       << ",\"thermalSource\":" << thermalSource.value()
       << ",\"rhoCp\":" << rhoCp.value()
     << "}"
     << "}\n";
 }
-
-previousConstraintWorsenScheduleReady = constraintWorsenScheduleReady;
-hasPreviousConstraintWorsenScheduleReady = true;

@@ -6,7 +6,6 @@ const char* debugOptimizerLogFile = "debugOptimizer.log";
 const char* debugAdjointCycleLogFile = debugOptimizerLogFile;
 const char* legacyDebugAdjointCycleLogFile = "debugAdjointCycle.log";
 const char* solverConvergenceFile = "solverConvergences.log";
-const char* optimizerDirectionEventFile = "optimizerDirectionEvents.log";
 const char* firstFailureSnapshotFile = "firstFailureSnapshot.log";
 if (Pstream::master())
 {
@@ -16,7 +15,6 @@ if (Pstream::master())
   std::remove(debugOptimizerLogFile);
   std::remove(legacyDebugAdjointCycleLogFile);
   std::remove(solverConvergenceFile);
-  std::remove(optimizerDirectionEventFile);
   std::remove(firstFailureSnapshotFile);
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
@@ -40,15 +38,6 @@ if (Pstream::master())
     << "# Structured per-iteration diagnostics for optimizer development\n"
     << "# Format: sectioned human-readable report, one block per optimization iteration\n"
     << "# Adjoint-Cycle/Optimization-Cycle adjoint traces are consolidated in this file under dedicated sections\n";
-
-  if (static_cast<bool>(optRogueDirectionSwitchEnable))
-  {
-    std::ofstream optimizerDirectionEventLogFile(optimizerDirectionEventFile, std::ios::out);
-    optimizerDirectionEventLogFile
-      << "# MTO_ThermalFluid optimizer direction-search event log\n"
-      << "# Event lines for rogue-watch activation, grace countdown, and forced direction switches\n"
-      << "# Format: Iter=<i> Event=<name> key=value ...\n";
-  }
 
   std::ofstream solverConvergenceLogFile(solverConvergenceFile, std::ios::out);
   solverConvergenceLogFile
@@ -414,59 +403,16 @@ scalar previousMaxConstraintViolation(0);
 bool hasPreviousMaxConstraintViolation(false);
 scalar previousGuardConstraintViolation(0);
 bool hasPreviousGuardConstraintViolation(false);
-scalar guardConstraintViolationAtCountStart(0);
-scalar guardConstraintViolationMinSinceCountStart(0);
-bool hasGuardConstraintViolationAtCountStart(false);
-label guardConstraintViolationCountStartIter(-1);
-label powerConstraintWorsenStreak(0);
-label maxViolationWorsenStreak(0);
-label objectiveWorsenStreak(0);
-label clipGuardStreak(0);
-label clipGuardNoProgressStreak(0);
 bool stopOptimization(false);
 label optimizerConvergedStreak(0);
 word optimizerStopReason("running");
-bool constraintRecoveryActive(false);
-scalar continuationRampScaleActive(1.0);
-scalar delRampStepActive(0.2);
 scalar optimizerMoveLimitActive(movlim);
 scalar previousTrustRatio(1.0);
 bool hasPreviousTrustRatio(false);
-label continuationIteration(0);
+label continuationIteration(1);
 label continuationScheduleIterationActive(1);
-bool previousConstraintWorsenScheduleReady(false);
-bool hasPreviousConstraintWorsenScheduleReady(false);
-bool continuationFrozenByReject(false);
-bool continuationFrozenByLowTrust(false);
-bool continuationFrozenByClipHold(false);
-bool continuationAdvanceOverrideOnReject(false);
-label continuationAdvanceCatchUpSteps(0);
-label continuationDeadlockRecoveryCount(0);
-bool meritStepRejected(false);
-label meritRejectStreak(0);
-label meritRejectStopEligibleStreak(0);
-scalar meritTrustMoveScale(1.0);
-bool meritRecoveryRequest(false);
-bool rogueDirectionWatchActive(false);
-label rogueDirectionWatchGraceRemaining(0);
-label rogueDirectionWatchStartIteration(-1);
-label rogueDirectionSwitchCount(0);
-label rogueDirectionLastSwitchIteration(-1000000);
-scalar previousAcceptedMerit(0);
-bool hasPreviousAcceptedMerit(false);
-label acceptedMeritScheduleIteration(-1);
-label meritScheduleRebaseCount(0);
-std::vector<scalar> filterConstraintArchive;
-std::vector<scalar> filterObjectiveArchive;
-scalar previousMaxFluidClipFraction(0.0);
-scalar previousGuardConstraintViolationDelta(0.0);
-bool hasPreviousClipDiagnostics(false);
-bool previousHealthGateFailed(false);
-scalar previousThermalEnvelopeViolation(0.0);
 scalar previousMaxLinearFinalResidual(0.0);
 bool hasPreviousMaxLinearFinalResidual(false);
-bool hasAcceptedGradientSnapshot(false);
-bool hasAcceptedStateSnapshot(false);
 bool firstFailureSnapshotWritten(false);
 scalar turbulenceKNonlinearChange(0);
 scalar turbulenceOmegaNonlinearChange(0);
@@ -524,12 +470,6 @@ std::vector<double> xmma(n);
 std::vector<double> dfdx(n);
 std::vector<double> gx(m);
 std::vector<std::vector<double>> dgdx(m);
-std::vector<double> acceptedDfdx(n, 0.0);
-std::vector<std::vector<double>> acceptedDgdx(m);
-for (int ci = 0; ci < m; ci++)
-{
-  acceptedDgdx[ci].resize(n, 0.0);
-}
 for (int i = 0; i < m; i++)
 {
   dgdx[i].resize(n);

@@ -12,7 +12,8 @@ recordLinearSolve
 //***********************************//Heaviside_filter
 const scalar targetDel =
   Foam::min(scalar(0.2)*continuationScheduleIterationActive, scalar(100));
-del = Foam::min(del + delRampStepActive, targetDel);
+const scalar continuationDelStep = 0.2;
+del = Foam::min(del + continuationDelStep, targetDel);
 eta0=0.0001;
 eta1=1.0;
 y0=diff(xp,mesh.V(),del,eta0,n);

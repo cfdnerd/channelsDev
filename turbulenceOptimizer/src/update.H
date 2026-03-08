@@ -1,94 +1,8 @@
 //***********************************//update mu and lambda
 opt++;
-const label updateScheduleIterationCurrent =
-  Foam::max(opt, label(1));
-const scalar updatePowerConstraintScheduleDenomCurrent =
-  Foam::max(PowerDissRelax - scalar(0.2)*updateScheduleIterationCurrent, PowerDissMax);
-const scalar updatePowerConstraintScheduleGap =
-  Foam::max(updatePowerConstraintScheduleDenomCurrent - PowerDissMax, scalar(0));
-const scalar updatePowerConstraintScheduleStep = 0.2;
-const label updatePowerConstraintScheduleIterationsToSettle =
-  updatePowerConstraintScheduleGap > SMALL
-  ? static_cast<label>(updatePowerConstraintScheduleGap/updatePowerConstraintScheduleStep + 0.999999)
-  : 0;
-const scalar updateOptimizationIterationsRemainingRaw =
-  Foam::max(runTime.endTime().value() - static_cast<scalar>(opt), scalar(0));
-const label updateOptimizationIterationsRemaining =
-  static_cast<label>(updateOptimizationIterationsRemainingRaw + 0.000001);
-const label updateScheduleHorizonLagIterations =
-  Foam::max
-  (
-    updatePowerConstraintScheduleIterationsToSettle - updateOptimizationIterationsRemaining,
-    label(0)
-  );
-(void)updateScheduleHorizonLagIterations;
-const bool updatePowerConstraintScheduleSettled =
-  updatePowerConstraintScheduleDenomCurrent <= PowerDissMax + SMALL;
-const bool updatePowerConstraintScheduleWillSettleInRun =
-  updatePowerConstraintScheduleIterationsToSettle <= updateOptimizationIterationsRemaining;
-const bool updateContinuationFreezePhaseActive =
-  updatePowerConstraintScheduleSettled || !updatePowerConstraintScheduleWillSettleInRun;
-continuationFrozenByReject = false;
-continuationFrozenByLowTrust = false;
-const scalar continuationClipHoldNoProgressTolClamped =
-  Foam::max(optContinuationClipHoldNoProgressTol, scalar(1e-8));
-continuationFrozenByClipHold =
-  static_cast<bool>(optContinuationClipHoldEnable)
-  && updateContinuationFreezePhaseActive
-  && (
-       (
-            hasPreviousClipDiagnostics
-         && previousMaxFluidClipFraction >= optContinuationClipHoldFluidFraction
-         && previousGuardConstraintViolation > optConstraintTol
-         && previousGuardConstraintViolationDelta > -continuationClipHoldNoProgressTolClamped
-       )
-    || previousHealthGateFailed
-    || previousThermalEnvelopeViolation > 0.0
-     )
-  && !continuationAdvanceOverrideOnReject;
-const bool continuationFrozen =
-  continuationFrozenByReject || continuationFrozenByLowTrust || continuationFrozenByClipHold;
-if (continuationIteration <= 0)
-{
-  continuationIteration = 1;
-}
-else if (!continuationFrozen)
-{
-  const bool continuationHealthAcceptable =
-       !previousHealthGateFailed
-    && previousThermalEnvelopeViolation <= 0.0;
-  const bool continuationAdvanceAllowed =
-    !static_cast<bool>(optContinuationEventDriven)
-    || (
-         true
-      && continuationHealthAcceptable
-       );
-  if (continuationAdvanceAllowed)
-  {
-    continuationIteration += 1 + Foam::max(continuationAdvanceCatchUpSteps, label(0));
-  }
-}
-continuationScheduleIterationActive =
-  continuationIteration;
-continuationAdvanceOverrideOnReject = false;
-continuationAdvanceCatchUpSteps = 0;
-
-const scalar recoveryContinuationRampScale =
-  Foam::max(Foam::min(optRecoveryContinuationRampScale, scalar(1.0)), scalar(0.10));
-const bool recoverySignal =
-  maxViolationWorsenStreak >= optRecoveryWorsenStreak;
-const bool earlyRecoveryAllowed = false;
-const bool recoveryIterationGate =
-  opt >= optConstraintWorsenMinIterations || earlyRecoveryAllowed;
-const bool recoveryEligible =
-  recoverySignal
-  && recoveryIterationGate;
-constraintRecoveryActive =
-  static_cast<bool>(optRecoveryEnable) && recoveryEligible;
-continuationRampScaleActive =
-  constraintRecoveryActive ? recoveryContinuationRampScale : scalar(1.0);
-delRampStepActive =
-  constraintRecoveryActive ? scalar(0.05) : scalar(0.2);
+continuationIteration = Foam::max(opt, label(1));
+continuationScheduleIterationActive = continuationIteration;
+const scalar continuationRampScale = scalar(1.0);
 const scalar adaptiveMoveLimitMinClamped =
   Foam::max(Foam::min(optAdaptiveMoveLimitMin, scalar(1.0)), scalar(1e-4));
 const scalar adaptiveMoveLimitMaxClamped =
@@ -130,12 +44,6 @@ if (static_cast<bool>(optAdaptiveMoveLimitEnable))
       adaptiveMoveLimitCandidate *= adaptiveNegativeTrustDampingClamped;
     }
   }
-  if (constraintRecoveryActive)
-  {
-    adaptiveMoveLimitCandidate *=
-      Foam::max(Foam::min(optRecoveryMoveLimitScale, scalar(1.0)), scalar(0.1));
-  }
-  adaptiveMoveLimitCandidate *= Foam::max(meritTrustMoveScale, scalar(0.05));
   optimizerMoveLimitActive =
     Foam::max
     (
@@ -180,7 +88,7 @@ else if
   const scalar continuationGrowthSteps =
     scalar(continuationScheduleIterationActive - 100);
   const scalar continuationGrowthBase =
-    1.0 + 0.05*continuationRampScaleActive;
+    1.0 + 0.05*continuationRampScale;
   const scalar continuationGrowthFactor =
     Foam::pow(continuationGrowthBase, continuationGrowthSteps);
   scheduledAlphaMaxValue = continuationAlphaAt63*continuationGrowthFactor;
@@ -189,7 +97,7 @@ alphaMax.value() = Foam::min(scheduledAlphaMaxValue, alphaMAX.value());
 
 const scalar scheduledQu =
   continuationScheduleIterationActive >= 80
-  ? 0.005 + (continuationScheduleIterationActive-80)*1e-4*continuationRampScaleActive
+  ? 0.005 + (continuationScheduleIterationActive-80)*1e-4*continuationRampScale
   : 0.005;
 qu = scheduledQu;
 alphaMax.value()=Foam::min(alphaMax.value(),alphaMAX.value());

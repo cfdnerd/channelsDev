@@ -50,7 +50,7 @@ Turbulence adds:
 - turbulent closure contributions,
 - gradient L2 normalization,
 - sensitivity quality scoring/gating,
-- optional reuse of accepted gradients,
+- optional reuse of prior gradient snapshots,
 - adaptive MMA move-limit handling from sensitivity health.
 
 Key files:

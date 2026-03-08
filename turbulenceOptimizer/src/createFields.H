@@ -54,62 +54,6 @@ scalar optVolumeConstraintWeight
 (
   convergenceControl.lookupOrDefault<scalar>("optVolumeConstraintWeight", 1.0)
 );
-label optConstraintWorsenMinIterations
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintWorsenMinIterations", optMinIterations)
-);
-label optConstraintWorsenWindow
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintWorsenWindow", 0)
-);
-scalar optConstraintWorsenTol
-(
-  convergenceControl.lookupOrDefault<scalar>("optConstraintWorsenTol", 0.0)
-);
-scalar optConstraintWorsenNetRiseTol
-(
-  convergenceControl.lookupOrDefault<scalar>("optConstraintWorsenNetRiseTol", 0.25)
-);
-label optConstraintWorsenNetRiseMinAge
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintWorsenNetRiseMinAge", optConstraintWorsenWindow)
-);
-label optConstraintReboundWindow
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintReboundWindow", 0)
-);
-label optConstraintReboundMinAge
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintReboundMinAge", optConstraintWorsenNetRiseMinAge)
-);
-scalar optConstraintReboundRiseTol
-(
-  convergenceControl.lookupOrDefault<scalar>("optConstraintReboundRiseTol", optConstraintWorsenNetRiseTol)
-);
-scalar optObjectiveWorsenTol
-(
-  convergenceControl.lookupOrDefault<scalar>("optObjectiveWorsenTol", 0.0)
-);
-label optObjectiveWorsenWindow
-(
-  convergenceControl.lookupOrDefault<label>("optObjectiveWorsenWindow", 0)
-);
-Switch optRecoveryEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optRecoveryEnable", false)
-);
-label optRecoveryWorsenStreak
-(
-  convergenceControl.lookupOrDefault<label>("optRecoveryWorsenStreak", 3)
-);
-scalar optRecoveryMoveLimitScale
-(
-  convergenceControl.lookupOrDefault<scalar>("optRecoveryMoveLimitScale", 0.5)
-);
-scalar optRecoveryContinuationRampScale
-(
-  convergenceControl.lookupOrDefault<scalar>("optRecoveryContinuationRampScale", 0.35)
-);
 scalar optObjectiveAbsMax
 (
   convergenceControl.lookupOrDefault<scalar>("optObjectiveAbsMax", 1e6)
@@ -118,38 +62,6 @@ scalar optThermalFieldAbsMax
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalFieldAbsMax", 1e6)
 );
-Switch optFreezeContinuationOnReject(false);
-Switch optFreezeContinuationOnLowTrust(false);
-scalar optContinuationLowTrustThreshold(0.0);
-label optContinuationLowTrustRejectStreak(0);
-(void)optContinuationLowTrustRejectStreak;
-Switch optRejectStopRequireConstraintWindow(false);
-Switch optEarlyRecoveryOnGlobalizationReject(false);
-// Retired dictionary tuning family: continuation deadlock/catch-up heuristics.
-Switch optContinuationDeadlockRecoveryEnable(false);
-Switch optContinuationClipHoldEnable(false);
-scalar optContinuationClipHoldFluidFraction(0.20);
-scalar optContinuationClipHoldNoProgressTol(5e-4);
-label optContinuationDeadlockRecoveryMaxOverrides(0);
-label optContinuationDeadlockRecoveryMaxCatchUpSteps(0);
-label optContinuationDeadlockRecoveryLagBuffer(0);
-// Retired dictionary tuning family: rogue-direction switching heuristics.
-Switch optRogueDirectionSwitchEnable(false);
-label optRogueGraceIterations(6);
-label optRogueRejectStreakTrigger(3);
-scalar optRogueClipFluidThreshold(0.20);
-scalar optRogueClipGrayThreshold(0.90);
-label optRogueDirectionSwitchCooldown(8);
-label optRogueDirectionSwitchMaxCount(0);
-scalar optRogueDirectionSwitchStepScale(0.6);
-scalar optRogueDirectionSwitchConstraintBlend(0.7);
-scalar optRogueDirectionSwitchNoiseScale(0.05);
-scalar optRogueDirectionSwitchClipDampFluidFraction(0.60);
-scalar optRogueDirectionSwitchClipDampGrayFraction(0.95);
-scalar optRogueDirectionSwitchClipDampScale(0.50);
-scalar optRogueDirectionSwitchSevereClipFluidFraction(0.80);
-scalar optRogueDirectionSwitchSevereClipGrayFraction(0.98);
-scalar optRogueDirectionSwitchSevereClipScale(0.25);
 Switch optClosureDerivativeFDEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDEnable", true)
@@ -157,14 +69,6 @@ Switch optClosureDerivativeFDEnable
 scalar optClosureDerivativeFDRelStep
 (
   convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDRelStep", 1e-4)
-);
-Switch optConstraintScheduleHorizonGuard
-(
-  convergenceControl.lookupOrDefault<Switch>("optConstraintScheduleHorizonGuard", true)
-);
-label optConstraintScheduleHorizonLagTolerance
-(
-  convergenceControl.lookupOrDefault<label>("optConstraintScheduleHorizonLagTolerance", 1)
 );
 Switch optRequireTransportedClosureAdjoints
 (
@@ -253,10 +157,6 @@ scalar optThermalKSBeta
 scalar optThermalEnvelopePenalty
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalEnvelopePenalty", 0.10)
-);
-Switch optProductionContinueAfterSafetyReject
-(
-  convergenceControl.lookupOrDefault<Switch>("optProductionContinueAfterSafetyReject", true)
 );
 scalar optSensitivityGradientL2Eps
 (
