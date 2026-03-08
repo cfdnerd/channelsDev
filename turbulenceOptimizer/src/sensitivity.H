@@ -235,17 +235,11 @@ if (sensitivityQualityReuseAcceptedGradient)
   dgdx = acceptedDgdx;
 }
 
-const scalar sensitivityMoveScale =
-  sensitivityQualityRequireConservativeStep
-  ? optSensitivityLowQualityMoveScale
-  : scalar(1.0);
-const scalar mmaMoveLimitActive =
-  Foam::max(optimizerMoveLimitActive*sensitivityMoveScale, optMmaMoveLimitFloor);
-mma.asyminc = adaptiveMmaAsymIncActive;
-mma.asymdec = adaptiveMmaAsymDecActive;
+mma.asyminc = mma_inc;
+mma.asymdec = mma_dec;
 
 Info<< "\n run MMA \n" << endl;
-mma.movelimit = mmaMoveLimitActive;
+mma.movelimit = movlim;
 mma.MMAsolver(xmma, dfdx, gx, dgdx);
 for(i=0;i<n;i++)
 {

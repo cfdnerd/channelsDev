@@ -294,32 +294,6 @@ Switch optDisableLateStageContinuationAcceleration
 (
   convergenceControl.lookupOrDefault<Switch>("optDisableLateStageContinuationAcceleration", true)
 );
-scalar optAdaptiveBaseMoveMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveBaseMoveMin", 0.08)
-);
-scalar optAdaptiveBaseMoveMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveBaseMoveMax", 0.20)
-);
-scalar optAdaptiveAsymIncMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveAsymIncMin", 1.02)
-);
-scalar optAdaptiveAsymIncMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveAsymIncMax", 1.08)
-);
-scalar optAdaptiveAsymDecMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveAsymDecMin", 0.40)
-);
-scalar optAdaptiveAsymDecMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optAdaptiveAsymDecMax", 0.60)
-);
-// Retired dictionary tuning knob: disable clip-driven move-limit damping.
-scalar optAdaptiveClipMoveScale(1.0);
 Switch optThermalBoundedObjectiveEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optThermalBoundedObjectiveEnable", true)
@@ -392,10 +366,6 @@ label optSensitivityQualityFailWindow
 scalar optSensitivityLowQualityMoveScale
 (
   convergenceControl.lookupOrDefault<scalar>("optSensitivityLowQualityMoveScale", 0.60)
-);
-scalar optMmaMoveLimitFloor
-(
-  convergenceControl.lookupOrDefault<scalar>("optMmaMoveLimitFloor", 1e-2)
 );
 Switch optProductionIgnoreSensitivityReject
 (
@@ -484,55 +454,6 @@ if (optVolumeConstraintWeight <= 0.0)
     << optVolumeConstraintWeight
     << exit(FatalError);
 }
-if (optAdaptiveBaseMoveMin <= 0.0 || optAdaptiveBaseMoveMin > 1.0)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optAdaptiveBaseMoveMin must be in (0,1]. Found "
-    << optAdaptiveBaseMoveMin
-    << exit(FatalError);
-}
-if (optAdaptiveBaseMoveMax < optAdaptiveBaseMoveMin || optAdaptiveBaseMoveMax > 1.0)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optAdaptiveBaseMoveMax must satisfy "
-    << "optAdaptiveBaseMoveMin <= optAdaptiveBaseMoveMax <= 1. Found min="
-    << optAdaptiveBaseMoveMin << ", max=" << optAdaptiveBaseMoveMax
-    << exit(FatalError);
-}
-if (optAdaptiveAsymIncMin < 1.0 || optAdaptiveAsymIncMax < optAdaptiveAsymIncMin)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optAdaptiveAsymIncMin/Max must satisfy "
-    << "1 <= min <= max. Found min=" << optAdaptiveAsymIncMin
-    << ", max=" << optAdaptiveAsymIncMax
-    << exit(FatalError);
-}
-if (optAdaptiveAsymDecMin <= 0.0 || optAdaptiveAsymDecMin > 1.0)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optAdaptiveAsymDecMin must be in (0,1]. Found "
-    << optAdaptiveAsymDecMin
-    << exit(FatalError);
-}
-if
-(
-  optAdaptiveAsymDecMax < optAdaptiveAsymDecMin
-  || optAdaptiveAsymDecMax > 1.0
-)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optAdaptiveAsymDecMax must satisfy "
-    << "optAdaptiveAsymDecMin <= optAdaptiveAsymDecMax <= 1. Found min="
-    << optAdaptiveAsymDecMin << ", max=" << optAdaptiveAsymDecMax
-    << exit(FatalError);
-}
-if (optAdaptiveClipMoveScale <= 0.0 || optAdaptiveClipMoveScale > 1.0)
-{
-  FatalErrorInFunction
-    << "Internal optAdaptiveClipMoveScale must be in (0,1]. Found "
-    << optAdaptiveClipMoveScale
-    << exit(FatalError);
-}
 if (optThermalExcessSoftplusScale <= 0.0 || optThermalKSBeta <= 0.0)
 {
   FatalErrorInFunction
@@ -583,13 +504,6 @@ if (optSensitivityLowQualityMoveScale <= 0.0 || optSensitivityLowQualityMoveScal
   FatalErrorInFunction
     << "optSensitivityLowQualityMoveScale must be in (0,1]. Found "
     << optSensitivityLowQualityMoveScale
-    << exit(FatalError);
-}
-if (optMmaMoveLimitFloor <= 0.0 || optMmaMoveLimitFloor > 1.0)
-{
-  FatalErrorInFunction
-    << "optMmaMoveLimitFloor must be in (0,1]. Found "
-    << optMmaMoveLimitFloor
     << exit(FatalError);
 }
 if (optSensitivityGradientL2Eps <= 0.0)

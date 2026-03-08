@@ -2845,9 +2845,7 @@ if (Pstream::master())
   (
     "controls",
     "moveLimit="+fmtScalar(optimizerMoveLimitActive),
-    "base="+fmtScalar(adaptiveMmaBaseMoveActive)
-      + " inc=" + fmtScalar(adaptiveMmaAsymIncActive)
-      + " dec=" + fmtScalar(adaptiveMmaAsymDecActive),
+    "fixed=yes",
     "moveHits="+fmtCount(xMoveLimitHitCountLocal)
   );
   writeRow("bound clamps", "lower="+fmtCount(xLowerBoundCountLocal), "upper="+fmtCount(xUpperBoundCountLocal), "nonFiniteX="+fmtCount(xNonFiniteCountLocal));
@@ -3216,9 +3214,9 @@ if (Pstream::master())
     << ",\"mma\":{"
       << "\"iteration\":" << opt
       << ",\"moveLimit\":" << optimizerMoveLimitActive
-      << ",\"moveLimitBase\":" << adaptiveMmaBaseMoveActive
-      << ",\"asymInc\":" << adaptiveMmaAsymIncActive
-      << ",\"asymDec\":" << adaptiveMmaAsymDecActive
+      << ",\"moveLimitMode\":\"fixed\""
+      << ",\"asymInc\":" << mma_inc
+      << ",\"asymDec\":" << mma_dec
       << ",\"recoveryActive\":" << (constraintRecoveryActive ? 1 : 0)
       << ",\"trustMoveScale\":" << meritTrustMoveScale
       << ",\"stepRejected\":" << (meritStepRejected ? 1 : 0)

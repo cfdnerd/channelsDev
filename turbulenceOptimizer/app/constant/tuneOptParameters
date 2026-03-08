@@ -44,10 +44,7 @@ convergenceControl
     // MMA Step Controls
     // --------------------------------------------------------------------- //
     optPowerConstraintWeight      1.0;
-    optVolumeConstraintWeight     2;
-    optAdaptiveBaseMoveMin        0.4;
-    optAdaptiveBaseMoveMax        0.4;
-    optMmaMoveLimitFloor          1e-2;
+    optVolumeConstraintWeight     4;
 
     // Convergence Stop
     // --------------------------------------------------------------------- //

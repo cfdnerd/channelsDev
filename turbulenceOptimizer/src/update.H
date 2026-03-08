@@ -75,15 +75,9 @@ continuationScheduleIterationActive =
 continuationAdvanceOverrideOnReject = false;
 continuationAdvanceCatchUpSteps = 0;
 
-const scalar recoveryMoveLimitScale =
-  Foam::max(Foam::min(optRecoveryMoveLimitScale, scalar(1.0)), scalar(0.05));
 const scalar recoveryContinuationRampScale =
   Foam::max(Foam::min(optRecoveryContinuationRampScale, scalar(1.0)), scalar(0.10));
 const scalar globalizationTrustScale = scalar(1.0);
-const scalar adaptiveBaseMoveLower =
-  Foam::max(Foam::min(optAdaptiveBaseMoveMin, scalar(1.0)), scalar(0.01));
-const scalar adaptiveBaseMoveUpper =
-  Foam::max(Foam::min(optAdaptiveBaseMoveMax, scalar(1.0)), adaptiveBaseMoveLower);
 const scalar previousClipFractionForMove =
   hasPreviousClipDiagnostics
   ? Foam::max(previousMaxClipFraction, previousMaxFluidClipFraction)
@@ -100,15 +94,6 @@ const scalar sensitivityHealthScale =
   Foam::max(Foam::min(sensitivityQualityScore, scalar(1.0)), scalar(0.0));
 const scalar multiphysicsHealthScale =
   Foam::max(Foam::min(Foam::min(globalizationTrustScale, sensitivityHealthScale), clipHealthScale), scalar(0.0));
-adaptiveMmaBaseMoveActive =
-  adaptiveBaseMoveLower
-  + (adaptiveBaseMoveUpper - adaptiveBaseMoveLower)*multiphysicsHealthScale;
-adaptiveMmaAsymIncActive =
-  optAdaptiveAsymIncMin
-  + (optAdaptiveAsymIncMax - optAdaptiveAsymIncMin)*multiphysicsHealthScale;
-adaptiveMmaAsymDecActive =
-  optAdaptiveAsymDecMax
-  - (optAdaptiveAsymDecMax - optAdaptiveAsymDecMin)*multiphysicsHealthScale;
 const bool recoverySignal =
   maxViolationWorsenStreak >= optRecoveryWorsenStreak;
 const bool earlyRecoveryAllowed = false;
@@ -123,19 +108,7 @@ continuationRampScaleActive =
   constraintRecoveryActive ? recoveryContinuationRampScale : scalar(1.0);
 delRampStepActive =
   constraintRecoveryActive ? scalar(0.05) : scalar(0.2);
-optimizerMoveLimitActive =
-  constraintRecoveryActive
-  ? Foam::max(adaptiveMmaBaseMoveActive*recoveryMoveLimitScale*globalizationTrustScale, optMmaMoveLimitFloor)
-  : Foam::max(adaptiveMmaBaseMoveActive*globalizationTrustScale, optMmaMoveLimitFloor);
-if (sensitivityQualityRequireConservativeStep)
-{
-  optimizerMoveLimitActive =
-    Foam::max
-    (
-      optimizerMoveLimitActive*optSensitivityLowQualityMoveScale,
-      optMmaMoveLimitFloor
-    );
-}
+optimizerMoveLimitActive = movlim;
 
 primalThermalUnderRelaxActive =
   optThermalUnderRelaxMin
