@@ -75,13 +75,64 @@ if (customTurbulenceActive)
       + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
   }
 
+  // Positivity-preserving source treatment:
+  // split raw sources into positive explicit part and negative implicit sink.
+  const volScalarField omegaPatankarRef(Foam::max(omega, omegaMin));
+  const volScalarField omegaProductionRaw
+  (
+    gammaField*turbulenceProductionMask*PkField/Foam::max(nut, nutFloor)
+  );
+  const volScalarField omegaProductionPositive
+  (
+    Foam::max
+    (
+      omegaProductionRaw,
+      dimensionedScalar("omegaProdZero", omegaProductionRaw.dimensions(), 0.0)
+    )
+  );
+  const volScalarField omegaProductionNegative
+  (
+    Foam::max
+    (
+      -omegaProductionRaw,
+      dimensionedScalar("omegaProdNegZero", omegaProductionRaw.dimensions(), 0.0)
+    )
+  );
+  const volScalarField omegaProductionNegativeCoeff
+  (
+    omegaProductionNegative/omegaPatankarRef
+  );
+
+  const volScalarField omegaCrossDiffPositive
+  (
+    Foam::max
+    (
+      omegaCrossDiffField,
+      dimensionedScalar("omegaCrossDiffZero", omegaCrossDiffField.dimensions(), 0.0)
+    )
+  );
+  const volScalarField omegaCrossDiffNegative
+  (
+    Foam::max
+    (
+      -omegaCrossDiffField,
+      dimensionedScalar("omegaCrossDiffNegZero", omegaCrossDiffField.dimensions(), 0.0)
+    )
+  );
+  const volScalarField omegaCrossDiffNegativeCoeff
+  (
+    omegaCrossDiffNegative/omegaPatankarRef
+  );
+
   fvScalarMatrix omegaEqn
   (
       fvm::div(phi, omega)
     - fvm::laplacian(nu + alphaOmegaField*nut, omega)
    ==
-      gammaField*turbulenceProductionMask*PkField/nut
-    + omegaCrossDiffField
+      omegaProductionPositive
+    + omegaCrossDiffPositive
+    - fvm::Sp(omegaProductionNegativeCoeff, omega)
+    - fvm::Sp(omegaCrossDiffNegativeCoeff, omega)
     - fvm::Sp(betaField*omegaDestructionState, omega)
     - fvm::Sp(turbulenceDampingCoeff*alpha, omega)
     - fvm::Sp(turbulenceSuppressionRate, omega)

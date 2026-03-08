@@ -66,12 +66,35 @@ if (customTurbulenceActive)
       + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
   }
 
+  // Patankar-style source split: keep explicit source non-negative and treat
+  // any negative part implicitly as a sink coefficient.
+  const volScalarField kPatankarRef(Foam::max(k, kMin));
+  const volScalarField kProductionRaw(turbulenceProductionMask*PkField);
+  const volScalarField kProductionPositive
+  (
+    Foam::max
+    (
+      kProductionRaw,
+      dimensionedScalar("kProductionZero", kProductionRaw.dimensions(), 0.0)
+    )
+  );
+  const volScalarField kProductionNegative
+  (
+    Foam::max
+    (
+      -kProductionRaw,
+      dimensionedScalar("kProductionNegZero", kProductionRaw.dimensions(), 0.0)
+    )
+  );
+  const volScalarField kProductionNegativeCoeff(kProductionNegative/kPatankarRef);
+
   fvScalarMatrix kEqn
   (
       fvm::div(phi, k)
     - fvm::laplacian(nu + alphaKField*nut, k)
    ==
-      turbulenceProductionMask*PkField
+      kProductionPositive
+    - fvm::Sp(kProductionNegativeCoeff, k)
     - fvm::Sp
       (
         betaStarCoeff

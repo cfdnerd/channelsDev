@@ -57,9 +57,10 @@
     const volScalarField S2(2.0*magSqr(symm(gradU)));
     const volScalarField sqrtK(Foam::sqrt(kStateRef));
     const volScalarField yEff(Foam::max(yWall, yMin));
+    const volScalarField omegaCrossDiffDen(Foam::max(omegaStateRef, omegaMin));
     const volScalarField CDkOmega
     (
-      2.0*alphaOmega2Coeff*(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))/omegaStateRef
+      2.0*alphaOmega2Coeff*(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))/omegaCrossDiffDen
     );
     const dimensionedScalar smallCD("smallCD", CDkOmega.dimensions(), 1e-20);
     const dimensionedScalar smallS2("smallS2", S2.dimensions(), SMALL);
@@ -238,7 +239,11 @@
     PkField = rawPk;
 
     omegaCrossDiffField =
-      2.0*(1.0 - F1SST)*alphaOmega2Coeff*(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))/omegaStateRef;
+      2.0
+     *(1.0 - F1SST)
+     *alphaOmega2Coeff
+     *(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))
+     /omegaCrossDiffDen;
 
     alphat = nut/Prt;
     nuEff = nu + nut;
