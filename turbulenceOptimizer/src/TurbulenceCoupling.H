@@ -27,7 +27,14 @@ auto updateTurbulenceResidualBlocks =
   kDiffusionBlock = nu + alphaKField*nut;
   omegaDiffusionBlock = nu + alphaOmegaField*nut;
   kDestructionBlock = betaStarCoeff*omega;
-  omegaProductionBlock = gammaField*PkField/Foam::max(nut, nutFloor);
+  const volScalarField omegaProductionDenominator(Foam::max(nut, nutFloor));
+  auditDivisionDenominator
+  (
+    omegaProductionDenominator,
+    "TurbulenceCoupling.H::omegaProductionBlock denominator (max(nut,nutFloor))",
+    SMALL
+  );
+  omegaProductionBlock = gammaField*PkField/omegaProductionDenominator;
   omegaDestructionBlock = betaField*omega;
   turbulenceDampingBlock = turbulenceDampingCoeff*alpha;
 };

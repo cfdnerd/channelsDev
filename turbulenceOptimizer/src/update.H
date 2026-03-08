@@ -194,5 +194,24 @@ const scalar scheduledQu =
 qu = scheduledQu;
 alphaMax.value()=Foam::min(alphaMax.value(),alphaMAX.value());
 qu=Foam::min(qu,0.01);
-alpha=alphaMax*qu*(1-xh)/(qu+xh);
-DT=(ks+(kf-ks)*xh*(1+qu)/(qu+xh))/rhoCp;
+const volScalarField xhBlendDenominator(qu + xh);
+auditDivisionDenominator
+(
+  xhBlendDenominator,
+  "update.H::alpha/DT denominator (qu+xh)",
+  SMALL
+);
+if (static_cast<bool>(optDivisionAuditEnable))
+{
+  const scalar rhoCpValue = rhoCp.value();
+  if (!std::isfinite(static_cast<double>(rhoCpValue)) || Foam::mag(rhoCpValue) <= SMALL)
+  {
+    FatalErrorInFunction
+      << "Division denominator audit failed."
+      << " Context=update.H::DT denominator (rhoCp)"
+      << " rhoCp=" << rhoCpValue
+      << exit(FatalError);
+  }
+}
+alpha=alphaMax*qu*(1-xh)/xhBlendDenominator;
+DT=(ks+(kf-ks)*xh*(1+qu)/xhBlendDenominator)/rhoCp;

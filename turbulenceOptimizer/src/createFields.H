@@ -276,6 +276,10 @@ Switch optKOmegaPositivityPreservingLinearizationEnable
     true
   )
 );
+Switch optDivisionAuditEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optDivisionAuditEnable", true)
+);
 Switch optProjectionSmoothingEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optProjectionSmoothingEnable", true)

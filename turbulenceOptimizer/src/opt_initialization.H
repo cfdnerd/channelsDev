@@ -275,6 +275,97 @@ auto computeRelativeFieldChange =
   return Foam::sqrt(localDeltaSqSum/Foam::max(localScaleSqSum, SMALL));
 };
 
+auto auditDivisionDenominator =
+[&](const volScalarField& denominator, const char* context, const scalar minAllowed)
+{
+  if (!static_cast<bool>(optDivisionAuditEnable))
+  {
+    return;
+  }
+
+  const scalar denominatorMin = gMin(denominator);
+  const scalar denominatorMax = gMax(denominator);
+
+  label localInvalidCount = 0;
+  label localFirstInvalidCell = -1;
+  label localFirstInvalidPatch = -1;
+  label localFirstInvalidFace = -1;
+  scalar localFirstInvalidValue = 0.0;
+
+  const scalarField& denominatorInternal = denominator.internalField();
+  forAll(denominatorInternal, celli)
+  {
+    const scalar denominatorValue = denominatorInternal[celli];
+    const bool invalidDenominator =
+         !std::isfinite(static_cast<double>(denominatorValue))
+      || denominatorValue <= minAllowed;
+    if (!invalidDenominator)
+    {
+      continue;
+    }
+
+    localInvalidCount++;
+    if (localFirstInvalidCell < 0)
+    {
+      localFirstInvalidCell = celli;
+      localFirstInvalidValue = denominatorValue;
+    }
+  }
+
+  const auto& denominatorBoundary = denominator.boundaryField();
+  forAll(denominatorBoundary, patchi)
+  {
+    const fvPatchScalarField& denominatorPatch = denominatorBoundary[patchi];
+    forAll(denominatorPatch, facei)
+    {
+      const scalar denominatorValue = denominatorPatch[facei];
+      const bool invalidDenominator =
+           !std::isfinite(static_cast<double>(denominatorValue))
+        || denominatorValue <= minAllowed;
+      if (!invalidDenominator)
+      {
+        continue;
+      }
+
+      localInvalidCount++;
+      if (localFirstInvalidPatch < 0)
+      {
+        localFirstInvalidPatch = patchi;
+        localFirstInvalidFace = facei;
+        localFirstInvalidValue = denominatorValue;
+      }
+    }
+  }
+
+  label globalInvalidCount = localInvalidCount;
+  reduce(globalInvalidCount, sumOp<label>());
+
+  const bool denominatorRangeValid =
+       std::isfinite(static_cast<double>(denominatorMin))
+    && std::isfinite(static_cast<double>(denominatorMax))
+    && denominatorMin > minAllowed;
+
+  if (denominatorRangeValid && globalInvalidCount == 0)
+  {
+    return;
+  }
+
+  FatalErrorInFunction
+    << "Division denominator audit failed."
+    << " Context=" << context
+    << " minAllowed=" << minAllowed
+    << " globalMin=" << denominatorMin
+    << " globalMax=" << denominatorMax
+    << " globalInvalidCount=" << globalInvalidCount
+    << " localInvalidCount=" << localInvalidCount
+    << " localFirstInvalidCell=" << localFirstInvalidCell
+    << " localFirstInvalidPatch=" << localFirstInvalidPatch
+    << " localFirstInvalidFace=" << localFirstInvalidFace
+    << " localFirstInvalidValue=" << localFirstInvalidValue
+    << " proc=" << Pstream::myProcNo()
+    << exit(FatalError);
+};
+
 LinearSolveStats ULinearSolveStats;
 LinearSolveStats pLinearSolveStats;
 LinearSolveStats kLinearSolveStats;

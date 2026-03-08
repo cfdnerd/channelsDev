@@ -78,6 +78,12 @@
       ? Foam::sqrt(sqr(omegaStateRef) + sqr(omegaMin))
       : Foam::max(omegaStateRef, omegaMin)
     );
+    auditDivisionDenominator
+    (
+      omegaCrossDiffDen,
+      "CustomKOmegaSSTModel.H::omegaCrossDiffDen",
+      SMALL
+    );
     const volScalarField CDkOmega
     (
       2.0*alphaOmega2Coeff*(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))/omegaCrossDiffDen
@@ -95,10 +101,37 @@
         )
       : Foam::max(CDkOmega, smallCD)
     );
+    auditDivisionDenominator
+    (
+      CDkOmegaPlus,
+      "CustomKOmegaSSTModel.H::CDkOmegaPlus",
+      SMALL
+    );
 
-    const volScalarField arg1Term1(sqrtK/(betaStarCoeff*omegaStateRef*yEff));
-    const volScalarField arg1Term2(500.0*nu/(sqr(yEff)*omegaStateRef));
-    const volScalarField arg1Term3(4.0*alphaOmega2Coeff*kStateRef/(CDkOmegaPlus*sqr(yEff)));
+    const volScalarField arg1Term1Den(betaStarCoeff*omegaStateRef*yEff);
+    const volScalarField arg1Term2Den(sqr(yEff)*omegaStateRef);
+    const volScalarField arg1Term3Den(CDkOmegaPlus*sqr(yEff));
+    auditDivisionDenominator
+    (
+      arg1Term1Den,
+      "CustomKOmegaSSTModel.H::arg1Term1 denominator",
+      SMALL
+    );
+    auditDivisionDenominator
+    (
+      arg1Term2Den,
+      "CustomKOmegaSSTModel.H::arg1Term2 denominator",
+      SMALL
+    );
+    auditDivisionDenominator
+    (
+      arg1Term3Den,
+      "CustomKOmegaSSTModel.H::arg1Term3 denominator",
+      SMALL
+    );
+    const volScalarField arg1Term1(sqrtK/arg1Term1Den);
+    const volScalarField arg1Term2(500.0*nu/arg1Term2Den);
+    const volScalarField arg1Term3(4.0*alphaOmega2Coeff*kStateRef/arg1Term3Den);
     const volScalarField arg1
     (
       Foam::min
@@ -107,11 +140,13 @@
         scalar(10.0)
       )
     );
+    const volScalarField arg2Term1(2.0*sqrtK/arg1Term1Den);
+    const volScalarField arg2Term2(500.0*nu/arg1Term2Den);
     const volScalarField arg2
     (
       Foam::min
       (
-        Foam::max(2.0*sqrtK/(betaStarCoeff*omegaStateRef*yEff), 500.0*nu/(sqr(yEff)*omegaStateRef)),
+        Foam::max(arg2Term1, arg2Term2),
         scalar(100.0)
       )
     );
@@ -141,6 +176,12 @@
         + sqr(omegaLimiterEps)
       )
     );
+    auditDivisionDenominator
+    (
+      omegaLimiterBlendDen,
+      "CustomKOmegaSSTModel.H::omegaLimiterBlendDen",
+      SMALL
+    );
     const volScalarField omegaLimiter
     (
       0.5*(omegaLimiterBranchK + omegaLimiterBranchS + omegaLimiterBlendDen)
@@ -162,6 +203,12 @@
       : Foam::max(omegaLimiter, smallOmegaLimiter)
     );
     const volScalarField omegaNutDenominator(omegaLimiterPositive);
+    auditDivisionDenominator
+    (
+      omegaNutDenominator,
+      "CustomKOmegaSSTModel.H::omegaNutDenominator",
+      SMALL
+    );
     auto computeNutFromState =
     [&](const volScalarField& kState, const volScalarField& omegaState) -> volScalarField
     {
@@ -172,14 +219,30 @@
         : Foam::max(omegaState, omegaMin)
       );
       const volScalarField sqrtKState(Foam::sqrt(kState));
+      const volScalarField arg2StateTerm1Den(betaStarCoeff*omegaStatePositive*yEff);
+      const volScalarField arg2StateTerm2Den(sqr(yEff)*omegaStatePositive);
+      auditDivisionDenominator
+      (
+        arg2StateTerm1Den,
+        "CustomKOmegaSSTModel.H::computeNutFromState arg2 term1 denominator",
+        SMALL
+      );
+      auditDivisionDenominator
+      (
+        arg2StateTerm2Den,
+        "CustomKOmegaSSTModel.H::computeNutFromState arg2 term2 denominator",
+        SMALL
+      );
+      const volScalarField arg2StateTerm1(2.0*sqrtKState/arg2StateTerm1Den);
+      const volScalarField arg2StateTerm2(500.0*nu/arg2StateTerm2Den);
       const volScalarField arg2State
       (
         Foam::min
         (
           Foam::max
           (
-            2.0*sqrtKState/(betaStarCoeff*omegaStatePositive*yEff),
-            500.0*nu/(sqr(yEff)*omegaStatePositive)
+            arg2StateTerm1,
+            arg2StateTerm2
           ),
           scalar(100.0)
         )
@@ -194,6 +257,12 @@
           sqr(omegaLimiterBranchKState - omegaLimiterBranchSState)
           + sqr(omegaLimiterEps)
         )
+      );
+      auditDivisionDenominator
+      (
+        omegaLimiterBlendDenState,
+        "CustomKOmegaSSTModel.H::computeNutFromState omegaLimiterBlendDenState",
+        SMALL
       );
       const volScalarField omegaLimiterState
       (
@@ -211,6 +280,12 @@
         : Foam::max(omegaLimiterState, smallOmegaLimiter)
       );
       const volScalarField omegaNutDenominatorState(omegaLimiterStatePositive);
+      auditDivisionDenominator
+      (
+        omegaNutDenominatorState,
+        "CustomKOmegaSSTModel.H::computeNutFromState omegaNutDenominatorState",
+        SMALL
+      );
       const volScalarField rawNutState(a1Coeff*kState/omegaNutDenominatorState);
       return volScalarField
       (
@@ -247,8 +322,15 @@
         k.dimensions(),
         Foam::max(1e-10*Foam::max(kMin.value(), SMALL), SMALL)
       );
+      const volScalarField kFdDenominator(Foam::max(kPlus - kMinus, kSpanFloor));
+      auditDivisionDenominator
+      (
+        kFdDenominator,
+        "CustomKOmegaSSTModel.H::dNutDk FD denominator",
+        SMALL
+      );
       dNutDkBlock =
-        (nutKPlus - nutKMinus)/Foam::max(kPlus - kMinus, kSpanFloor);
+        (nutKPlus - nutKMinus)/kFdDenominator;
 
       const volScalarField omegaPlus(omegaStateRef*closureFdExpPlus);
       const volScalarField omegaMinus(omegaStateRef*closureFdExpMinus);
@@ -260,8 +342,18 @@
         omega.dimensions(),
         Foam::max(1e-10*Foam::max(omegaMin.value(), SMALL), SMALL)
       );
+      const volScalarField omegaFdDenominator
+      (
+        Foam::max(omegaPlus - omegaMinus, omegaSpanFloor)
+      );
+      auditDivisionDenominator
+      (
+        omegaFdDenominator,
+        "CustomKOmegaSSTModel.H::dNutDOmega FD denominator",
+        SMALL
+      );
       dNutDOmegaBlock =
-        (nutOmegaPlus - nutOmegaMinus)/Foam::max(omegaPlus - omegaMinus, omegaSpanFloor);
+        (nutOmegaPlus - nutOmegaMinus)/omegaFdDenominator;
     }
     else
     {
