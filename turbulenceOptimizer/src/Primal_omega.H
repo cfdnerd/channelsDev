@@ -76,19 +76,19 @@ if (customTurbulenceActive)
   }
 
   const bool positivityPreservingLinearizationEnabled =
-    static_cast<bool>(optPositivityPreservingKOmegaLinearizationEnable);
+    static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
 
   // Positivity-preserving source treatment:
   // split raw sources into positive explicit part and negative implicit sink.
   const volScalarField omegaPatankarRef
   (
-    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    static_cast<bool>(optClosureSmoothDenominatorEnable)
     ? Foam::sqrt(sqr(omega) + sqr(omegaMin))
     : Foam::max(omega, omegaMin)
   );
   const volScalarField omegaNutDenominator
   (
-    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    static_cast<bool>(optClosureSmoothDenominatorEnable)
     ? Foam::sqrt(sqr(nut) + sqr(nutFloor))
     : Foam::max(nut, nutFloor)
   );

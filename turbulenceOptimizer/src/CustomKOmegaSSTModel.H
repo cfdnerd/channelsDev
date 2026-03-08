@@ -17,6 +17,10 @@
     kClosureState = k;
     omegaClosureState = omega;
 
+    const bool closureLogRegularizationActive =
+      static_cast<bool>(optClosureLogRegularizationEnable);
+    const bool closureSmoothDenominatorActive =
+      static_cast<bool>(optClosureSmoothDenominatorEnable);
     if (static_cast<bool>(optimizationCycleUseLogClosureState))
     {
       const dimensionedScalar kLogFloor
@@ -41,11 +45,22 @@
       );
       logKClosureState = Foam::log(kLogArgument);
       logOmegaClosureState = Foam::log(omegaLogArgument);
+      if (closureLogRegularizationActive)
+      {
+        // Log-domain regularization keeps states strictly positive without hard clipping.
+        kClosureState = kLogFloor*(Foam::exp(logKClosureState) + scalar(1.0));
+        omegaClosureState = omegaLogFloor*(Foam::exp(logOmegaClosureState) + scalar(1.0));
+      }
     }
     else
     {
       logKClosureState = scalar(0.0);
       logOmegaClosureState = scalar(0.0);
+      if (closureLogRegularizationActive)
+      {
+        kClosureState += kMin;
+        omegaClosureState += omegaMin;
+      }
     }
 
     const volScalarField& kStateRef =
@@ -57,14 +72,29 @@
     const volScalarField S2(2.0*magSqr(symm(gradU)));
     const volScalarField sqrtK(Foam::sqrt(kStateRef));
     const volScalarField yEff(Foam::max(yWall, yMin));
-    const volScalarField omegaCrossDiffDen(Foam::max(omegaStateRef, omegaMin));
+    const volScalarField omegaCrossDiffDen
+    (
+      closureSmoothDenominatorActive
+      ? Foam::sqrt(sqr(omegaStateRef) + sqr(omegaMin))
+      : Foam::max(omegaStateRef, omegaMin)
+    );
     const volScalarField CDkOmega
     (
       2.0*alphaOmega2Coeff*(fvc::grad(kStateRef) & fvc::grad(omegaStateRef))/omegaCrossDiffDen
     );
     const dimensionedScalar smallCD("smallCD", CDkOmega.dimensions(), 1e-20);
     const dimensionedScalar smallS2("smallS2", S2.dimensions(), SMALL);
-    const volScalarField CDkOmegaPlus(Foam::max(CDkOmega, smallCD));
+    const volScalarField CDkOmegaPlus
+    (
+      closureSmoothDenominatorActive
+      ? 0.5
+       *(
+          CDkOmega
+        + smallCD
+        + Foam::sqrt(sqr(CDkOmega - smallCD) + sqr(smallCD))
+        )
+      : Foam::max(CDkOmega, smallCD)
+    );
 
     const volScalarField arg1Term1(sqrtK/(betaStarCoeff*omegaStateRef*yEff));
     const volScalarField arg1Term2(500.0*nu/(sqr(yEff)*omegaStateRef));
@@ -127,25 +157,20 @@
     );
     const volScalarField omegaLimiterPositive
     (
-      Foam::max(omegaLimiter, smallOmegaLimiter)
+      closureSmoothDenominatorActive
+      ? Foam::sqrt(sqr(omegaLimiter) + sqr(smallOmegaLimiter))
+      : Foam::max(omegaLimiter, smallOmegaLimiter)
     );
     const volScalarField omegaNutDenominator(omegaLimiterPositive);
-    const volScalarField rawNut(a1Coeff*kStateRef/omegaNutDenominator);
-    nut = rawNut;
-    const scalar nutMinValue = gMin(nut);
-    const scalar nutMaxValue = gMax(nut);
-    if (!(nutMinValue > 0.0) || !(nutMaxValue < GREAT))
-    {
-      FatalErrorInFunction
-        << "Non-physical nut predicted by closure model: "
-        << "min(nut)=" << nutMinValue << ", max(nut)=" << nutMaxValue
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
-        << exit(FatalError);
-    }
-
     auto computeNutFromState =
     [&](const volScalarField& kState, const volScalarField& omegaState) -> volScalarField
     {
+      const volScalarField omegaStatePositive
+      (
+        closureSmoothDenominatorActive
+        ? Foam::sqrt(sqr(omegaState) + sqr(omegaMin))
+        : Foam::max(omegaState, omegaMin)
+      );
       const volScalarField sqrtKState(Foam::sqrt(kState));
       const volScalarField arg2State
       (
@@ -153,14 +178,14 @@
         (
           Foam::max
           (
-            2.0*sqrtKState/(betaStarCoeff*omegaState*yEff),
-            500.0*nu/(sqr(yEff)*omegaState)
+            2.0*sqrtKState/(betaStarCoeff*omegaStatePositive*yEff),
+            500.0*nu/(sqr(yEff)*omegaStatePositive)
           ),
           scalar(100.0)
         )
       );
       const volScalarField F2State(Foam::tanh(sqr(arg2State)));
-      const volScalarField omegaLimiterBranchKState(a1Coeff*omegaState);
+      const volScalarField omegaLimiterBranchKState(a1Coeff*omegaStatePositive);
       const volScalarField omegaLimiterBranchSState(b1Coeff*F2State*sqrtS2);
       const volScalarField omegaLimiterBlendDenState
       (
@@ -181,7 +206,9 @@
       );
       const volScalarField omegaLimiterStatePositive
       (
-        Foam::max(omegaLimiterState, smallOmegaLimiter)
+        closureSmoothDenominatorActive
+        ? Foam::sqrt(sqr(omegaLimiterState) + sqr(smallOmegaLimiter))
+        : Foam::max(omegaLimiterState, smallOmegaLimiter)
       );
       const volScalarField omegaNutDenominatorState(omegaLimiterStatePositive);
       const volScalarField rawNutState(a1Coeff*kState/omegaNutDenominatorState);
@@ -190,6 +217,18 @@
         rawNutState
       );
     };
+    const volScalarField rawNut(computeNutFromState(kStateRef, omegaStateRef));
+    nut = rawNut;
+    const scalar nutMinValue = gMin(nut);
+    const scalar nutMaxValue = gMax(nut);
+    if (!(nutMinValue > 0.0) || !(nutMaxValue < GREAT))
+    {
+      FatalErrorInFunction
+        << "Non-physical nut predicted by closure model: "
+        << "min(nut)=" << nutMinValue << ", max(nut)=" << nutMaxValue
+        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << exit(FatalError);
+    }
 
     if (static_cast<bool>(optClosureDerivativeFDEnable))
     {

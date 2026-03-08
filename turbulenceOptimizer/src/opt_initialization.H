@@ -339,6 +339,8 @@ bool constraintRecoveryActive(false);
 scalar continuationRampScaleActive(1.0);
 scalar delRampStepActive(0.2);
 scalar optimizerMoveLimitActive(movlim);
+scalar previousTrustRatio(1.0);
+bool hasPreviousTrustRatio(false);
 label continuationIteration(0);
 label continuationScheduleIterationActive(1);
 bool previousConstraintWorsenScheduleReady(false);

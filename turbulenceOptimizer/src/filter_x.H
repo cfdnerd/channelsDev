@@ -33,14 +33,31 @@ do
   }
 } while ((eta1-eta0)>0.0001);
 
+const scalar projectionBeta =
+  Foam::max(optProjectionBetaScale*Foam::max(del, scalar(1.0)), scalar(1e-6));
+const scalar projectionDenominator =
+  Foam::tanh(projectionBeta*eta5)
++ Foam::tanh(projectionBeta*(1.0 - eta5));
+const scalar projectionDenSafe = Foam::max(projectionDenominator, scalar(1e-6));
 for(i=0;i<n;i++)
 {
-   if(xp[i]<=eta5)
+   if (static_cast<bool>(optProjectionSmoothingEnable))
    {
-     xh[i]=eta5*(Foam::exp(-del*(1-xp[i]/eta5))-(1-xp[i]/eta5)*Foam::exp(-del)); 
+     xh[i] =
+       (
+         Foam::tanh(projectionBeta*eta5)
+       + Foam::tanh(projectionBeta*(xp[i] - eta5))
+       )/projectionDenSafe;
    }
    else
    {
-     xh[i]=eta5+(1-eta5)*(1-Foam::exp(-del*(xp[i]-eta5)/(1-eta5))+(xp[i]-eta5)*Foam::exp(-del)/(1-eta5));
-   }   
+     if(xp[i]<=eta5)
+     {
+       xh[i]=eta5*(Foam::exp(-del*(1-xp[i]/eta5))-(1-xp[i]/eta5)*Foam::exp(-del)); 
+     }
+     else
+     {
+       xh[i]=eta5+(1-eta5)*(1-Foam::exp(-del*(xp[i]-eta5)/(1-eta5))+(xp[i]-eta5)*Foam::exp(-del)/(1-eta5));
+     }
+   }
 }

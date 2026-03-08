@@ -30,6 +30,38 @@ const bool optimizationCycleTurbulentSensitivityMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
 const volScalarField& objectiveThermalAdjoint =
     optimizationCycleTurbulentSensitivityMode ? optimizationCycleThermalAdjointField : Tb;
+const bool useDedicatedThermalEnvelopeAdjoints =
+    mmaUseThermalEnvelopeConstraints
+ && m > mmaThermalTminConstraintIndex
+ && static_cast<bool>(optDedicatedThermalEnvelopeAdjointsEnable);
+volScalarField gsenshThermalTmax
+(
+  IOobject
+  (
+    "gsenshThermalTmax",
+    runTime.timeName(),
+    mesh,
+    IOobject::NO_READ,
+    IOobject::NO_WRITE
+  ),
+  mesh,
+  dimensionedScalar("zeroGsenshThermalTmax", fsenshMeanT.dimensions(), 0.0)
+);
+volScalarField gsenshThermalTmin
+(
+  IOobject
+  (
+    "gsenshThermalTmin",
+    runTime.timeName(),
+    mesh,
+    IOobject::NO_READ,
+    IOobject::NO_WRITE
+  ),
+  mesh,
+  dimensionedScalar("zeroGsenshThermalTmin", fsenshMeanT.dimensions(), 0.0)
+);
+volScalarField gsensThermalTmax(gsenshThermalTmax);
+volScalarField gsensThermalTmin(gsenshThermalTmin);
 
 fsenshMeanT = dAlphaDxh*(U&Ub)
            + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(objectiveThermalAdjoint));
@@ -42,6 +74,140 @@ gsenshPowerDiss = dAlphaDxh*(U&Ua);
 if (optimizationCycleTurbulentSensitivityMode && optimizationCycleUseTaThermalAdjoint)
 {
  #include "TurbulentSensitivity.H"
+}
+
+if (useDedicatedThermalEnvelopeAdjoints)
+{
+  scalar thetaMaxPeakLocal = -GREAT;
+  scalar thetaMinPeakLocal = -GREAT;
+  for (i = 0; i < n; i++)
+  {
+    const scalar Ti = T[i];
+    const scalar thetaMax = (Ti - optThermalTmaxLimit)/Foam::max(optThermalExcessSoftplusScale, SMALL);
+    const scalar thetaMin = (optThermalTminLimit - Ti)/Foam::max(optThermalExcessSoftplusScale, SMALL);
+    thetaMaxPeakLocal = Foam::max(thetaMaxPeakLocal, thetaMax);
+    thetaMinPeakLocal = Foam::max(thetaMinPeakLocal, thetaMin);
+  }
+  reduce(thetaMaxPeakLocal, maxOp<scalar>());
+  reduce(thetaMinPeakLocal, maxOp<scalar>());
+
+  scalar ksMaxExpSumLocal = 0.0;
+  scalar ksMinExpSumLocal = 0.0;
+  for (i = 0; i < n; i++)
+  {
+    const scalar Ti = T[i];
+    const scalar cellV = mesh.V()[i];
+    const scalar thetaMax = (Ti - optThermalTmaxLimit)/Foam::max(optThermalExcessSoftplusScale, SMALL);
+    const scalar thetaMin = (optThermalTminLimit - Ti)/Foam::max(optThermalExcessSoftplusScale, SMALL);
+    ksMaxExpSumLocal += std::exp(thermalKSBeta*(thetaMax - thetaMaxPeakLocal))*cellV;
+    ksMinExpSumLocal += std::exp(thermalKSBeta*(thetaMin - thetaMinPeakLocal))*cellV;
+  }
+  reduce(ksMaxExpSumLocal, sumOp<scalar>());
+  reduce(ksMinExpSumLocal, sumOp<scalar>());
+  const scalar ksMaxExpDen = Foam::max(ksMaxExpSumLocal, SMALL);
+  const scalar ksMinExpDen = Foam::max(ksMinExpSumLocal, SMALL);
+  const scalar thermalScale = Foam::max(optThermalExcessSoftplusScale, SMALL);
+
+  volScalarField thermalTmaxWeight
+  (
+    IOobject
+    (
+      "thermalTmaxConstraintWeight",
+      runTime.timeName(),
+      mesh,
+      IOobject::NO_READ,
+      IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zeroThermalTmaxWeight", dimless, 0.0)
+  );
+  volScalarField thermalTminWeight
+  (
+    IOobject
+    (
+      "thermalTminConstraintWeight",
+      runTime.timeName(),
+      mesh,
+      IOobject::NO_READ,
+      IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zeroThermalTminWeight", dimless, 0.0)
+  );
+  scalarField& thermalTmaxWeightInternal = thermalTmaxWeight.primitiveFieldRef();
+  scalarField& thermalTminWeightInternal = thermalTminWeight.primitiveFieldRef();
+  const scalarField& TInternal = T.internalField();
+  const scalarField& VInternal = mesh.V();
+  forAll(thermalTmaxWeightInternal, celli)
+  {
+    const scalar Ti = TInternal[celli];
+    const scalar cellV = VInternal[celli];
+    const scalar thetaMax = (Ti - optThermalTmaxLimit)/thermalScale;
+    const scalar thetaMin = (optThermalTminLimit - Ti)/thermalScale;
+    const scalar expMax = std::exp(thermalKSBeta*(thetaMax - thetaMaxPeakLocal));
+    const scalar expMin = std::exp(thermalKSBeta*(thetaMin - thetaMinPeakLocal));
+    thermalTmaxWeightInternal[celli] = (expMax*cellV/ksMaxExpDen)/thermalScale;
+    thermalTminWeightInternal[celli] = -(expMin*cellV/ksMinExpDen)/thermalScale;
+  }
+  thermalTmaxWeight.correctBoundaryConditions();
+  thermalTminWeight.correctBoundaryConditions();
+
+  volScalarField TbThermalTmax
+  (
+    IOobject
+    (
+      "TbThermalTmax",
+      runTime.timeName(),
+      mesh,
+      IOobject::NO_READ,
+      IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zeroTbThermalTmax", T.dimensions(), 0.0),
+    zeroGradientFvPatchScalarField::typeName
+  );
+  volScalarField TbThermalTmin
+  (
+    IOobject
+    (
+      "TbThermalTmin",
+      runTime.timeName(),
+      mesh,
+      IOobject::NO_READ,
+      IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar("zeroTbThermalTmin", T.dimensions(), 0.0),
+    zeroGradientFvPatchScalarField::typeName
+  );
+
+  fvScalarMatrix TbThermalTmaxEqn
+  (
+     -fvm::div(-phi, TbThermalTmax)
+     +fvm::laplacian(DT, TbThermalTmax)
+  );
+  TbThermalTmaxEqn -= unitThermalSource*thermalTmaxWeight;
+  TbThermalTmaxEqn.solve();
+
+  fvScalarMatrix TbThermalTminEqn
+  (
+     -fvm::div(-phi, TbThermalTmin)
+     +fvm::laplacian(DT, TbThermalTmin)
+  );
+  TbThermalTminEqn -= unitThermalSource*thermalTminWeight;
+  TbThermalTminEqn.solve();
+
+  gsenshThermalTmax =
+      dAlphaDxh*(U&Ub)
+    + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(TbThermalTmax));
+  gsenshThermalTmin =
+      dAlphaDxh*(U&Ub)
+    + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(TbThermalTmin));
+  if (DDHS)
+  {
+    gsenshThermalTmax += b1*TbThermalTmax*thermalSource;
+    gsenshThermalTmin += b1*TbThermalTmin*thermalSource;
+  }
 }
 
 
@@ -71,11 +237,17 @@ for(i=0;i<n;i++)
  dgdx[mmaVolumeConstraintIndex][i]=gsensVol[i]/N;//sensitivities of constraint function
  if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
  {
-   // Thermal envelope constraints currently reuse the thermal objective
-   // sensitivity map as a conservative local surrogate until dedicated
-   // transported envelope adjoints are introduced.
-   dgdx[mmaThermalTmaxConstraintIndex][i]=fsensMeanT[i]/N;
-   dgdx[mmaThermalTminConstraintIndex][i]=-fsensMeanT[i]/N;
+   if (useDedicatedThermalEnvelopeAdjoints)
+   {
+     dgdx[mmaThermalTmaxConstraintIndex][i]=gsensThermalTmax[i]/N;
+     dgdx[mmaThermalTminConstraintIndex][i]=gsensThermalTmin[i]/N;
+   }
+   else
+   {
+     // Fallback surrogate map for backward compatibility.
+     dgdx[mmaThermalTmaxConstraintIndex][i]=fsensMeanT[i]/N;
+     dgdx[mmaThermalTminConstraintIndex][i]=-fsensMeanT[i]/N;
+   }
  }
 }
 
@@ -141,7 +313,7 @@ mma.asyminc = mma_inc;
 mma.asymdec = mma_dec;
 
 Info<< "\n run MMA \n" << endl;
-mma.movelimit = movlim;
+mma.movelimit = optimizerMoveLimitActive;
 mma.MMAsolver(xmma, dfdx, gx, dgdx);
 for(i=0;i<n;i++)
 {

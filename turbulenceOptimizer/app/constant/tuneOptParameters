@@ -45,29 +45,29 @@ convergenceControl
     optVolumeConstraintWeight     1;
 
     // --------------------------------------------------------------------- //
-    // Formulation Patches
+    // Formulation Controls
     // --------------------------------------------------------------------- //
-    // Patch 1: log-regularized turbulence closure/source denominators.
-    optPatch1LogRegularizationEnable true;
-    optPatch1SmoothDenominatorEnable true;
-    optPositivityPreservingKOmegaLinearizationEnable true;
+    // Turbulence-closure denominator regularization controls.
+    optClosureLogRegularizationEnable true;
+    optClosureSmoothDenominatorEnable true;
+    optKOmegaPositivityPreservingLinearizationEnable true;
 
-    // Patch 3: smooth projection (tanh) for Heaviside continuation.
-    optPatch3SmoothProjectionEnable true;
-    optPatch3ProjectionBetaScale    1.0;
+    // Smooth projection (tanh) controls for Heaviside continuation.
+    optProjectionSmoothingEnable true;
+    optProjectionBetaScale    1.0;
 
-    // Patch 4: trust-ratio-based adaptive MMA move limit.
-    optPatch4AdaptiveMoveLimitEnable true;
-    optPatch4MoveLimitMin            0.05;
-    optPatch4MoveLimitMax            0.30;
-    optPatch4TrustRatioShrink        0.25;
-    optPatch4TrustRatioGrow          0.75;
-    optPatch4MoveLimitShrinkFactor   0.70;
-    optPatch4MoveLimitGrowFactor     1.15;
-    optPatch4NegativeTrustExtraDamp  0.50;
+    // Trust-ratio-based adaptive MMA move-limit controls.
+    optAdaptiveMoveLimitEnable true;
+    optAdaptiveMoveLimitMin            0.05;
+    optAdaptiveMoveLimitMax            0.30;
+    optAdaptiveMoveLimitTrustRatioShrink        0.25;
+    optAdaptiveMoveLimitTrustRatioGrow          0.75;
+    optAdaptiveMoveLimitShrinkFactor   0.70;
+    optAdaptiveMoveLimitGrowFactor     1.15;
+    optAdaptiveMoveLimitNegativeTrustDamping  0.50;
 
-    // Patch 5: dedicated thermal-envelope sensitivity maps.
-    optPatch5DedicatedThermalEnvelopeAdjoints true;
+    // Dedicated thermal-envelope sensitivity controls.
+    optDedicatedThermalEnvelopeAdjointsEnable true;
 
     // Convergence Stop
     // --------------------------------------------------------------------- //

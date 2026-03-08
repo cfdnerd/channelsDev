@@ -1841,6 +1841,8 @@ const label rogueDirectionSwitchCooldownRemaining =
 previousMaxFluidClipFraction = maxFluidClipFraction;
 previousGuardConstraintViolationDelta = guardConstraintViolationDelta;
 hasPreviousClipDiagnostics = true;
+previousTrustRatio = trustRatio;
+hasPreviousTrustRatio = trustRatioDefined;
 previousHealthGateFailed = !healthGatesPassed;
 previousThermalEnvelopeViolation = thermalEnvelopeViolation;
 previousMaxLinearFinalResidual = maxLinearFinalResidual;
@@ -1924,6 +1926,11 @@ if (Pstream::master())
       << " guardConstraint=" << guardConstraintViolation
       << " maxLinearFinalResidual=" << maxLinearFinalResidual
       << " residualGrowthRatio=" << linearResidualGrowthRatio
+      << " trustRatioDefined=" << (trustRatioDefined ? 1 : 0)
+      << " trustRatio=" << trustRatio
+      << " predictedMeritReduction=" << predictedMeritReduction
+      << " actualMeritReduction=" << actualMeritReduction
+      << " gradientConsistencyRatio=" << gradientConsistencyRatio
       << " maxFluidClip=" << maxFluidClipFraction
       << " maxGrayClip=" << maxGrayClipFraction
       << " thermalTmaxKS=" << thermalTmaxConstraintMargin
@@ -2216,6 +2223,31 @@ if (Pstream::master())
   );
   writeRow
   (
+    "Model agree",
+    "predRed="+fmtScalar(predictedMeritReduction),
+    "actRed="+fmtScalar(actualMeritReduction),
+    "trust="+fmtScalar(trustRatio)
+      + " def=" + std::string(trustRatioDefined ? "yes" : "no"),
+    "trustOK="+std::string(trustRatioAccepted ? "yes" : "no")
+  );
+  writeRow
+  (
+    "Grad quality",
+    "cons="+fmtScalar(gradientConsistencyRatio),
+    "obj="+fmtScalar(objectiveConsistencyRatio),
+    "pow="+fmtScalar(powerConsistencyRatio),
+    "vol="+fmtScalar(volumeConsistencyRatio)
+  );
+  writeRow
+  (
+    "Linear health",
+    "maxFinal="+fmtScalar(maxLinearFinalResidual),
+    "growth="+fmtScalar(linearResidualGrowthRatio),
+    "growthGate="+std::string(residualGrowthGatePassed ? "yes" : "no"),
+    "healthGate="+std::string(healthGatesPassed ? "yes" : "no")
+  );
+  writeRow
+  (
     "Acceptance",
     "stepAccepted="+std::string(meritAccepted ? "yes" : "no"),
     "stepRejected="+std::string(meritStepRejected ? "yes" : "no"),
@@ -2321,8 +2353,9 @@ if (Pstream::master())
   (
     "controls",
     "moveLimit="+fmtScalar(optimizerMoveLimitActive),
-    "fixed=yes",
-    "moveHits="+fmtCount(xMoveLimitHitCountLocal)
+    "mode="+std::string(static_cast<bool>(optAdaptiveMoveLimitEnable) ? "adaptive" : "fixed"),
+    "moveHits="+fmtCount(xMoveLimitHitCountLocal),
+    "trustScale="+fmtScalar(meritTrustMoveScale)
   );
   writeRow("bound clamps", "lower="+fmtCount(xLowerBoundCountLocal), "upper="+fmtCount(xUpperBoundCountLocal), "nonFiniteX="+fmtCount(xNonFiniteCountLocal));
 
@@ -2510,6 +2543,14 @@ if (Pstream::master())
       << ",\"continuationAdvanceOverrideOnReject\":" << (continuationAdvanceOverrideOnReject ? 1 : 0)
       << ",\"continuationAdvanceCatchUpSteps\":" << reportedContinuationAdvanceCatchUpSteps
       << ",\"continuationClipBackoffStepsApplied\":" << continuationClipBackoffStepsApplied
+      << ",\"trustRatioDefined\":" << (trustRatioDefined ? 1 : 0)
+      << ",\"trustRatio\":" << trustRatio
+      << ",\"trustRatioAccepted\":" << (trustRatioAccepted ? 1 : 0)
+      << ",\"predictedMeritDelta\":" << predictedMeritDelta
+      << ",\"predictedMeritReduction\":" << predictedMeritReduction
+      << ",\"actualMeritReduction\":" << actualMeritReduction
+      << ",\"meritValue\":" << meritValue
+      << ",\"previousAcceptedMerit\":" << (hasPreviousAcceptedMerit ? previousAcceptedMerit : meritValue)
       << ",\"trustMoveScale\":" << meritTrustMoveScale
       << ",\"trustMoveMin\":" << meritTrustMoveMinClamped
       << ",\"recoveryRequest\":" << (meritRecoveryRequest ? 1 : 0)
@@ -2649,7 +2690,9 @@ if (Pstream::master())
     << ",\"mma\":{"
       << "\"iteration\":" << opt
       << ",\"moveLimit\":" << optimizerMoveLimitActive
-      << ",\"moveLimitMode\":\"fixed\""
+      << ",\"moveLimitMode\":\""
+      << (static_cast<bool>(optAdaptiveMoveLimitEnable) ? "adaptive" : "fixed")
+      << "\""
       << ",\"asymInc\":" << mma_inc
       << ",\"asymDec\":" << mma_dec
       << ",\"recoveryActive\":" << (constraintRecoveryActive ? 1 : 0)

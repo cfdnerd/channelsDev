@@ -89,7 +89,64 @@ continuationRampScaleActive =
   constraintRecoveryActive ? recoveryContinuationRampScale : scalar(1.0);
 delRampStepActive =
   constraintRecoveryActive ? scalar(0.05) : scalar(0.2);
-optimizerMoveLimitActive = movlim;
+const scalar adaptiveMoveLimitMinClamped =
+  Foam::max(Foam::min(optAdaptiveMoveLimitMin, scalar(1.0)), scalar(1e-4));
+const scalar adaptiveMoveLimitMaxClamped =
+  Foam::max
+  (
+    Foam::min(optAdaptiveMoveLimitMax, scalar(1.0)),
+    adaptiveMoveLimitMinClamped
+  );
+const scalar adaptiveTrustRatioShrinkClamped =
+  Foam::max(optAdaptiveMoveLimitTrustRatioShrink, scalar(0.0));
+const scalar adaptiveTrustRatioGrowClamped =
+  Foam::max(optAdaptiveMoveLimitTrustRatioGrow, adaptiveTrustRatioShrinkClamped);
+const scalar adaptiveShrinkFactorClamped =
+  Foam::max(Foam::min(optAdaptiveMoveLimitShrinkFactor, scalar(1.0)), scalar(0.05));
+const scalar adaptiveGrowFactorClamped =
+  Foam::max(optAdaptiveMoveLimitGrowFactor, scalar(1.0));
+const scalar adaptiveNegativeTrustDampingClamped =
+  Foam::max(Foam::min(optAdaptiveMoveLimitNegativeTrustDamping, scalar(1.0)), scalar(0.05));
+if (static_cast<bool>(optAdaptiveMoveLimitEnable))
+{
+  scalar adaptiveMoveLimitCandidate =
+    Foam::max(optimizerMoveLimitActive, adaptiveMoveLimitMinClamped);
+  if (!hasPreviousTrustRatio)
+  {
+    adaptiveMoveLimitCandidate = movlim;
+  }
+  if (hasPreviousTrustRatio)
+  {
+    if (previousTrustRatio < adaptiveTrustRatioShrinkClamped)
+    {
+      adaptiveMoveLimitCandidate *= adaptiveShrinkFactorClamped;
+    }
+    else if (previousTrustRatio > adaptiveTrustRatioGrowClamped)
+    {
+      adaptiveMoveLimitCandidate *= adaptiveGrowFactorClamped;
+    }
+    if (previousTrustRatio < scalar(0.0))
+    {
+      adaptiveMoveLimitCandidate *= adaptiveNegativeTrustDampingClamped;
+    }
+  }
+  if (constraintRecoveryActive)
+  {
+    adaptiveMoveLimitCandidate *=
+      Foam::max(Foam::min(optRecoveryMoveLimitScale, scalar(1.0)), scalar(0.1));
+  }
+  adaptiveMoveLimitCandidate *= Foam::max(meritTrustMoveScale, scalar(0.05));
+  optimizerMoveLimitActive =
+    Foam::max
+    (
+      Foam::min(adaptiveMoveLimitCandidate, adaptiveMoveLimitMaxClamped),
+      adaptiveMoveLimitMinClamped
+    );
+}
+else
+{
+  optimizerMoveLimitActive = movlim;
+}
 if(solid_area)
 {
    forAll(cells_solid, i)

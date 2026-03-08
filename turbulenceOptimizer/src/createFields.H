@@ -260,65 +260,65 @@ Switch optDualConsistentStateMapEnforce
 (
   convergenceControl.lookupOrDefault<Switch>("optDualConsistentStateMapEnforce", true)
 );
-Switch optPatch1LogRegularizationEnable
+Switch optClosureLogRegularizationEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPatch1LogRegularizationEnable", true)
+  convergenceControl.lookupOrDefault<Switch>("optClosureLogRegularizationEnable", true)
 );
-Switch optPatch1SmoothDenominatorEnable
+Switch optClosureSmoothDenominatorEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPatch1SmoothDenominatorEnable", true)
+  convergenceControl.lookupOrDefault<Switch>("optClosureSmoothDenominatorEnable", true)
 );
-Switch optPositivityPreservingKOmegaLinearizationEnable
+Switch optKOmegaPositivityPreservingLinearizationEnable
 (
   convergenceControl.lookupOrDefault<Switch>
   (
-    "optPositivityPreservingKOmegaLinearizationEnable",
+    "optKOmegaPositivityPreservingLinearizationEnable",
     true
   )
 );
-Switch optPatch3SmoothProjectionEnable
+Switch optProjectionSmoothingEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPatch3SmoothProjectionEnable", true)
+  convergenceControl.lookupOrDefault<Switch>("optProjectionSmoothingEnable", true)
 );
-scalar optPatch3ProjectionBetaScale
+scalar optProjectionBetaScale
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch3ProjectionBetaScale", 1.0)
+  convergenceControl.lookupOrDefault<scalar>("optProjectionBetaScale", 1.0)
 );
-Switch optPatch4AdaptiveMoveLimitEnable
+Switch optAdaptiveMoveLimitEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPatch4AdaptiveMoveLimitEnable", true)
+  convergenceControl.lookupOrDefault<Switch>("optAdaptiveMoveLimitEnable", true)
 );
-scalar optPatch4MoveLimitMin
+scalar optAdaptiveMoveLimitMin
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitMin", 0.05)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitMin", 0.05)
 );
-scalar optPatch4MoveLimitMax
+scalar optAdaptiveMoveLimitMax
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitMax", 0.30)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitMax", 0.30)
 );
-scalar optPatch4TrustRatioShrink
+scalar optAdaptiveMoveLimitTrustRatioShrink
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4TrustRatioShrink", 0.25)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitTrustRatioShrink", 0.25)
 );
-scalar optPatch4TrustRatioGrow
+scalar optAdaptiveMoveLimitTrustRatioGrow
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4TrustRatioGrow", 0.75)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitTrustRatioGrow", 0.75)
 );
-scalar optPatch4MoveLimitShrinkFactor
+scalar optAdaptiveMoveLimitShrinkFactor
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitShrinkFactor", 0.70)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitShrinkFactor", 0.70)
 );
-scalar optPatch4MoveLimitGrowFactor
+scalar optAdaptiveMoveLimitGrowFactor
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4MoveLimitGrowFactor", 1.15)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitGrowFactor", 1.15)
 );
-scalar optPatch4NegativeTrustExtraDamp
+scalar optAdaptiveMoveLimitNegativeTrustDamping
 (
-  convergenceControl.lookupOrDefault<scalar>("optPatch4NegativeTrustExtraDamp", 0.50)
+  convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitNegativeTrustDamping", 0.50)
 );
-Switch optPatch5DedicatedThermalEnvelopeAdjoints
+Switch optDedicatedThermalEnvelopeAdjointsEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optPatch5DedicatedThermalEnvelopeAdjoints", true)
+  convergenceControl.lookupOrDefault<Switch>("optDedicatedThermalEnvelopeAdjointsEnable", true)
 );
 
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
@@ -389,60 +389,60 @@ if (optSensitivityGradientL2Eps <= 0.0)
     << optSensitivityGradientL2Eps
     << exit(FatalError);
 }
-if (optPatch3ProjectionBetaScale <= 0.0)
+if (optProjectionBetaScale <= 0.0)
 {
   FatalErrorInFunction
-    << "optPatch3ProjectionBetaScale must be > 0. Found "
-    << optPatch3ProjectionBetaScale
+    << "optProjectionBetaScale must be > 0. Found "
+    << optProjectionBetaScale
     << exit(FatalError);
 }
-if (optPatch4MoveLimitMin <= 0.0 || optPatch4MoveLimitMax <= 0.0)
+if (optAdaptiveMoveLimitMin <= 0.0 || optAdaptiveMoveLimitMax <= 0.0)
 {
   FatalErrorInFunction
-    << "optPatch4MoveLimitMin and optPatch4MoveLimitMax must be > 0. Found "
-    << "min=" << optPatch4MoveLimitMin
-    << ", max=" << optPatch4MoveLimitMax
+    << "optAdaptiveMoveLimitMin and optAdaptiveMoveLimitMax must be > 0. Found "
+    << "min=" << optAdaptiveMoveLimitMin
+    << ", max=" << optAdaptiveMoveLimitMax
     << exit(FatalError);
 }
-if (optPatch4MoveLimitMax < optPatch4MoveLimitMin)
+if (optAdaptiveMoveLimitMax < optAdaptiveMoveLimitMin)
 {
   FatalErrorInFunction
-    << "optPatch4MoveLimitMax must be >= optPatch4MoveLimitMin. Found "
-    << "min=" << optPatch4MoveLimitMin
-    << ", max=" << optPatch4MoveLimitMax
-    << exit(FatalError);
-}
-if
-(
-    optPatch4TrustRatioShrink < 0.0
- || optPatch4TrustRatioGrow < 0.0
- || optPatch4TrustRatioGrow < optPatch4TrustRatioShrink
-)
-{
-  FatalErrorInFunction
-    << "Patch 4 trust-ratio thresholds must satisfy 0 <= shrink <= grow. Found "
-    << "shrink=" << optPatch4TrustRatioShrink
-    << ", grow=" << optPatch4TrustRatioGrow
+    << "optAdaptiveMoveLimitMax must be >= optAdaptiveMoveLimitMin. Found "
+    << "min=" << optAdaptiveMoveLimitMin
+    << ", max=" << optAdaptiveMoveLimitMax
     << exit(FatalError);
 }
 if
 (
-    optPatch4MoveLimitShrinkFactor <= 0.0
- || optPatch4MoveLimitShrinkFactor > 1.0
- || optPatch4MoveLimitGrowFactor < 1.0
+    optAdaptiveMoveLimitTrustRatioShrink < 0.0
+ || optAdaptiveMoveLimitTrustRatioGrow < 0.0
+ || optAdaptiveMoveLimitTrustRatioGrow < optAdaptiveMoveLimitTrustRatioShrink
 )
 {
   FatalErrorInFunction
-    << "Patch 4 move-limit factors must satisfy 0 < shrink <= 1 and grow >= 1. Found "
-    << "shrinkFactor=" << optPatch4MoveLimitShrinkFactor
-    << ", growFactor=" << optPatch4MoveLimitGrowFactor
+    << "adaptive move-limit trust-ratio thresholds must satisfy 0 <= shrink <= grow. Found "
+    << "shrink=" << optAdaptiveMoveLimitTrustRatioShrink
+    << ", grow=" << optAdaptiveMoveLimitTrustRatioGrow
     << exit(FatalError);
 }
-if (optPatch4NegativeTrustExtraDamp <= 0.0 || optPatch4NegativeTrustExtraDamp > 1.0)
+if
+(
+    optAdaptiveMoveLimitShrinkFactor <= 0.0
+ || optAdaptiveMoveLimitShrinkFactor > 1.0
+ || optAdaptiveMoveLimitGrowFactor < 1.0
+)
 {
   FatalErrorInFunction
-    << "optPatch4NegativeTrustExtraDamp must satisfy 0 < value <= 1. Found "
-    << optPatch4NegativeTrustExtraDamp
+    << "adaptive move-limit factors must satisfy 0 < shrink <= 1 and grow >= 1. Found "
+    << "shrinkFactor=" << optAdaptiveMoveLimitShrinkFactor
+    << ", growFactor=" << optAdaptiveMoveLimitGrowFactor
+    << exit(FatalError);
+}
+if (optAdaptiveMoveLimitNegativeTrustDamping <= 0.0 || optAdaptiveMoveLimitNegativeTrustDamping > 1.0)
+{
+  FatalErrorInFunction
+    << "optAdaptiveMoveLimitNegativeTrustDamping must satisfy 0 < value <= 1. Found "
+    << optAdaptiveMoveLimitNegativeTrustDamping
     << exit(FatalError);
 }
 

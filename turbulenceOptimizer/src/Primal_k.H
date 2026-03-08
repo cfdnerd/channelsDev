@@ -67,12 +67,12 @@ if (customTurbulenceActive)
   }
 
   const bool positivityPreservingLinearizationEnabled =
-    static_cast<bool>(optPositivityPreservingKOmegaLinearizationEnable);
+    static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
   // Patankar-style source split: keep explicit source non-negative and treat
   // any negative part implicitly as a sink coefficient.
   const volScalarField kPatankarRef
   (
-    static_cast<bool>(optPatch1SmoothDenominatorEnable)
+    static_cast<bool>(optClosureSmoothDenominatorEnable)
     ? Foam::sqrt(sqr(k) + sqr(kMin))
     : Foam::max(k, kMin)
   );
