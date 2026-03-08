@@ -67,6 +67,7 @@ convergenceControl
     optAdaptiveMoveLimitNegativeTrustDamping  0.50;
 
     // Dedicated thermal-envelope sensitivity controls.
+    optThermalEnvelopeConstraintsEnable true;
     optDedicatedThermalEnvelopeAdjointsEnable true;
 
     // Convergence Stop

@@ -224,14 +224,20 @@ scalar optThermalExcessSoftplusScale
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalExcessSoftplusScale", 5.0)
 );
-Switch optThermalEnvelopeConstraintEnable
+const Switch optThermalEnvelopeConstraintsEnable
 (
-  convergenceControl.lookupOrDefault<Switch>("optThermalEnvelopeConstraintEnable", true)
+  convergenceControl.lookupOrDefault<Switch>
+  (
+    "optThermalEnvelopeConstraintsEnable",
+    convergenceControl.lookupOrDefault<Switch>
+    (
+      "optThermalEnvelopeConstraintEnable",
+      convergenceControl.lookupOrDefault<Switch>("optThermalEnvelopeMMAConstraintEnable", false)
+    )
+  )
 );
-Switch optThermalEnvelopeMMAConstraintEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optThermalEnvelopeMMAConstraintEnable", false)
-);
+Switch optThermalEnvelopeConstraintEnable(optThermalEnvelopeConstraintsEnable);
+Switch optThermalEnvelopeMMAConstraintEnable(optThermalEnvelopeConstraintsEnable);
 scalar optThermalTmaxLimit
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalTmaxLimit", 450.0)
