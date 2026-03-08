@@ -1,29 +1,16 @@
 T=T2;
-const dimensionedScalar thermalPseudoTime
-(
-    "thermalPseudoTime",
-    dimensionSet(0,0,-1,0,0,0,0),
-    primalPseudoTimeCoeffActive
-);
-const dimensionedScalar thermalSourceRamp
-(
-    "thermalSourceRamp",
-    dimless,
-    thermalSourceRampActive
-);
 fvScalarMatrix TEqn
 (
     fvm::div(phi,T)
    -fvm::laplacian(alphaEff, T)
-   +fvm::Sp(thermalPseudoTime, T)
 );
 if(DDHS)
 {
- TEqn-=thermalSource*thermalSourceRamp*(1-xh);
+ TEqn-=thermalSource*(1-xh);
 }
 else
 {
- TEqn-=thermalSource*thermalSourceRamp;
+ TEqn-=thermalSource;
 }
 TEqn.relax();
 const auto TLinearSolvePerformance = TEqn.solve();

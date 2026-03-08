@@ -23,7 +23,6 @@ convergenceControl
     optRunMode production; // production | diagnostic
     optFirstFailureSnapshotEnable       true; // write first failure snapshot
     optAdjointRollbackGuardsEnable      false; // Ua/Ub rollback guards
-    optTurbulenceStateRegularizationEnable false; // smooth k/omega positivity repair
     optClosureBoundedOmegaLimiterEnable false; // smooth omega limiter in nut
 
     // --------------------------------------------------------------------- //

@@ -278,10 +278,6 @@ Switch optAdjointRollbackGuardsEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optAdjointRollbackGuardsEnable", true)
 );
-Switch optTurbulenceStateRegularizationEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optTurbulenceStateRegularizationEnable", true)
-);
 Switch optClosureBoundedOmegaLimiterEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optClosureBoundedOmegaLimiterEnable", true)
@@ -387,14 +383,6 @@ scalar optSensitivityGradientL2Eps
 (
   convergenceControl.lookupOrDefault<scalar>("optSensitivityGradientL2Eps", 1e-12)
 );
-scalar optPrimalPseudoTimeCoeffMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optPrimalPseudoTimeCoeffMax", 5.0)
-);
-scalar optThermalSourceRampMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optThermalSourceRampMin", 0.20)
-);
 Switch optDualConsistentStateMapEnforce
 (
   convergenceControl.lookupOrDefault<Switch>("optDualConsistentStateMapEnforce", true)
@@ -495,20 +483,6 @@ if (optSensitivityGradientL2Eps <= 0.0)
   FatalErrorInFunction
     << "optSensitivityGradientL2Eps must be > 0. Found "
     << optSensitivityGradientL2Eps
-    << exit(FatalError);
-}
-if (optPrimalPseudoTimeCoeffMax < 0.0)
-{
-  FatalErrorInFunction
-    << "optPrimalPseudoTimeCoeffMax must be >= 0. Found "
-    << optPrimalPseudoTimeCoeffMax
-    << exit(FatalError);
-}
-if (optThermalSourceRampMin <= 0.0 || optThermalSourceRampMin > 1.0)
-{
-  FatalErrorInFunction
-    << "optThermalSourceRampMin must be in (0,1]. Found "
-    << optThermalSourceRampMin
     << exit(FatalError);
 }
 

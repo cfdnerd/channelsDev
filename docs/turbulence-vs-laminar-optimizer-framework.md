@@ -101,7 +101,6 @@ Laminar has lighter optimizer diagnostics and stop logic.
 Turbulence has broader protective infrastructure:
 - adjoint rollback guards (magnitude/no-improve/growth checks),
 - optional first-failure snapshot persistence,
-- turbulence-state positivity regularization options,
 - optional bounded omega limiter in closure model,
 - richer debug logs and health metrics.
 
@@ -118,7 +117,6 @@ Key files:
 Recent turbulence `tuneOptParameters` controls include:
 - `optAdjointRollbackGuardsEnable`
 - `optFirstFailureSnapshotEnable`
-- `optTurbulenceStateRegularizationEnable`
 - `optClosureBoundedOmegaLimiterEnable`
 
 Key file:

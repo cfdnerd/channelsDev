@@ -1,61 +1,16 @@
 {
-  const bool turbulenceStateFailFast = optDiagnosticMode;
-  const bool turbulenceStateRegularizationEnabled =
-    static_cast<bool>(optTurbulenceStateRegularizationEnable);
   const bool closureBoundedOmegaLimiterEnabled =
     static_cast<bool>(optClosureBoundedOmegaLimiterEnable);
-  const dimensionedScalar kRecoveryFloor
-  (
-    "kRecoveryFloorModel",
-    k.dimensions(),
-    Foam::max(kMin.value(), SMALL)
-  );
-  const dimensionedScalar omegaRecoveryFloor
-  (
-    "omegaRecoveryFloorModel",
-    omega.dimensions(),
-    Foam::max(omegaMin.value(), SMALL)
-  );
-  auto regularizePositiveState =
-  [&](volScalarField& field, const dimensionedScalar& floorValue)
-  {
-    const volScalarField centered(field - floorValue);
-    field =
-      floorValue
-      + 0.5
-       *(
-          centered
-        + Foam::sqrt(sqr(centered) + sqr(floorValue))
-        );
-    field.correctBoundaryConditions();
-  };
 
   const scalar kMinState = gMin(k);
   const scalar omegaMinState = gMin(omega);
   if (!(kMinState > 0.0) || !(omegaMinState > 0.0))
   {
-    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
-    {
-      FatalErrorInFunction
-        << "Non-physical turbulence state entering closure model: "
-        << "min(k)=" << kMinState << ", min(omega)=" << omegaMinState
-        << ". Smooth regularization is disabled; investigate formulation/root cause."
-        << exit(FatalError);
-    }
-    if (Pstream::master())
-    {
-      Info<< "Closure-state positivity recovery triggered: "
-          << "min(k)=" << kMinState << ", min(omega)=" << omegaMinState
-          << ". Applying smooth positivity regularization.\n";
-    }
-    if (!(kMinState > 0.0))
-    {
-      regularizePositiveState(k, kRecoveryFloor);
-    }
-    if (!(omegaMinState > 0.0))
-    {
-      regularizePositiveState(omega, omegaRecoveryFloor);
-    }
+    FatalErrorInFunction
+      << "Non-physical turbulence state entering closure model: "
+      << "min(k)=" << kMinState << ", min(omega)=" << omegaMinState
+      << ". Positivity regularization is disabled by policy; investigate formulation/root cause."
+      << exit(FatalError);
   }
   #include "CustomKOmegaSSTWallTreatment.H"
 

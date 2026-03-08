@@ -77,23 +77,6 @@ continuationAdvanceCatchUpSteps = 0;
 
 const scalar recoveryContinuationRampScale =
   Foam::max(Foam::min(optRecoveryContinuationRampScale, scalar(1.0)), scalar(0.10));
-const scalar globalizationTrustScale = scalar(1.0);
-const scalar previousClipFractionForMove =
-  hasPreviousClipDiagnostics
-  ? Foam::max(previousMaxClipFraction, previousMaxFluidClipFraction)
-  : scalar(0.0);
-const scalar clipHealthScale =
-  hasPreviousClipDiagnostics
-  ? Foam::max
-    (
-      scalar(0.15),
-      scalar(1.0) - Foam::min(previousClipFractionForMove, scalar(0.85))
-    )
-  : scalar(1.0);
-const scalar sensitivityHealthScale =
-  Foam::max(Foam::min(sensitivityQualityScore, scalar(1.0)), scalar(0.0));
-const scalar multiphysicsHealthScale =
-  Foam::max(Foam::min(Foam::min(globalizationTrustScale, sensitivityHealthScale), clipHealthScale), scalar(0.0));
 const bool recoverySignal =
   maxViolationWorsenStreak >= optRecoveryWorsenStreak;
 const bool earlyRecoveryAllowed = false;
@@ -109,13 +92,6 @@ continuationRampScaleActive =
 delRampStepActive =
   constraintRecoveryActive ? scalar(0.05) : scalar(0.2);
 optimizerMoveLimitActive = movlim;
-
-primalPseudoTimeCoeffActive =
-  Foam::max(scalar(0.0), scalar(1.0) - multiphysicsHealthScale)
-  *optPrimalPseudoTimeCoeffMax;
-thermalSourceRampActive =
-  optThermalSourceRampMin
-  + (scalar(1.0) - optThermalSourceRampMin)*multiphysicsHealthScale;
 if(solid_area)
 {
    forAll(cells_solid, i)

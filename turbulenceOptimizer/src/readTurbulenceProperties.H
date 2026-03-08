@@ -482,9 +482,7 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", sinkExp=" << porousTurbulenceSuppressionExponent
         << ", sinkS=" << porousTurbulenceSuppressionCoeff
         << ", sinkA=" << porousTurbulenceAlphaSinkCoeff << "). "
-        << "State regularization="
-        << (optTurbulenceStateRegularizationEnable ? "true" : "false")
-        << " omegaLimiterBounded="
+        << "omegaLimiterBounded="
         << (optClosureBoundedOmegaLimiterEnable ? "true" : "false")
         << ". "
         << "Bounded closure state="

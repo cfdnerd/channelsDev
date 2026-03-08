@@ -1,30 +1,5 @@
 if (customTurbulenceActive)
 {
-  const bool turbulenceStateFailFast = optDiagnosticMode;
-  const bool turbulenceStateRegularizationEnabled =
-    static_cast<bool>(optTurbulenceStateRegularizationEnable);
-  const label kRecoveryAttempts =
-    (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled) ? 1 : 3;
-  const dimensionedScalar kRecoveryFloor
-  (
-    "kRecoveryFloor",
-    k.dimensions(),
-    Foam::max(kMin.value(), SMALL)
-  );
-  auto regularizeKState =
-  [&]()
-  {
-    const volScalarField kCentered(k - kRecoveryFloor);
-    k =
-      kRecoveryFloor
-      + 0.5
-       *(
-          kCentered
-        + Foam::sqrt(sqr(kCentered) + sqr(kRecoveryFloor))
-        );
-    k.correctBoundaryConditions();
-  };
-
   const scalar kMinBefore = gMin(k);
   const scalar omegaMinBefore = gMin(omega);
   if (!(omegaMinBefore > 0.0))
@@ -37,20 +12,11 @@ if (customTurbulenceActive)
   }
   if (!(kMinBefore > 0.0))
   {
-    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
-    {
-      FatalErrorInFunction
-        << "Detected non-physical k state before k solve: "
-        << "min(k)=" << kMinBefore
-        << ". Smooth regularization is disabled; investigate formulation/root cause."
-        << exit(FatalError);
-    }
-    if (Pstream::master())
-    {
-      Info<< "k positivity recovery: pre-solve state min(k)="
-          << kMinBefore << ". Applying smooth positivity regularization.\n";
-    }
-    regularizeKState();
+    FatalErrorInFunction
+      << "Detected non-physical k state before k solve: "
+      << "min(k)=" << kMinBefore
+      << ". Positivity regularization is disabled by policy; investigate formulation/root cause."
+      << exit(FatalError);
   }
 
   volScalarField omegaDestructionState(omega);
@@ -100,86 +66,48 @@ if (customTurbulenceActive)
       + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
   }
 
-  scalar kMinAfter = gMin(k);
-  scalar kMaxAfter = gMax(k);
-  bool kStatePhysical = false;
-  for (label kAttempt = 0; kAttempt < kRecoveryAttempts; ++kAttempt)
-  {
-    const dimensionedScalar turbulencePseudoTime
-    (
-      "turbulencePseudoTimeK",
-      dimensionSet(0,0,-1,0,0,0,0),
-      primalPseudoTimeCoeffActive*(1.0 + 4.0*kAttempt)
-    );
+  fvScalarMatrix kEqn
+  (
+      fvm::div(phi, k)
+    - fvm::laplacian(nu + alphaKField*nut, k)
+   ==
+      turbulenceProductionMask*PkField
+    - fvm::Sp
+      (
+        betaStarCoeff
+       *omegaDestructionState,
+        k
+      )
+    - fvm::Sp(turbulenceDampingCoeff*alpha, k)
+    - fvm::Sp(turbulenceSuppressionRate, k)
+  );
 
-    fvScalarMatrix kEqn
-    (
-        fvm::div(phi, k)
-      - fvm::laplacian(nu + alphaKField*nut, k)
-      + fvm::Sp(turbulencePseudoTime, k)
-     ==
-        turbulenceProductionMask*PkField
-      - fvm::Sp
-        (
-          betaStarCoeff
-         *omegaDestructionState,
-          k
-        )
-      - fvm::Sp(turbulenceDampingCoeff*alpha, k)
-      - fvm::Sp(turbulenceSuppressionRate, k)
-    );
+  kEqn.relax();
 
-    kEqn.relax();
+  const auto kLinearSolvePerformance = kEqn.solve();
+  recordLinearSolve
+  (
+      kLinearSolveStats,
+      kLinearSolvePerformance.initialResidual(),
+      kLinearSolvePerformance.finalResidual(),
+      kLinearSolvePerformance.nIterations()
+  );
 
-    const auto kLinearSolvePerformance = kEqn.solve();
-    recordLinearSolve
-    (
-        kLinearSolveStats,
-        kLinearSolvePerformance.initialResidual(),
-        kLinearSolvePerformance.finalResidual(),
-        kLinearSolvePerformance.nIterations()
-    );
-
-    kMinAfter = gMin(k);
-    kMaxAfter = gMax(k);
-    kStatePhysical =
-         (kMinAfter > 0.0)
-      && (kMaxAfter < GREAT)
-      && std::isfinite(static_cast<double>(kMinAfter))
-      && std::isfinite(static_cast<double>(kMaxAfter));
-    if (kStatePhysical)
-    {
-      break;
-    }
-    if (kAttempt + 1 < kRecoveryAttempts)
-    {
-      if (Pstream::master())
-      {
-        Info<< "k positivity recovery: solve attempt " << (kAttempt + 1)
-            << " produced min(k)=" << kMinAfter
-            << ", max(k)=" << kMaxAfter
-            << ". Retrying after smooth positivity regularization.\n";
-      }
-      regularizeKState();
-    }
-  }
+  const scalar kMinAfter = gMin(k);
+  const scalar kMaxAfter = gMax(k);
+  const bool kStatePhysical =
+       (kMinAfter > 0.0)
+    && (kMaxAfter < GREAT)
+    && std::isfinite(static_cast<double>(kMinAfter))
+    && std::isfinite(static_cast<double>(kMaxAfter));
 
   if (!kStatePhysical)
   {
-    if (turbulenceStateFailFast || !turbulenceStateRegularizationEnabled)
-    {
-      FatalErrorInFunction
-        << "Non-physical k state detected after solve: "
-        << "min(k)=" << kMinAfter << ", max(k)=" << kMaxAfter
-        << ". Smooth regularization is disabled; investigate formulation/root cause."
-        << exit(FatalError);
-    }
-    if (Pstream::master())
-    {
-      Info<< "k positivity recovery exhausted. "
-          << "Applying smooth positivity regularization and continuing in production mode.\n";
-    }
-    regularizeKState();
+    FatalErrorInFunction
+      << "Non-physical k state detected after solve: "
+      << "min(k)=" << kMinAfter << ", max(k)=" << kMaxAfter
+      << ". Positivity regularization is disabled by policy; investigate formulation/root cause."
+      << exit(FatalError);
   }
   #include "CustomKOmegaSSTWallTreatment.H"
 }
