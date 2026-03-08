@@ -721,15 +721,15 @@ const bool clipForcedReject =
 const scalar clipMeritExcess =
   Foam::max(maxFluidClipFraction - optClipGuardFluidFraction, scalar(0));
 const scalar clipPenaltyPreScheduleScale =
-  Foam::max(Foam::min(optMeritClipPenaltyPreScheduleScale, scalar(1.0)), scalar(0.0));
+  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.0));
 const scalar clipPenaltyRejectScale =
-  Foam::max(Foam::min(optMeritClipPenaltyRejectScale, scalar(1.0)), scalar(0.0));
+  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.0));
 const scalar meritClipPenaltyScheduleScale =
   constraintWorsenScheduleReady ? scalar(1.0) : clipPenaltyPreScheduleScale;
 const scalar meritClipPenaltyRejectScale =
   meritRejectStreak > 0 ? clipPenaltyRejectScale : scalar(1.0);
 const scalar meritClipPenaltyActive =
-  optMeritClipPenalty*meritClipPenaltyScheduleScale*meritClipPenaltyRejectScale;
+  scalar(0.0)*meritClipPenaltyScheduleScale*meritClipPenaltyRejectScale;
 const scalar powerViolationPositive =
   Foam::max(powerConstraintFinalMargin, scalar(0.0));
 const scalar volumeViolationPositive =
@@ -744,22 +744,9 @@ const scalar thermalTminViolationPositive =
   : scalar(0.0);
 const scalar thermalEnvelopeViolation =
   Foam::max(thermalTmaxViolationPositive, thermalTminViolationPositive);
-const scalar alPenaltyClamped =
-  Foam::max(Foam::min(alPenalty, optALPenaltyMax), scalar(1e-8));
 const scalar meritConstraintTermLinear =
-  optMeritConstraintPenalty*guardConstraintViolation;
-const scalar meritConstraintTermAL =
-    alLambdaPower*powerViolationPositive
-  + alLambdaVolume*volumeViolationPositive
-  + 0.5*alPenaltyClamped
-   *(
-      sqr(powerViolationPositive)
-    + sqr(volumeViolationPositive)
-    );
-const scalar meritConstraintTerm =
-  static_cast<bool>(optUseAugmentedLagrangian)
-  ? meritConstraintTermAL
-  : meritConstraintTermLinear;
+  scalar(0.0)*guardConstraintViolation;
+const scalar meritConstraintTerm = meritConstraintTermLinear;
 const scalar meritThermalEnvelopeTerm =
   static_cast<bool>(optThermalEnvelopeConstraintEnable)
   ? optThermalEnvelopePenalty*thermalEnvelopeViolation
@@ -771,17 +758,17 @@ const scalar meritValue =
   + meritClipPenaltyActive*clipMeritExcess;
 const scalar meritAcceptanceTol =
   hasPreviousAcceptedMerit
-  ? (optMeritAcceptAbsTol + optMeritAcceptRelTol*Foam::mag(previousAcceptedMerit))
+  ? (scalar(0.0) + scalar(0.0)*Foam::mag(previousAcceptedMerit))
   : 0;
 const scalar meritDelta =
   hasPreviousAcceptedMerit ? meritValue - previousAcceptedMerit : 0;
 const scalar rejectMoveScaleClamped =
-  Foam::max(Foam::min(optMeritRejectMoveScale, scalar(0.99)), scalar(0.1));
+  Foam::max(Foam::min(scalar(1.0), scalar(0.99)), scalar(0.1));
 const scalar recoverMoveScaleClamped =
-  Foam::max(optMeritRecoverMoveScale, scalar(1.0));
+  Foam::max(scalar(1.0), scalar(1.0));
 (void)recoverMoveScaleClamped;
 const scalar meritTrustMoveMinClamped =
-  Foam::max(Foam::min(optMeritTrustMoveMin, scalar(1.0)), scalar(0.01));
+  Foam::max(Foam::min(scalar(1.0), scalar(1.0)), scalar(0.01));
 const scalar continuationLowTrustThresholdReport =
   Foam::max(Foam::min(optContinuationLowTrustThreshold, scalar(1.0)), meritTrustMoveMinClamped);
 const bool continuationFrozenAny =
@@ -831,19 +818,8 @@ const scalar predictedGuardConstraintDelta =
     Foam::max(predictedThermalTmaxDelta, predictedThermalTminDelta)
   );
 const scalar predictedConstraintMeritDeltaLinear =
-  optMeritConstraintPenalty*predictedGuardConstraintDelta;
-const scalar predictedConstraintMeritDeltaAL =
-    alLambdaPower*(predictedPowerViolationPositive - powerViolationPositive)
-  + alLambdaVolume*(predictedVolumeViolationPositive - volumeViolationPositive)
-  + 0.5*alPenaltyClamped
-   *(
-      sqr(predictedPowerViolationPositive) - sqr(powerViolationPositive)
-    + sqr(predictedVolumeViolationPositive) - sqr(volumeViolationPositive)
-    );
-const scalar predictedConstraintMeritDelta =
-  static_cast<bool>(optUseAugmentedLagrangian)
-  ? predictedConstraintMeritDeltaAL
-  : predictedConstraintMeritDeltaLinear;
+  scalar(0.0)*predictedGuardConstraintDelta;
+const scalar predictedConstraintMeritDelta = predictedConstraintMeritDeltaLinear;
 const scalar predictedThermalEnvelopeMeritDelta =
   static_cast<bool>(optThermalEnvelopeConstraintEnable)
   ? optThermalEnvelopePenalty
@@ -865,23 +841,23 @@ const scalar trustRatio =
   ? actualMeritReduction/Foam::max(predictedMeritReduction, SMALL)
   : 1.0;
 const bool trustRatioAccepted =
-  !static_cast<bool>(optUseTrustRatioGate)
+  !static_cast<bool>(false)
   || !hasPreviousAcceptedMerit
   || !trustRatioDefined
-  || trustRatio >= optTrustRatioAcceptEta;
+  || trustRatio >= scalar(0.0);
 const bool trustRatioAcceptedWithSensitivityGuard =
   trustRatioAccepted
   && (
        !static_cast<bool>(optSensitivityQualityGateEnable)
     || sensitivityQualityScore > optSensitivityQualityWarn
     || !trustRatioDefined
-    || trustRatio >= Foam::max(optTrustRatioAcceptEta, scalar(0.2))
+    || trustRatio >= Foam::max(scalar(0.0), scalar(0.2))
      );
 (void)trustRatioAcceptedWithSensitivityGuard;
 const bool filterAcceptanceEnabled =
-  static_cast<bool>(optUseFilterAcceptance)
+  static_cast<bool>(false)
   && optimizationCycleTurbulentOptimizationMode
-  && optFilterMaxEntries > 0;
+  && label(0) > 0;
 bool filterDominated = false;
 if (filterAcceptanceEnabled)
 {
@@ -889,8 +865,8 @@ if (filterAcceptanceEnabled)
   {
     if
     (
-         guardConstraintViolation >= filterConstraintArchive[fi] - optFilterConstraintMargin
-      && objectiveValue >= filterObjectiveArchive[fi] - optFilterObjectiveMargin
+         guardConstraintViolation >= filterConstraintArchive[fi] - scalar(0.0)
+      && objectiveValue >= filterObjectiveArchive[fi] - scalar(0.0)
     )
     {
       filterDominated = true;
@@ -900,14 +876,14 @@ if (filterAcceptanceEnabled)
 }
 const bool filterAccepted = !filterAcceptanceEnabled || !filterDominated;
 const label filterDeadlockRejectThreshold =
-  Foam::max(optMeritRejectStopStreak, label(4));
+  Foam::max(label(0), label(4));
 const bool filterDeadlockBypass =
 (
      filterAcceptanceEnabled
   && !optDiagnosticMode
   && !filterAccepted
   && hasPreviousAcceptedMerit
-  && static_cast<bool>(optMeritGlobalizationEnable)
+  && static_cast<bool>(false)
   && meritRejectStreak >= filterDeadlockRejectThreshold
   && constraintWorsenScheduleReady
   && !clipForcedReject
@@ -921,7 +897,7 @@ const bool filterDeadlockBypass =
   && !optDiagnosticMode
   && !filterAccepted
   && hasPreviousAcceptedMerit
-  && static_cast<bool>(optMeritGlobalizationEnable)
+  && static_cast<bool>(false)
   && meritRejectStreak >= 3*filterDeadlockRejectThreshold
   && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
   && !clipForcedReject
@@ -935,7 +911,7 @@ const bool filterDeadlockBypass =
 const bool filterAcceptedForMerit =
   filterAccepted || filterDeadlockBypass;
 const bool meritAcceptedPreGate =
-  !static_cast<bool>(optMeritGlobalizationEnable)
+  !static_cast<bool>(false)
   || !hasPreviousAcceptedMerit
   || meritValue <= previousAcceptedMerit + meritAcceptanceTol;
 (void)meritAcceptedPreGate;
@@ -958,16 +934,10 @@ const bool constraintNonDeteriorationAccepted =
 const bool clipJumpHealthGatePassed =
      !hasPreviousClipDiagnostics
   || !clipHardRejectByJump;
-const bool laminarReferenceWarmupActive =
-  opt <= optLaminarReferenceWarmupIterations;
 const scalar residualGrowthAcceptLimit =
   optDiagnosticMode
   ? scalar(1.2)
-  : (
-       laminarReferenceWarmupActive
-       ? Foam::max(optLaminarReferenceWarmupResidualGrowthLimit, scalar(2.0))
-       : scalar(2.0)
-    );
+  : scalar(2.0);
 const bool residualGrowthGatePassed =
      !hasPreviousMaxLinearFinalResidual
   || maxLinearFinalResidual <= linearSolveWarnResidual
@@ -989,13 +959,13 @@ const bool sensitivityLowConfidence =
   static_cast<bool>(optSensitivityQualityGateEnable)
   && sensitivityQualityScore <= optSensitivityQualityWarn;
 const scalar feasibilityRestorationClipSlack =
-  Foam::max(optFeasibilityRestorationClipFractionSlack, scalar(0.0));
+  Foam::max(scalar(0.0), scalar(0.0));
 const scalar feasibilityRestorationGrayClipLimit =
   Foam::max(Foam::min(optRogueClipGrayThreshold + feasibilityRestorationClipSlack, scalar(1.0)), scalar(0.0));
 const bool feasibilityRestorationClipCompatible =
      !clipForcedReject
   || (
-       static_cast<bool>(optFeasibilityRestorationAllowClipReject)
+       static_cast<bool>(false)
     && !clipHardForcedReject
     && (
          !hasPreviousClipDiagnostics
@@ -1005,16 +975,16 @@ const bool feasibilityRestorationClipCompatible =
     && guardConstraintViolationDelta < 0
      );
 const bool feasibilityRestorationEligible =
-     static_cast<bool>(optFeasibilityRestorationEnable)
+     static_cast<bool>(false)
   && !optDiagnosticMode
   && optimizationCycleTurbulentOptimizationMode
   && hasPreviousGuardConstraintViolation
-  && meritRejectStreak >= Foam::max(optFeasibilityRestorationRejectThreshold, label(1))
+  && meritRejectStreak >= Foam::max(label(0), label(1))
   && feasibilityRestorationClipCompatible;
 const label feasibilityRestorationRejectExcess =
   Foam::max
   (
-    meritRejectStreak - Foam::max(optFeasibilityRestorationRejectThreshold, label(1)),
+    meritRejectStreak - Foam::max(label(0), label(1)),
     label(0)
   );
 const scalar feasibilityRestorationObjectiveRelTolAdaptive =
@@ -1023,14 +993,14 @@ const scalar feasibilityRestorationObjectiveRelTolAdaptive =
     scalar(0.60),
     Foam::max
     (
-      optFeasibilityRestorationObjectiveRelTol,
+      scalar(0.0),
       scalar(0.05) + scalar(0.02)*feasibilityRestorationRejectExcess
     )
   );
 const scalar feasibilityRestorationObjectiveAbsTolAdaptive =
   Foam::max
   (
-    optFeasibilityRestorationObjectiveTol,
+    scalar(0.0),
     scalar(0.5)*meritAcceptanceTol + scalar(2e-3)*feasibilityRestorationRejectExcess
   );
 const bool feasibilityRestorationConstraintImproved =
@@ -1040,7 +1010,7 @@ const bool feasibilityRestorationConstraintImproved =
      <= previousGuardConstraintViolation
       - Foam::max
         (
-          optFeasibilityRestorationConstraintGainMin,
+          scalar(0.0),
           scalar(0.1)*optConstraintWorsenTol
         )
      );
@@ -1071,7 +1041,7 @@ const bool feasibilityRestorationAcceptedGuarded =
 const bool deadlockConstraintPriorityEligible =
      feasibilityRestorationEligible
   && hasPreviousAcceptedMerit
-  && static_cast<bool>(optMeritGlobalizationEnable)
+  && static_cast<bool>(false)
   && meritRejectStreak >= filterDeadlockRejectThreshold
   && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
   && !clipForcedReject
@@ -1088,13 +1058,13 @@ const bool deadlockConstraintProgress =
      <= previousGuardConstraintViolation
        - Foam::max
          (
-           optFeasibilityRestorationConstraintGainMin,
+           scalar(0.0),
            scalar(0.1)*optConstraintWorsenTol
          )
   || volumeConstraintMarginDelta
      <= -Foam::max
         (
-          scalar(0.5)*optFeasibilityRestorationConstraintGainMin,
+          scalar(0.5)*scalar(0.0),
           scalar(0.1)*Foam::max(optConstraintTol, SMALL)
         )
   || (
@@ -1103,7 +1073,7 @@ const bool deadlockConstraintProgress =
        <= -Foam::max
           (
             scalar(0.5)*optConstraintTol,
-            optFeasibilityRestorationConstraintGainMin
+            scalar(0.0)
           )
      );
 const scalar deadlockObjectiveAbsTol =
@@ -1706,7 +1676,7 @@ if (!meritAccepted)
    && sensitivityQualityFailCurrent;
   meritTrustMoveScale =
     Foam::max(meritTrustMoveScale*rejectMoveScaleClamped, meritTrustMoveMinClamped);
-  if (trustRatioDefined && trustRatio < optTrustRatioShrinkEta)
+  if (trustRatioDefined && trustRatio < scalar(0.0))
   {
     meritTrustMoveScale =
       Foam::max(scalar(0.8)*meritTrustMoveScale, meritTrustMoveMinClamped);
@@ -2083,64 +2053,6 @@ else
   hasPreviousAcceptedMerit = true;
   acceptedMeritScheduleIteration = scheduleIterationCurrent;
   continuationDeadlockRecoveryCount = 0;
-  if (static_cast<bool>(optUseAugmentedLagrangian))
-  {
-    const bool alUpdateActive = constraintWorsenScheduleReady;
-    if (alUpdateActive)
-    {
-      alLambdaPower =
-        Foam::max(alLambdaPower + alPenaltyClamped*powerViolationPositive, scalar(0.0));
-      alLambdaVolume =
-        Foam::max(alLambdaVolume + alPenaltyClamped*volumeViolationPositive, scalar(0.0));
-      const bool alNeedsPenaltyGrowth =
-        maxConstraintViolation > optConstraintTol
-        && (
-             !hadPreviousMaxConstraintViolationAccepted
-          || maxConstraintViolation > previousMaxConstraintViolationAccepted - optALUpdateTol
-           );
-      if (alNeedsPenaltyGrowth)
-      {
-        alPenalty = Foam::min
-        (
-          alPenaltyClamped*Foam::max(optALPenaltyGrowth, scalar(1.0)),
-          optALPenaltyMax
-        );
-      }
-      else
-      {
-        alPenalty = alPenaltyClamped;
-      }
-    }
-    else
-    {
-      alPenalty = alPenaltyClamped;
-    }
-
-    // The AL update changes the merit definition itself. Rebase the accepted
-    // merit under the updated multipliers/penalty to avoid artificial
-    // reject streaks caused by a shifted merit baseline.
-    const scalar alPenaltyUpdatedClamped =
-      Foam::max(Foam::min(alPenalty, optALPenaltyMax), scalar(1e-8));
-    const scalar acceptedMeritConstraintTermAL =
-        alLambdaPower*powerViolationPositive
-      + alLambdaVolume*volumeViolationPositive
-      + 0.5*alPenaltyUpdatedClamped
-       *(
-          sqr(powerViolationPositive)
-        + sqr(volumeViolationPositive)
-        );
-    previousAcceptedMerit =
-      objectiveValue
-      + acceptedMeritConstraintTermAL
-      + meritThermalEnvelopeTerm
-      + meritClipPenaltyActive*clipMeritExcess;
-  }
-  else
-  {
-    alPenalty = alPenaltyClamped;
-    alLambdaPower = 0.0;
-    alLambdaVolume = 0.0;
-  }
   if (filterAcceptanceEnabled)
   {
     const scalar constraintCandidate = guardConstraintViolation;
@@ -2152,8 +2064,8 @@ else
     for (std::size_t fi = 0; fi < filterConstraintArchive.size(); ++fi)
     {
       const bool dominatedByCandidate =
-           filterConstraintArchive[fi] >= constraintCandidate - optFilterConstraintMargin
-        && filterObjectiveArchive[fi] >= objectiveCandidate - optFilterObjectiveMargin;
+           filterConstraintArchive[fi] >= constraintCandidate - scalar(0.0)
+        && filterObjectiveArchive[fi] >= objectiveCandidate - scalar(0.0);
       if (!dominatedByCandidate)
       {
         filterConstraintPruned.push_back(filterConstraintArchive[fi]);
@@ -2162,7 +2074,7 @@ else
     }
     filterConstraintPruned.push_back(constraintCandidate);
     filterObjectivePruned.push_back(objectiveCandidate);
-    while (static_cast<label>(filterConstraintPruned.size()) > optFilterMaxEntries)
+    while (static_cast<label>(filterConstraintPruned.size()) > label(0))
     {
       filterConstraintPruned.erase(filterConstraintPruned.begin());
       filterObjectivePruned.erase(filterObjectivePruned.begin());
@@ -2280,9 +2192,9 @@ else if (!meritRejectCountsTowardStop || !globalizationRejectStopEligible)
 }
 if
 (
-    static_cast<bool>(optMeritGlobalizationEnable)
- && optMeritRejectStopStreak > 0
- && meritRejectStopEligibleStreak >= optMeritRejectStopStreak
+    static_cast<bool>(false)
+ && label(0) > 0
+ && meritRejectStopEligibleStreak >= label(0)
 )
 {
   if (globalizationRejectStopEligible)
@@ -2805,14 +2717,11 @@ if (Pstream::master())
   );
   writeRow
   (
-    "Merit",
-    "value="+fmtScalar(meritValue)+" d="+fmtScalar(meritDelta),
-    "tol="+fmtScalar(meritAcceptanceTol)
-      + " acc=" + std::string(meritAccepted ? "yes" : "no")
-      + " raw=" + std::string(meritAcceptedRaw ? "yes" : "no"),
-    "cTerm="+fmtScalar(meritConstraintTerm)+" penClip="+fmtScalar(meritClipPenaltyActive),
-    "clipEx="+fmtScalar(clipMeritExcess)
-      + " clipScale=" + fmtScalar(meritClipPenaltyScheduleScale*meritClipPenaltyRejectScale)
+    "Acceptance",
+    "stepAccepted="+std::string(meritAccepted ? "yes" : "no"),
+    "stepRejected="+std::string(meritStepRejected ? "yes" : "no"),
+    "clipForced="+std::string(clipForcedReject ? "yes" : "no"),
+    "hardReject="+std::string(clipHardForcedReject ? "yes" : "no")
   );
   writeRow
   (
@@ -2829,45 +2738,11 @@ if (Pstream::master())
   );
   writeRow
   (
-    "AL/filter",
-    "AL="+std::string(static_cast<bool>(optUseAugmentedLagrangian) ? "yes" : "no")
-      + " mu=" + fmtScalar(alPenaltyClamped),
-    "lamP="+fmtScalar(alLambdaPower)+" lamV="+fmtScalar(alLambdaVolume),
-    "filter="+std::string(filterAcceptanceEnabled ? "yes" : "no")
-      + " acc=" + std::string(filterAccepted ? "yes" : "no")
-      + " byp=" + std::string(filterDeadlockBypass ? "yes" : "no"),
-    "archive="+fmtCount(filterAcceptedArchiveCount)
-      + " rest=" + std::string(feasibilityRestorationAcceptedGuarded ? "yes" : "no")
-      + " dRec=" + std::string(deadlockConstraintPriorityAccepted ? "yes" : "no")
-      + " clipCompat=" + std::string(feasibilityRestorationClipCompatible ? "yes" : "no")
-      + " clipRest=" + std::string(clipForcedRejectAcceptedByRestoration ? "yes" : "no")
-  );
-  writeRow
-  (
     "Step ctrl",
-    "retired=yes reject="+fmtCount(meritRejectStreak)+"/"+fmtCount(optMeritRejectStopStreak),
-    "trust="+fmtScalar(meritTrustMoveScale)
-      + " min=" + fmtScalar(meritTrustMoveMinClamped)
-      + " rho=" + fmtScalar(trustRatio),
-    "stepRejected="+std::string(meritStepRejected ? "yes" : "no")
-      + " clipForced=" + std::string(clipForcedReject ? "yes" : "no"),
-    "recReq="+std::string(meritRecoveryRequest ? "yes" : "no")
-      + " eligRej=" + fmtCount(reportedMeritRejectStopEligibleStreak)
-      + "/" + fmtCount(optMeritRejectStopStreak)
-      + " rebase=" + fmtCount(reportedMeritScheduleRebaseCount)
-      + " readyShift=" + (constraintWorsenScheduleReadyTransition ? "yes" : "no")
-      + " rest=" + (feasibilityRestorationAcceptedGuarded ? "yes" : "no")
-      + " dAcc=" + (deadlockConstraintPriorityAccepted ? "yes" : "no")
-      + " stopElig=" + (globalizationRejectStopEligible ? "yes" : "no")
-      + " hCatch=" + (scheduleHorizonCatchUpNeeded ? "yes" : "no")
-      + " hNoSlack=" + (scheduleHorizonNoSlackUnderFreeze ? "yes" : "no")
-      + " dOnRej=" + (scheduleHorizonDeadlockOnReject ? "yes" : "no")
-      + " dBlk=" + (deadlockRecoveryBlockedByGlobalization ? "yes" : "no")
-      + " dReq=" + fmtCount(reportedDeadlockCatchUpRequest)
-      + " recov=" + fmtCount(reportedContinuationDeadlockRecoveryCount)
-      + "/" + fmtCount(optContinuationDeadlockRecoveryMaxOverrides)
-      + " cUp=" + fmtCount(reportedContinuationAdvanceCatchUpSteps)
-      + " bOff=" + fmtCount(continuationClipBackoffStepsApplied)
+    "rejectStreak="+fmtCount(meritRejectStreak),
+    "stepRejected="+std::string(meritStepRejected ? "yes" : "no"),
+    "stopElig="+std::string(globalizationRejectStopEligible ? "yes" : "no"),
+    "hCatch="+std::string(scheduleHorizonCatchUpNeeded ? "yes" : "no")
   );
   writeRow
   (
@@ -3170,56 +3045,12 @@ if (Pstream::master())
       << ",\"sensitivityQualityFail\":" << (sensitivityQualityFailCurrent ? 1 : 0)
       << ",\"sensitivityQualityHardFail\":" << (sensitivityQualityHardFailCurrent ? 1 : 0)
       << ",\"sensitivityQualityStopTriggered\":" << (sensitivityQualityStopTriggered ? 1 : 0)
-      << ",\"meritGlobalizationEnabled\":" << (static_cast<bool>(optMeritGlobalizationEnable) ? 1 : 0)
-      << ",\"merit\":" << meritValue
-      << ",\"meritDelta\":" << meritDelta
-      << ",\"meritAcceptanceTol\":" << meritAcceptanceTol
-      << ",\"filterAcceptanceEnabled\":" << (filterAcceptanceEnabled ? 1 : 0)
-      << ",\"filterAccepted\":" << (filterAccepted ? 1 : 0)
-      << ",\"filterDeadlockBypass\":" << (filterDeadlockBypass ? 1 : 0)
-      << ",\"feasibilityRestorationEligible\":"
-      << (feasibilityRestorationEligible ? 1 : 0)
-      << ",\"feasibilityRestorationConstraintImproved\":"
-      << (feasibilityRestorationConstraintImproved ? 1 : 0)
-      << ",\"feasibilityRestorationObjectiveAcceptable\":"
-      << (feasibilityRestorationObjectiveAcceptable ? 1 : 0)
-      << ",\"feasibilityRestorationObjectiveAbsTolAdaptive\":"
-      << feasibilityRestorationObjectiveAbsTolAdaptive
-      << ",\"feasibilityRestorationObjectiveRelTolAdaptive\":"
-      << feasibilityRestorationObjectiveRelTolAdaptive
-      << ",\"feasibilityRestorationClipCompatible\":"
-      << (feasibilityRestorationClipCompatible ? 1 : 0)
-      << ",\"feasibilityRestorationAccepted\":"
-      << (feasibilityRestorationAcceptedGuarded ? 1 : 0)
-      << ",\"deadlockConstraintPriorityEligible\":"
-      << (deadlockConstraintPriorityEligible ? 1 : 0)
-      << ",\"deadlockConstraintProgress\":"
-      << (deadlockConstraintProgress ? 1 : 0)
-      << ",\"deadlockObjectiveAcceptable\":"
-      << (deadlockObjectiveAcceptable ? 1 : 0)
-      << ",\"deadlockObjectiveAbsTol\":"
-      << deadlockObjectiveAbsTol
-      << ",\"deadlockObjectiveRelTol\":"
-      << deadlockObjectiveRelTol
-      << ",\"deadlockConstraintPriorityAccepted\":"
-      << (deadlockConstraintPriorityAccepted ? 1 : 0)
-      << ",\"clipForcedRejectAcceptedByRestoration\":"
-      << (clipForcedRejectAcceptedByRestoration ? 1 : 0)
-      << ",\"meritAcceptedRaw\":" << (meritAcceptedRaw ? 1 : 0)
-      << ",\"meritAccepted\":" << (meritAccepted ? 1 : 0)
-      << ",\"meritConstraintPenalty\":" << optMeritConstraintPenalty
-      << ",\"meritClipPenalty\":" << optMeritClipPenalty
-      << ",\"meritClipPenaltyActive\":" << meritClipPenaltyActive
-      << ",\"meritClipPenaltyPreScheduleScale\":" << meritClipPenaltyScheduleScale
-      << ",\"meritClipPenaltyRejectScale\":" << meritClipPenaltyRejectScale
-      << ",\"meritClipExcess\":" << clipMeritExcess
-      << ",\"meritRejectStreak\":" << meritRejectStreak
-      << ",\"meritRejectStopStreak\":" << optMeritRejectStopStreak
-      << ",\"meritRejectStopEligibleStreak\":" << reportedMeritRejectStopEligibleStreak
-      << ",\"meritAcceptedScheduleIteration\":" << acceptedMeritScheduleIteration
-      << ",\"meritScheduleRebaseCount\":" << reportedMeritScheduleRebaseCount
+      << ",\"acceptanceEnabled\":0"
+      << ",\"stepAccepted\":" << (meritAccepted ? 1 : 0)
+      << ",\"stepRejected\":" << (meritStepRejected ? 1 : 0)
+      << ",\"rejectStreak\":" << meritRejectStreak
       << ",\"globalizationRejectStopEligible\":" << (globalizationRejectStopEligible ? 1 : 0)
-      << ",\"meritRejectCountsTowardStop\":" << (meritRejectCountsTowardStop ? 1 : 0)
+      << ",\"rejectCountsTowardStop\":" << (meritRejectCountsTowardStop ? 1 : 0)
       << ",\"scheduleHorizonCatchUpNeeded\":" << (scheduleHorizonCatchUpNeeded ? 1 : 0)
       << ",\"scheduleHorizonNoSlackUnderFreeze\":" << (scheduleHorizonNoSlackUnderFreeze ? 1 : 0)
       << ",\"scheduleHorizonDeadlockOnReject\":" << (scheduleHorizonDeadlockOnReject ? 1 : 0)
@@ -3234,10 +3065,9 @@ if (Pstream::master())
       << ",\"continuationAdvanceOverrideOnReject\":" << (continuationAdvanceOverrideOnReject ? 1 : 0)
       << ",\"continuationAdvanceCatchUpSteps\":" << reportedContinuationAdvanceCatchUpSteps
       << ",\"continuationClipBackoffStepsApplied\":" << continuationClipBackoffStepsApplied
-      << ",\"meritTrustMoveScale\":" << meritTrustMoveScale
-      << ",\"meritTrustMoveMin\":" << meritTrustMoveMinClamped
-      << ",\"meritStepRejected\":" << (meritStepRejected ? 1 : 0)
-      << ",\"meritRecoveryRequest\":" << (meritRecoveryRequest ? 1 : 0)
+      << ",\"trustMoveScale\":" << meritTrustMoveScale
+      << ",\"trustMoveMin\":" << meritTrustMoveMinClamped
+      << ",\"recoveryRequest\":" << (meritRecoveryRequest ? 1 : 0)
       << ",\"rogueDirectionSwitchEnabled\":" << (static_cast<bool>(optRogueDirectionSwitchEnable) ? 1 : 0)
       << ",\"rogueRejectSignal\":" << (rogueRejectSignal ? 1 : 0)
       << ",\"rogueClipSignal\":" << (rogueClipSignal ? 1 : 0)
@@ -3279,8 +3109,6 @@ if (Pstream::master())
       << ",\"continuationLowTrustThreshold\":" << continuationLowTrustThresholdReport
       << ",\"rejectStopRequireConstraintWindow\":" << (static_cast<bool>(optRejectStopRequireConstraintWindow) ? 1 : 0)
       << ",\"earlyRecoveryOnRejectEnabled\":" << (static_cast<bool>(optEarlyRecoveryOnGlobalizationReject) ? 1 : 0)
-      << ",\"meritClipPenaltyPreScheduleScaleConfig\":" << optMeritClipPenaltyPreScheduleScale
-      << ",\"meritClipPenaltyRejectScaleConfig\":" << optMeritClipPenaltyRejectScale
       << ",\"recoveryEnabled\":" << (static_cast<bool>(optRecoveryEnable) ? 1 : 0)
       << ",\"recoveryActive\":" << (constraintRecoveryActive ? 1 : 0)
       << ",\"recoveryWorsenStreak\":" << optRecoveryWorsenStreak

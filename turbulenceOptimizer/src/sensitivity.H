@@ -214,15 +214,13 @@ const bool preMmaHardFail =
        previousMaxFluidClipFraction >= optClipHardRejectFluidFraction
     || preMmaFinitePenalty > 0.0
      );
-const bool sensitivityLaminarReferenceWarmupActive =
-  opt <= optLaminarReferenceWarmupIterations;
 
 sensitivityQualityScore = preMmaSensitivityQualityScore;
 sensitivityQualityWarn = preMmaSensitivityWarn;
 sensitivityQualityFail = preMmaSensitivityFail;
 sensitivityQualityHardFail = preMmaHardFail;
 sensitivityQualityRequireConservativeStep =
-  preMmaSensitivityWarn && !sensitivityLaminarReferenceWarmupActive;
+  preMmaSensitivityWarn;
 sensitivityQualityReuseAcceptedGradient =
     static_cast<bool>(optSensitivityReuseAcceptedGradient)
  && hasAcceptedGradientSnapshot

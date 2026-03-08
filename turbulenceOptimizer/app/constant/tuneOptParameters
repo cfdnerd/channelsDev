@@ -49,14 +49,6 @@ convergenceControl
     optAdaptiveBaseMoveMax        0.4;
     optMmaMoveLimitFloor          1e-2;
 
-    // --------------------------------------------------------------------- //
-    // Laminar-Reference Warmup
-    // --------------------------------------------------------------------- //
-    optLaminarReferenceWarmupIterations        20;
-    optLaminarReferenceWarmupMoveLimit         0.15;
-    optLaminarReferenceWarmupResidualGrowthLimit 3.0;
-
-    // --------------------------------------------------------------------- //
     // Convergence Stop
     // --------------------------------------------------------------------- //
     optMinIterations              50;

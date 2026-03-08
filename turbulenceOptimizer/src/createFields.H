@@ -124,36 +124,6 @@ scalar optRecoveryContinuationRampScale
 (
   convergenceControl.lookupOrDefault<scalar>("optRecoveryContinuationRampScale", 0.35)
 );
-// Step-acceptance/globalization controller retired.
-Switch optMeritGlobalizationEnable(false);
-scalar optMeritConstraintPenalty(0.0);
-Switch optUseAugmentedLagrangian
-(
-  convergenceControl.lookupOrDefault<Switch>("optUseAugmentedLagrangian", true)
-);
-scalar optALInitialPenalty
-(
-  convergenceControl.lookupOrDefault<scalar>("optALInitialPenalty", 1e-2)
-);
-scalar optALPenaltyGrowth
-(
-  convergenceControl.lookupOrDefault<scalar>("optALPenaltyGrowth", 1.5)
-);
-scalar optALPenaltyMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optALPenaltyMax", 10.0)
-);
-scalar optALUpdateTol
-(
-  convergenceControl.lookupOrDefault<scalar>("optALUpdateTol", 5e-4)
-);
-// Clip-driven merit penalties are disabled by policy.
-scalar optMeritClipPenalty(0.0);
-// Retired dictionary tuning knobs: keep a single clip-penalty path.
-scalar optMeritClipPenaltyPreScheduleScale(1.0);
-scalar optMeritClipPenaltyRejectScale(1.0);
-scalar optMeritAcceptAbsTol(0.0);
-scalar optMeritAcceptRelTol(0.0);
 scalar optObjectiveAbsMax
 (
   convergenceControl.lookupOrDefault<scalar>("optObjectiveAbsMax", 1e6)
@@ -162,10 +132,6 @@ scalar optThermalFieldAbsMax
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalFieldAbsMax", 1e6)
 );
-scalar optMeritRejectMoveScale(1.0);
-scalar optMeritRecoverMoveScale(1.0);
-scalar optMeritTrustMoveMin(1.0);
-label optMeritRejectStopStreak(0);
 Switch optFreezeContinuationOnReject(false);
 Switch optFreezeContinuationOnLowTrust(false);
 scalar optContinuationLowTrustThreshold(0.0);
@@ -226,22 +192,6 @@ Switch optGradientCheckStopOnFailure
 (
   convergenceControl.lookupOrDefault<Switch>("optGradientCheckStopOnFailure", false)
 );
-Switch optUseFilterAcceptance(false);
-Switch optFeasibilityRestorationEnable(false);
-label optFeasibilityRestorationRejectThreshold(0);
-scalar optFeasibilityRestorationObjectiveTol(0.0);
-scalar optFeasibilityRestorationObjectiveRelTol(0.0);
-scalar optFeasibilityRestorationConstraintGainMin(0.0);
-Switch optFeasibilityRestorationAllowClipReject(false);
-scalar optFeasibilityRestorationClipFractionSlack(0.0);
-label optFilterMaxEntries(0);
-scalar optFilterConstraintMargin(0.0);
-scalar optFilterObjectiveMargin(0.0);
-Switch optUseTrustRatioGate(false);
-scalar optTrustRatioAcceptEta(0.0);
-scalar optTrustRatioShrinkEta(0.0);
-scalar optTrustRatioGrowEta(1.0);
-(void)optTrustRatioGrowEta;
 Switch optClosureDerivativeFDEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDEnable", true)
@@ -447,18 +397,6 @@ scalar optMmaMoveLimitFloor
 (
   convergenceControl.lookupOrDefault<scalar>("optMmaMoveLimitFloor", 1e-2)
 );
-label optLaminarReferenceWarmupIterations
-(
-  convergenceControl.lookupOrDefault<label>("optLaminarReferenceWarmupIterations", 20)
-);
-scalar optLaminarReferenceWarmupMoveLimit
-(
-  convergenceControl.lookupOrDefault<scalar>("optLaminarReferenceWarmupMoveLimit", 0.15)
-);
-scalar optLaminarReferenceWarmupResidualGrowthLimit
-(
-  convergenceControl.lookupOrDefault<scalar>("optLaminarReferenceWarmupResidualGrowthLimit", 3.0)
-);
 Switch optProductionIgnoreSensitivityReject
 (
   convergenceControl.lookupOrDefault<Switch>("optProductionIgnoreSensitivityReject", true)
@@ -544,30 +482,6 @@ if (optVolumeConstraintWeight <= 0.0)
   FatalErrorInFunction
     << "tuneOptParameters.convergenceControl.optVolumeConstraintWeight must be > 0. Found "
     << optVolumeConstraintWeight
-    << exit(FatalError);
-}
-if (optMeritConstraintPenalty < 0.0)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optMeritConstraintPenalty must be >= 0. Found "
-    << optMeritConstraintPenalty
-    << exit(FatalError);
-}
-if (optALInitialPenalty <= 0.0 || optALPenaltyGrowth < 1.0 || optALPenaltyMax < optALInitialPenalty)
-{
-  FatalErrorInFunction
-    << "Invalid augmented-Lagrangian settings. Require optALInitialPenalty>0, "
-    << "optALPenaltyGrowth>=1, optALPenaltyMax>=optALInitialPenalty. Found "
-    << "optALInitialPenalty=" << optALInitialPenalty
-    << ", optALPenaltyGrowth=" << optALPenaltyGrowth
-    << ", optALPenaltyMax=" << optALPenaltyMax
-    << exit(FatalError);
-}
-if (optTrustRatioAcceptEta < 0.0 || optTrustRatioAcceptEta > 1.0)
-{
-  FatalErrorInFunction
-    << "tuneOptParameters.convergenceControl.optTrustRatioAcceptEta must be in [0,1]. Found "
-    << optTrustRatioAcceptEta
     << exit(FatalError);
 }
 if (optAdaptiveBaseMoveMin <= 0.0 || optAdaptiveBaseMoveMin > 1.0)
@@ -676,34 +590,6 @@ if (optMmaMoveLimitFloor <= 0.0 || optMmaMoveLimitFloor > 1.0)
   FatalErrorInFunction
     << "optMmaMoveLimitFloor must be in (0,1]. Found "
     << optMmaMoveLimitFloor
-    << exit(FatalError);
-}
-if (optLaminarReferenceWarmupIterations < 0)
-{
-  FatalErrorInFunction
-    << "optLaminarReferenceWarmupIterations must be >= 0. Found "
-    << optLaminarReferenceWarmupIterations
-    << exit(FatalError);
-}
-if (optLaminarReferenceWarmupMoveLimit <= 0.0 || optLaminarReferenceWarmupMoveLimit > 1.0)
-{
-  FatalErrorInFunction
-    << "optLaminarReferenceWarmupMoveLimit must be in (0,1]. Found "
-    << optLaminarReferenceWarmupMoveLimit
-    << exit(FatalError);
-}
-if (optLaminarReferenceWarmupResidualGrowthLimit < 1.0)
-{
-  FatalErrorInFunction
-    << "optLaminarReferenceWarmupResidualGrowthLimit must be >= 1.0. Found "
-    << optLaminarReferenceWarmupResidualGrowthLimit
-    << exit(FatalError);
-}
-if (optFeasibilityRestorationConstraintGainMin < 0.0)
-{
-  FatalErrorInFunction
-    << "optFeasibilityRestorationConstraintGainMin must be >= 0. Found "
-    << optFeasibilityRestorationConstraintGainMin
     << exit(FatalError);
 }
 if (optSensitivityGradientL2Eps <= 0.0)

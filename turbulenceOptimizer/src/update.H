@@ -15,8 +15,6 @@ const scalar updateOptimizationIterationsRemainingRaw =
   Foam::max(runTime.endTime().value() - static_cast<scalar>(opt), scalar(0));
 const label updateOptimizationIterationsRemaining =
   static_cast<label>(updateOptimizationIterationsRemainingRaw + 0.000001);
-const bool laminarReferenceWarmupActive =
-  opt <= optLaminarReferenceWarmupIterations;
 const label updateScheduleHorizonLagIterations =
   Foam::max
   (
@@ -99,9 +97,7 @@ const scalar clipHealthScale =
     )
   : scalar(1.0);
 const scalar sensitivityHealthScale =
-  laminarReferenceWarmupActive
-  ? scalar(1.0)
-  : Foam::max(Foam::min(sensitivityQualityScore, scalar(1.0)), scalar(0.0));
+  Foam::max(Foam::min(sensitivityQualityScore, scalar(1.0)), scalar(0.0));
 const scalar multiphysicsHealthScale =
   Foam::max(Foam::min(Foam::min(globalizationTrustScale, sensitivityHealthScale), clipHealthScale), scalar(0.0));
 adaptiveMmaBaseMoveActive =
@@ -114,15 +110,13 @@ adaptiveMmaAsymDecActive =
   optAdaptiveAsymDecMax
   - (optAdaptiveAsymDecMax - optAdaptiveAsymDecMin)*multiphysicsHealthScale;
 const bool recoverySignal =
-     maxViolationWorsenStreak >= optRecoveryWorsenStreak
-  || meritRecoveryRequest;
+  maxViolationWorsenStreak >= optRecoveryWorsenStreak;
 const bool earlyRecoveryAllowed = false;
 const bool recoveryIterationGate =
   opt >= optConstraintWorsenMinIterations || earlyRecoveryAllowed;
 const bool recoveryEligible =
   recoverySignal
-  && recoveryIterationGate
-  && !laminarReferenceWarmupActive;
+  && recoveryIterationGate;
 constraintRecoveryActive =
   static_cast<bool>(optRecoveryEnable) && recoveryEligible;
 continuationRampScaleActive =
@@ -140,15 +134,6 @@ if (sensitivityQualityRequireConservativeStep)
     (
       optimizerMoveLimitActive*optSensitivityLowQualityMoveScale,
       optMmaMoveLimitFloor
-    );
-}
-if (laminarReferenceWarmupActive)
-{
-  optimizerMoveLimitActive =
-    Foam::max
-    (
-      optimizerMoveLimitActive,
-      Foam::max(optLaminarReferenceWarmupMoveLimit, optMmaMoveLimitFloor)
     );
 }
 
