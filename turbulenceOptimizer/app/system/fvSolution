@@ -134,6 +134,7 @@ relaxationFactors
     equations
     {
         "(U|Ua|Ub|Uc)"     0.7;
+        T               0.7;
         k               0.6;
         omega           0.4;
         ka              0.6;

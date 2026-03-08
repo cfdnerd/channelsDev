@@ -110,12 +110,6 @@ delRampStepActive =
   constraintRecoveryActive ? scalar(0.05) : scalar(0.2);
 optimizerMoveLimitActive = movlim;
 
-primalThermalUnderRelaxActive =
-  optThermalUnderRelaxMin
-  + (optThermalUnderRelaxMax - optThermalUnderRelaxMin)*multiphysicsHealthScale;
-primalTurbulenceUnderRelaxActive =
-  optTurbulenceUnderRelaxMin
-  + (optTurbulenceUnderRelaxMax - optTurbulenceUnderRelaxMin)*multiphysicsHealthScale;
 primalPseudoTimeCoeffActive =
   Foam::max(scalar(0.0), scalar(1.0) - multiphysicsHealthScale)
   *optPrimalPseudoTimeCoeffMax;

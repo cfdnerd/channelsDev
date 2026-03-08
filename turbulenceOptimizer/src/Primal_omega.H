@@ -114,12 +114,6 @@ if (customTurbulenceActive)
   bool omegaStatePhysical = false;
   for (label omegaAttempt = 0; omegaAttempt < omegaRecoveryAttempts; ++omegaAttempt)
   {
-    const scalar omegaRelaxAttempt =
-      Foam::max
-      (
-        primalTurbulenceUnderRelaxActive*Foam::pow(0.5, omegaAttempt),
-        scalar(0.1)
-      );
     const dimensionedScalar turbulencePseudoTime
     (
       "turbulencePseudoTimeOmega",
@@ -140,7 +134,7 @@ if (customTurbulenceActive)
       - fvm::Sp(turbulenceSuppressionRate, omega)
     );
 
-    omegaEqn.relax(omegaRelaxAttempt);
+    omegaEqn.relax();
 
     const auto omegaLinearSolvePerformance = omegaEqn.solve();
     recordLinearSolve
@@ -169,7 +163,7 @@ if (customTurbulenceActive)
         Info<< "Omega positivity recovery: solve attempt " << (omegaAttempt + 1)
             << " produced min(omega)=" << omegaMinAfter
             << ", max(omega)=" << omegaMaxAfter
-            << ". Retrying with stronger damping.\n";
+            << ". Retrying after smooth positivity regularization.\n";
       }
       regularizeOmegaState();
     }

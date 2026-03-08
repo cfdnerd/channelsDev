@@ -387,22 +387,6 @@ scalar optSensitivityGradientL2Eps
 (
   convergenceControl.lookupOrDefault<scalar>("optSensitivityGradientL2Eps", 1e-12)
 );
-scalar optThermalUnderRelaxMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optThermalUnderRelaxMin", 0.20)
-);
-scalar optThermalUnderRelaxMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optThermalUnderRelaxMax", 0.90)
-);
-scalar optTurbulenceUnderRelaxMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optTurbulenceUnderRelaxMin", 0.25)
-);
-scalar optTurbulenceUnderRelaxMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optTurbulenceUnderRelaxMax", 0.90)
-);
 scalar optPrimalPseudoTimeCoeffMax
 (
   convergenceControl.lookupOrDefault<scalar>("optPrimalPseudoTimeCoeffMax", 5.0)
@@ -511,36 +495,6 @@ if (optSensitivityGradientL2Eps <= 0.0)
   FatalErrorInFunction
     << "optSensitivityGradientL2Eps must be > 0. Found "
     << optSensitivityGradientL2Eps
-    << exit(FatalError);
-}
-if (optThermalUnderRelaxMin <= 0.0 || optThermalUnderRelaxMin > 1.0)
-{
-  FatalErrorInFunction
-    << "optThermalUnderRelaxMin must be in (0,1]. Found "
-    << optThermalUnderRelaxMin
-    << exit(FatalError);
-}
-if (optThermalUnderRelaxMax < optThermalUnderRelaxMin || optThermalUnderRelaxMax > 1.0)
-{
-  FatalErrorInFunction
-    << "optThermalUnderRelaxMax must satisfy optThermalUnderRelaxMin <= max <= 1. Found "
-    << "min=" << optThermalUnderRelaxMin
-    << ", max=" << optThermalUnderRelaxMax
-    << exit(FatalError);
-}
-if (optTurbulenceUnderRelaxMin <= 0.0 || optTurbulenceUnderRelaxMin > 1.0)
-{
-  FatalErrorInFunction
-    << "optTurbulenceUnderRelaxMin must be in (0,1]. Found "
-    << optTurbulenceUnderRelaxMin
-    << exit(FatalError);
-}
-if (optTurbulenceUnderRelaxMax < optTurbulenceUnderRelaxMin || optTurbulenceUnderRelaxMax > 1.0)
-{
-  FatalErrorInFunction
-    << "optTurbulenceUnderRelaxMax must satisfy optTurbulenceUnderRelaxMin <= max <= 1. Found "
-    << "min=" << optTurbulenceUnderRelaxMin
-    << ", max=" << optTurbulenceUnderRelaxMax
     << exit(FatalError);
 }
 if (optPrimalPseudoTimeCoeffMax < 0.0)

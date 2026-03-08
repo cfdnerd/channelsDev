@@ -25,7 +25,7 @@ else
 {
  TEqn-=thermalSource*thermalSourceRamp;
 }
-TEqn.relax(primalThermalUnderRelaxActive);
+TEqn.relax();
 const auto TLinearSolvePerformance = TEqn.solve();
 recordLinearSolve
 (

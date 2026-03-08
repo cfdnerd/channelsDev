@@ -430,8 +430,6 @@ label sensitivityQualityFailStreak(0);
 bool hasAcceptedGradientSnapshot(false);
 bool hasAcceptedStateSnapshot(false);
 bool firstFailureSnapshotWritten(false);
-scalar primalThermalUnderRelaxActive(optThermalUnderRelaxMax);
-scalar primalTurbulenceUnderRelaxActive(optTurbulenceUnderRelaxMax);
 scalar primalPseudoTimeCoeffActive(0.0);
 scalar thermalSourceRampActive(1.0);
 scalar turbulenceKNonlinearChange(0);

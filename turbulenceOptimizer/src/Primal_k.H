@@ -105,12 +105,6 @@ if (customTurbulenceActive)
   bool kStatePhysical = false;
   for (label kAttempt = 0; kAttempt < kRecoveryAttempts; ++kAttempt)
   {
-    const scalar kRelaxAttempt =
-      Foam::max
-      (
-        primalTurbulenceUnderRelaxActive*Foam::pow(0.5, kAttempt),
-        scalar(0.1)
-      );
     const dimensionedScalar turbulencePseudoTime
     (
       "turbulencePseudoTimeK",
@@ -135,7 +129,7 @@ if (customTurbulenceActive)
       - fvm::Sp(turbulenceSuppressionRate, k)
     );
 
-    kEqn.relax(kRelaxAttempt);
+    kEqn.relax();
 
     const auto kLinearSolvePerformance = kEqn.solve();
     recordLinearSolve
@@ -164,7 +158,7 @@ if (customTurbulenceActive)
         Info<< "k positivity recovery: solve attempt " << (kAttempt + 1)
             << " produced min(k)=" << kMinAfter
             << ", max(k)=" << kMaxAfter
-            << ". Retrying with stronger damping.\n";
+            << ". Retrying after smooth positivity regularization.\n";
       }
       regularizeKState();
     }
