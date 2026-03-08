@@ -1032,6 +1032,7 @@ const bool restorationStrictlyImproving =
 const bool feasibilityRestorationAcceptedGuarded =
   feasibilityRestorationAccepted
   && (!clipHeavyState || restorationStrictlyImproving);
+(void)feasibilityRestorationAcceptedGuarded;
 const bool deadlockConstraintPriorityEligible =
      feasibilityRestorationEligible
   && hasPreviousAcceptedMerit
@@ -1044,6 +1045,7 @@ const bool deadlockConstraintPriorityEligible =
   && sensitivityQualityGatePassed
   && (filterAcceptedForMerit || meritRejectStreak >= 2*filterDeadlockRejectThreshold)
   && maxConstraintViolation > optConstraintTol;
+(void)deadlockConstraintPriorityEligible;
 const bool deadlockConstraintDominatedByVolume =
   volumeViolationPositive >= powerViolationPositive
   && volumeViolationPositive >= thermalEnvelopeViolation;
@@ -1070,6 +1072,7 @@ const bool deadlockConstraintProgress =
             scalar(0.0)
           )
      );
+(void)deadlockConstraintProgress;
 const scalar deadlockObjectiveAbsTol =
   Foam::max
   (
@@ -1086,6 +1089,7 @@ const bool deadlockObjectiveAcceptable =
     && objectiveDelta/Foam::max(Foam::mag(previousObjectiveValue), SMALL)
        <= Foam::max(deadlockObjectiveRelTol, scalar(0.0))
      );
+(void)deadlockObjectiveAcceptable;
 // Step-acceptance controller retired: always advance MMA design updates unless
 // a hard safety envelope is violated.
 const bool globalizationFrameworkEnabled(false);
