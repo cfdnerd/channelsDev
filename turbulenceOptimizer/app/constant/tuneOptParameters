@@ -42,8 +42,8 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // MMA Step Controls
     // --------------------------------------------------------------------- //
-    optPowerConstraintWeight      1.0;
-    optVolumeConstraintWeight     4;
+    optPowerConstraintWeight      2;
+    optVolumeConstraintWeight     1;
 
     // Convergence Stop
     // --------------------------------------------------------------------- //
