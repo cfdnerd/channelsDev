@@ -21,10 +21,10 @@ convergenceControl
     // Run Profile
     // --------------------------------------------------------------------- //
     optRunMode production; // production | diagnostic
-    optAdjointRollbackGuardsEnable      true; // Ua/Ub rollback guards
     optFirstFailureSnapshotEnable       true; // write first failure snapshot
-    optTurbulenceStateRegularizationEnable true; // smooth k/omega positivity repair
-    optClosureBoundedOmegaLimiterEnable true; // smooth omega limiter in nut
+    optAdjointRollbackGuardsEnable      false; // Ua/Ub rollback guards
+    optTurbulenceStateRegularizationEnable false; // smooth k/omega positivity repair
+    optClosureBoundedOmegaLimiterEnable false; // smooth omega limiter in nut
 
     // --------------------------------------------------------------------- //
     // Thermal Adjoint Selector
@@ -45,8 +45,8 @@ convergenceControl
     // --------------------------------------------------------------------- //
     optPowerConstraintWeight      1.0;
     optVolumeConstraintWeight     2;
-    optAdaptiveBaseMoveMin        0.08;
-    optAdaptiveBaseMoveMax        0.20;
+    optAdaptiveBaseMoveMin        0.4;
+    optAdaptiveBaseMoveMax        0.4;
     optMmaMoveLimitFloor          1e-2;
 
     // --------------------------------------------------------------------- //
