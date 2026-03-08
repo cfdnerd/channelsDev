@@ -82,7 +82,7 @@
     (
       omegaCrossDiffDen,
       "CustomKOmegaSSTModel.H::omegaCrossDiffDen",
-      SMALL
+      0.0
     );
     const volScalarField CDkOmega
     (
@@ -90,7 +90,7 @@
     );
     const dimensionedScalar smallCD("smallCD", CDkOmega.dimensions(), 1e-20);
     const dimensionedScalar smallS2("smallS2", S2.dimensions(), SMALL);
-    const volScalarField CDkOmegaPlus
+    const volScalarField CDkOmegaPlusRaw
     (
       closureSmoothDenominatorActive
       ? 0.5
@@ -101,11 +101,15 @@
         )
       : Foam::max(CDkOmega, smallCD)
     );
+    const volScalarField CDkOmegaPlus
+    (
+      Foam::max(CDkOmegaPlusRaw, smallCD)
+    );
     auditDivisionDenominator
     (
       CDkOmegaPlus,
       "CustomKOmegaSSTModel.H::CDkOmegaPlus",
-      SMALL
+      0.0
     );
 
     const volScalarField arg1Term1Den(betaStarCoeff*omegaStateRef*yEff);
@@ -115,19 +119,19 @@
     (
       arg1Term1Den,
       "CustomKOmegaSSTModel.H::arg1Term1 denominator",
-      SMALL
+      0.0
     );
     auditDivisionDenominator
     (
       arg1Term2Den,
       "CustomKOmegaSSTModel.H::arg1Term2 denominator",
-      SMALL
+      0.0
     );
     auditDivisionDenominator
     (
       arg1Term3Den,
       "CustomKOmegaSSTModel.H::arg1Term3 denominator",
-      SMALL
+      0.0
     );
     const volScalarField arg1Term1(sqrtK/arg1Term1Den);
     const volScalarField arg1Term2(500.0*nu/arg1Term2Den);
@@ -180,7 +184,7 @@
     (
       omegaLimiterBlendDen,
       "CustomKOmegaSSTModel.H::omegaLimiterBlendDen",
-      SMALL
+      0.0
     );
     const volScalarField omegaLimiter
     (
@@ -207,7 +211,7 @@
     (
       omegaNutDenominator,
       "CustomKOmegaSSTModel.H::omegaNutDenominator",
-      SMALL
+      0.0
     );
     auto computeNutFromState =
     [&](const volScalarField& kState, const volScalarField& omegaState) -> volScalarField
@@ -225,13 +229,13 @@
       (
         arg2StateTerm1Den,
         "CustomKOmegaSSTModel.H::computeNutFromState arg2 term1 denominator",
-        SMALL
+        0.0
       );
       auditDivisionDenominator
       (
         arg2StateTerm2Den,
         "CustomKOmegaSSTModel.H::computeNutFromState arg2 term2 denominator",
-        SMALL
+        0.0
       );
       const volScalarField arg2StateTerm1(2.0*sqrtKState/arg2StateTerm1Den);
       const volScalarField arg2StateTerm2(500.0*nu/arg2StateTerm2Den);
@@ -262,7 +266,7 @@
       (
         omegaLimiterBlendDenState,
         "CustomKOmegaSSTModel.H::computeNutFromState omegaLimiterBlendDenState",
-        SMALL
+        0.0
       );
       const volScalarField omegaLimiterState
       (
@@ -284,7 +288,7 @@
       (
         omegaNutDenominatorState,
         "CustomKOmegaSSTModel.H::computeNutFromState omegaNutDenominatorState",
-        SMALL
+        0.0
       );
       const volScalarField rawNutState(a1Coeff*kState/omegaNutDenominatorState);
       return volScalarField
@@ -327,7 +331,7 @@
       (
         kFdDenominator,
         "CustomKOmegaSSTModel.H::dNutDk FD denominator",
-        SMALL
+        0.0
       );
       dNutDkBlock =
         (nutKPlus - nutKMinus)/kFdDenominator;
@@ -350,7 +354,7 @@
       (
         omegaFdDenominator,
         "CustomKOmegaSSTModel.H::dNutDOmega FD denominator",
-        SMALL
+        0.0
       );
       dNutDOmegaBlock =
         (nutOmegaPlus - nutOmegaMinus)/omegaFdDenominator;
