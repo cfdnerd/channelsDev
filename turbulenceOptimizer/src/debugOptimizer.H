@@ -760,8 +760,6 @@ const scalar meritAcceptanceTol =
   hasPreviousAcceptedMerit
   ? (scalar(0.0) + scalar(0.0)*Foam::mag(previousAcceptedMerit))
   : 0;
-const scalar meritDelta =
-  hasPreviousAcceptedMerit ? meritValue - previousAcceptedMerit : 0;
 const scalar rejectMoveScaleClamped =
   Foam::max(Foam::min(scalar(1.0), scalar(0.99)), scalar(0.1));
 const scalar recoverMoveScaleClamped =
@@ -803,10 +801,6 @@ const scalar predictedPowerDelta = predictedPowerDeltaLocal/powerConstraintWeigh
 const scalar predictedVolumeDelta = predictedVolumeDeltaLocal/volumeConstraintWeightSafe;
 const scalar predictedThermalTmaxDelta = predictedThermalTmaxDeltaLocal;
 const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
-const scalar predictedPowerViolationPositive =
-  Foam::max(powerViolationPositive + predictedPowerDelta, scalar(0.0));
-const scalar predictedVolumeViolationPositive =
-  Foam::max(volumeViolationPositive + predictedVolumeDelta, scalar(0.0));
 const scalar predictedThermalTmaxViolationPositive =
   Foam::max(thermalTmaxViolationPositive + predictedThermalTmaxDelta, scalar(0.0));
 const scalar predictedThermalTminViolationPositive =
@@ -1092,17 +1086,10 @@ const bool deadlockObjectiveAcceptable =
     && objectiveDelta/Foam::max(Foam::mag(previousObjectiveValue), SMALL)
        <= Foam::max(deadlockObjectiveRelTol, scalar(0.0))
      );
-const bool deadlockConstraintPriorityAccepted =
-  deadlockConstraintPriorityEligible
-  && deadlockConstraintProgress
-  && deadlockObjectiveAcceptable;
 // Step-acceptance controller retired: always advance MMA design updates unless
 // a hard safety envelope is violated.
 const bool globalizationFrameworkEnabled(false);
 (void)globalizationFrameworkEnabled;
-const bool meritAcceptedRaw(true);
-const bool clipForcedRejectAcceptedByRestoration =
-  clipGuardForcedReject && !clipHardForcedReject && feasibilityRestorationAcceptedGuarded;
 const bool meritAccepted =
      !fieldEnvelopeForcedReject
   && !clipHardForcedReject
@@ -2030,9 +2017,6 @@ else
     rogueDirectionWatchStartIteration = -1;
   }
 
-  const scalar previousMaxConstraintViolationAccepted = previousMaxConstraintViolation;
-  const bool hadPreviousMaxConstraintViolationAccepted = hasPreviousMaxConstraintViolation;
-
   previousObjectiveValue = objectiveValue;
   hasPreviousObjectiveValue = true;
   previousPowerConstraintMargin = powerConstraintMargin;
@@ -2082,8 +2066,6 @@ else
     filterConstraintArchive.swap(filterConstraintPruned);
     filterObjectiveArchive.swap(filterObjectivePruned);
   }
-  filterAcceptedArchiveCount = filterConstraintArchive.size();
-
   powerConstraintWorsenStreak = candidatePowerConstraintWorsenStreak;
   maxViolationWorsenStreak = candidateMaxViolationWorsenStreak;
   objectiveWorsenStreak = candidateObjectiveWorsenStreak;
@@ -2156,8 +2138,6 @@ else
     optimizerStopReason = stopOptimization ? word("converged") : word("running");
   }
 }
-filterAcceptedArchiveCount = filterConstraintArchive.size();
-
 const bool globalizationRejectStopEligible =
   !static_cast<bool>(optRejectStopRequireConstraintWindow)
   || constraintWorsenCountingActive
@@ -2318,10 +2298,6 @@ const label reportedContinuationAdvanceCatchUpSteps =
   continuationAdvanceCatchUpSteps;
 const label reportedDeadlockCatchUpRequest =
   deadlockCatchUpRequest;
-const label reportedMeritRejectStopEligibleStreak =
-  meritRejectStopEligibleStreak;
-const label reportedMeritScheduleRebaseCount =
-  meritScheduleRebaseCount;
 const bool reportedContinuationFrozenByLowTrust =
   continuationFrozenByLowTrust;
 const bool reportedContinuationFrozenAny =
@@ -3359,6 +3335,5 @@ if (Pstream::master())
     << "}\n";
 }
 
-previousContinuationScheduleIterationActive = scheduleIterationCurrent;
 previousConstraintWorsenScheduleReady = constraintWorsenScheduleReady;
 hasPreviousConstraintWorsenScheduleReady = true;
