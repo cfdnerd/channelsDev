@@ -66,8 +66,9 @@ for(i=0;i<n;i++)
 {
  xmma[i] = x[i];
  dfdx[i]=fsensMeanT[i]/N;//sensitivities of objective function
- dgdx[mmaPowerConstraintIndex][i]=optPowerConstraintWeight*(gsensPowerDiss[i]/N);//sensitivities of constraint function
- dgdx[mmaVolumeConstraintIndex][i]=optVolumeConstraintWeight*(gsensVol[i]/N);//sensitivities of constraint function
+ // Build raw constraint gradients first; apply user weights after L2 normalization.
+ dgdx[mmaPowerConstraintIndex][i]=gsensPowerDiss[i]/N;//sensitivities of constraint function
+ dgdx[mmaVolumeConstraintIndex][i]=gsensVol[i]/N;//sensitivities of constraint function
  if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
  {
    // Thermal envelope constraints currently reuse the thermal objective
@@ -141,8 +142,10 @@ if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
 for (i = 0; i < n; i++)
 {
   dfdx[i] /= dfdxNorm;
-  dgdx[mmaPowerConstraintIndex][i] /= dgdxPowerNorm;
-  dgdx[mmaVolumeConstraintIndex][i] /= dgdxVolumeNorm;
+  dgdx[mmaPowerConstraintIndex][i] =
+    optPowerConstraintWeight*(dgdx[mmaPowerConstraintIndex][i]/dgdxPowerNorm);
+  dgdx[mmaVolumeConstraintIndex][i] =
+    optVolumeConstraintWeight*(dgdx[mmaVolumeConstraintIndex][i]/dgdxVolumeNorm);
   if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
   {
     dgdx[mmaThermalTmaxConstraintIndex][i] /= dgdxThermalTmaxNorm;
