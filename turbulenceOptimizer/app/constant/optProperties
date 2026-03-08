@@ -17,14 +17,14 @@ FoamFile
 
 raa0                1e-5;
 voluse              0.4;
-mma_init            0.3;
-mma_dec             0.7;
-mma_inc             1.2;
-movlim              0.25;
-filterR             10;
+mma_init            0.20;
+mma_dec             0.55;
+mma_inc             1.05;
+movlim              0.10;
+filterR             14;
 PowerDiss0          1e-2;
-PowerDissMax        5;
-PowerDissRelax      6;
+PowerDissMax        5.3;
+PowerDissRelax      8.5;
 GeoDim              2;
 fluid_area          yes;
 solid_area          no;

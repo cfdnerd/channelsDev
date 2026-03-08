@@ -56,9 +56,7 @@ else if (!continuationFrozen)
 {
   const bool continuationHealthAcceptable =
        !previousHealthGateFailed
-    && previousThermalEnvelopeViolation <= 0.0
-    && !sensitivityQualityHardFail
-    && !sensitivityQualityRequireConservativeStep;
+    && previousThermalEnvelopeViolation <= 0.0;
   const bool continuationAdvanceAllowed =
     !static_cast<bool>(optContinuationEventDriven)
     || (

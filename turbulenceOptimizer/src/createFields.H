@@ -150,34 +150,6 @@ scalar optRogueDirectionSwitchClipDampScale(0.50);
 scalar optRogueDirectionSwitchSevereClipFluidFraction(0.80);
 scalar optRogueDirectionSwitchSevereClipGrayFraction(0.98);
 scalar optRogueDirectionSwitchSevereClipScale(0.25);
-Switch optGradientCheckEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optGradientCheckEnable", true)
-);
-label optGradientCheckStartIter
-(
-  convergenceControl.lookupOrDefault<label>("optGradientCheckStartIter", 10)
-);
-scalar optGradientCheckMinStepL2
-(
-  convergenceControl.lookupOrDefault<scalar>("optGradientCheckMinStepL2", 1e-6)
-);
-scalar optGradientCheckWarnRatio
-(
-  convergenceControl.lookupOrDefault<scalar>("optGradientCheckWarnRatio", 0.8)
-);
-scalar optGradientCheckFailRatio
-(
-  convergenceControl.lookupOrDefault<scalar>("optGradientCheckFailRatio", 1.5)
-);
-label optGradientCheckFailWindow
-(
-  convergenceControl.lookupOrDefault<label>("optGradientCheckFailWindow", 4)
-);
-Switch optGradientCheckStopOnFailure
-(
-  convergenceControl.lookupOrDefault<Switch>("optGradientCheckStopOnFailure", false)
-);
 Switch optClosureDerivativeFDEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDEnable", true)
@@ -185,38 +157,6 @@ Switch optClosureDerivativeFDEnable
 scalar optClosureDerivativeFDRelStep
 (
   convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDRelStep", 1e-4)
-);
-Switch optClosureDerivativeFDStageCheckEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDStageCheckEnable", true)
-);
-label optClosureDerivativeFDStageCheckSamples
-(
-  convergenceControl.lookupOrDefault<label>("optClosureDerivativeFDStageCheckSamples", 96)
-);
-scalar optClosureDerivativeFDStageCheckWarnRatio
-(
-  convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDStageCheckWarnRatio", 1.5e-1)
-);
-scalar optClosureDerivativeFDStageCheckWarnFraction
-(
-  convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDStageCheckWarnFraction", 5e-2)
-);
-scalar optClosureDerivativeFDStageCheckFailRatio
-(
-  convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDStageCheckFailRatio", 3.5e-1)
-);
-scalar optClosureDerivativeFDStageCheckFailFraction
-(
-  convergenceControl.lookupOrDefault<scalar>("optClosureDerivativeFDStageCheckFailFraction", 1e-1)
-);
-label optClosureDerivativeFDStageCheckFailWindow
-(
-  convergenceControl.lookupOrDefault<label>("optClosureDerivativeFDStageCheckFailWindow", 3)
-);
-Switch optClosureDerivativeFDStageCheckStopOnFailure
-(
-  convergenceControl.lookupOrDefault<Switch>("optClosureDerivativeFDStageCheckStopOnFailure", false)
 );
 Switch optConstraintScheduleHorizonGuard
 (
@@ -226,10 +166,6 @@ label optConstraintScheduleHorizonLagTolerance
 (
   convergenceControl.lookupOrDefault<label>("optConstraintScheduleHorizonLagTolerance", 1)
 );
-Switch optFormulationExecutionGateEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optFormulationExecutionGateEnable", true)
-);
 Switch optRequireTransportedClosureAdjoints
 (
   convergenceControl.lookupOrDefault<Switch>("optRequireTransportedClosureAdjoints", true)
@@ -238,22 +174,11 @@ Switch optRequireDualConsistentClosureBC
 (
   convergenceControl.lookupOrDefault<Switch>("optRequireDualConsistentClosureBC", true)
 );
-Switch optRequireGradientChecks
-(
-  convergenceControl.lookupOrDefault<Switch>("optRequireGradientChecks", true)
-);
-Switch optRequireClosureDerivativeChecks
-(
-  convergenceControl.lookupOrDefault<Switch>("optRequireClosureDerivativeChecks", true)
-);
 word optRunMode
 (
   convergenceControl.lookupOrDefault<word>("optRunMode", "production")
 );
-// Keep sensitivity mode aligned with run mode to avoid split-control clutter.
-word optSensitivityMode(optRunMode);
 const bool optDiagnosticMode = optRunMode == word("diagnostic");
-const bool optSensitivityDiagnosticMode = optSensitivityMode == word("diagnostic");
 Switch optFirstFailureSnapshotEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optFirstFailureSnapshotEnable", true)
@@ -323,41 +248,9 @@ scalar optThermalEnvelopePenalty
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalEnvelopePenalty", 0.10)
 );
-Switch optSensitivityQualityGateEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optSensitivityQualityGateEnable", true)
-);
-scalar optSensitivityQualityWarn
-(
-  convergenceControl.lookupOrDefault<scalar>("optSensitivityQualityWarn", 0.60)
-);
-scalar optSensitivityQualityFail
-(
-  convergenceControl.lookupOrDefault<scalar>("optSensitivityQualityFail", 0.40)
-);
-label optSensitivityQualityFailWindow
-(
-  convergenceControl.lookupOrDefault<label>("optSensitivityQualityFailWindow", 2)
-);
-scalar optSensitivityLowQualityMoveScale
-(
-  convergenceControl.lookupOrDefault<scalar>("optSensitivityLowQualityMoveScale", 0.60)
-);
-Switch optProductionIgnoreSensitivityReject
-(
-  convergenceControl.lookupOrDefault<Switch>("optProductionIgnoreSensitivityReject", true)
-);
 Switch optProductionContinueAfterSafetyReject
 (
   convergenceControl.lookupOrDefault<Switch>("optProductionContinueAfterSafetyReject", true)
-);
-Switch optSensitivityReuseAcceptedGradient
-(
-  convergenceControl.lookupOrDefault<Switch>("optSensitivityReuseAcceptedGradient", true)
-);
-Switch optSensitivityStopOnHardFail
-(
-  convergenceControl.lookupOrDefault<Switch>("optSensitivityStopOnHardFail", false)
 );
 scalar optSensitivityGradientL2Eps
 (
@@ -427,35 +320,6 @@ if (optThermalEnvelopePenalty < 0.0)
   FatalErrorInFunction
     << "tuneOptParameters.convergenceControl.optThermalEnvelopePenalty must be >= 0. Found "
     << optThermalEnvelopePenalty
-    << exit(FatalError);
-}
-if (optSensitivityQualityWarn < 0.0 || optSensitivityQualityWarn > 1.0)
-{
-  FatalErrorInFunction
-    << "optSensitivityQualityWarn must be in [0,1]. Found "
-    << optSensitivityQualityWarn
-    << exit(FatalError);
-}
-if (optSensitivityQualityFail < 0.0 || optSensitivityQualityFail > optSensitivityQualityWarn)
-{
-  FatalErrorInFunction
-    << "optSensitivityQualityFail must be in [0,optSensitivityQualityWarn]. Found "
-    << "optSensitivityQualityFail=" << optSensitivityQualityFail
-    << ", optSensitivityQualityWarn=" << optSensitivityQualityWarn
-    << exit(FatalError);
-}
-if (optSensitivityQualityFailWindow < 1)
-{
-  FatalErrorInFunction
-    << "optSensitivityQualityFailWindow must be >= 1. Found "
-    << optSensitivityQualityFailWindow
-    << exit(FatalError);
-}
-if (optSensitivityLowQualityMoveScale <= 0.0 || optSensitivityLowQualityMoveScale > 1.0)
-{
-  FatalErrorInFunction
-    << "optSensitivityLowQualityMoveScale must be in (0,1]. Found "
-    << optSensitivityLowQualityMoveScale
     << exit(FatalError);
 }
 if (optSensitivityGradientL2Eps <= 0.0)

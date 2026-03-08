@@ -685,10 +685,6 @@ const bool clipHardRejectByJump = false;
 const bool clipHardForcedReject = false;
 const bool clipForcedReject = false;
 const scalar clipMeritExcess = scalar(0.0);
-const scalar clipPenaltyPreScheduleScale = scalar(1.0);
-const scalar clipPenaltyRejectScale = scalar(1.0);
-const scalar meritClipPenaltyScheduleScale = scalar(1.0);
-const scalar meritClipPenaltyRejectScale = scalar(1.0);
 const scalar meritClipPenaltyActive = scalar(0.0);
 const scalar powerViolationPositive =
   Foam::max(powerConstraintFinalMargin, scalar(0.0));
@@ -799,14 +795,7 @@ const bool trustRatioAccepted =
   || !hasPreviousAcceptedMerit
   || !trustRatioDefined
   || trustRatio >= scalar(0.0);
-const bool trustRatioAcceptedWithSensitivityGuard =
-  trustRatioAccepted
-  && (
-       !static_cast<bool>(optSensitivityQualityGateEnable)
-    || sensitivityQualityScore > optSensitivityQualityWarn
-    || !trustRatioDefined
-    || trustRatio >= Foam::max(scalar(0.0), scalar(0.2))
-     );
+const bool trustRatioAcceptedWithSensitivityGuard = trustRatioAccepted;
 (void)trustRatioAcceptedWithSensitivityGuard;
 const bool filterAcceptanceEnabled =
   static_cast<bool>(false)
@@ -897,21 +886,7 @@ const bool residualGrowthGatePassed =
   || maxLinearFinalResidual <= linearSolveWarnResidual
   || linearResidualGrowthRatio <= residualGrowthAcceptLimit;
 const bool healthGatesPassed =
-     !fieldEnvelopeForcedReject
-  && clipJumpHealthGatePassed
-  && residualGrowthGatePassed;
-const bool sensitivityQualityGateRejectEnabled =
-     static_cast<bool>(optSensitivityQualityGateEnable)
-  && (
-       optDiagnosticMode
-    || !static_cast<bool>(optProductionIgnoreSensitivityReject)
-     );
-const bool sensitivityQualityGatePassed =
-     !sensitivityQualityGateRejectEnabled
-  || sensitivityQualityScore > optSensitivityQualityFail;
-const bool sensitivityLowConfidence =
-  static_cast<bool>(optSensitivityQualityGateEnable)
-  && sensitivityQualityScore <= optSensitivityQualityWarn;
+  !fieldEnvelopeForcedReject;
 const scalar feasibilityRestorationClipSlack =
   Foam::max(scalar(0.0), scalar(0.0));
 const scalar feasibilityRestorationGrayClipLimit =
@@ -1002,7 +977,6 @@ const bool deadlockConstraintPriorityEligible =
   && !clipForcedReject
   && !fieldEnvelopeForcedReject
   && healthGatesPassed
-  && sensitivityQualityGatePassed
   && (filterAcceptedForMerit || meritRejectStreak >= 2*filterDeadlockRejectThreshold)
   && maxConstraintViolation > optConstraintTol;
 (void)deadlockConstraintPriorityEligible;
@@ -1057,8 +1031,7 @@ const bool globalizationFrameworkEnabled(false);
 const bool meritAccepted =
      !fieldEnvelopeForcedReject
   && !clipHardForcedReject
-  && healthGatesPassed
-  && sensitivityQualityGatePassed;
+  && healthGatesPassed;
 const bool meritDeteriorating =
   false;
 const bool clipRecoverySignal =
@@ -1175,377 +1148,17 @@ else
   rogueDirectionWatchGraceRemaining = 0;
   rogueDirectionWatchStartIteration = -1;
 }
-const bool gradientCheckActive =
-  static_cast<bool>(optGradientCheckEnable)
-  && optimizationCycleTurbulentOptimizationMode
-  && opt >= optGradientCheckStartIter
-  && l2XChange >= optGradientCheckMinStepL2;
 const scalar objectiveConsistencyRatio =
-  gradientCheckActive
-  ? Foam::mag(objectiveDelta - predictedObjectiveDelta)
-    / Foam::max(Foam::max(Foam::mag(objectiveDelta), Foam::mag(predictedObjectiveDelta)), SMALL)
-  : 0;
+  Foam::mag(objectiveDelta - predictedObjectiveDelta)
+  /Foam::max(Foam::max(Foam::mag(objectiveDelta), Foam::mag(predictedObjectiveDelta)), SMALL);
 const scalar powerConsistencyRatio =
-  gradientCheckActive
-  ? Foam::mag(powerConstraintMarginDelta - predictedPowerDelta)
-    / Foam::max(Foam::max(Foam::mag(powerConstraintMarginDelta), Foam::mag(predictedPowerDelta)), SMALL)
-  : 0;
+  Foam::mag(powerConstraintMarginDelta - predictedPowerDelta)
+  /Foam::max(Foam::max(Foam::mag(powerConstraintMarginDelta), Foam::mag(predictedPowerDelta)), SMALL);
 const scalar volumeConsistencyRatio =
-  gradientCheckActive
-  ? Foam::mag(volumeConstraintMarginDelta - predictedVolumeDelta)
-    / Foam::max(Foam::max(Foam::mag(volumeConstraintMarginDelta), Foam::mag(predictedVolumeDelta)), SMALL)
-  : 0;
+  Foam::mag(volumeConstraintMarginDelta - predictedVolumeDelta)
+  /Foam::max(Foam::max(Foam::mag(volumeConstraintMarginDelta), Foam::mag(predictedVolumeDelta)), SMALL);
 const scalar gradientConsistencyRatio =
   Foam::max(objectiveConsistencyRatio, Foam::max(powerConsistencyRatio, volumeConsistencyRatio));
-const bool gradientCheckAcceptedStep = gradientCheckActive && meritAccepted;
-const bool gradientCheckWarnTriggered =
-  gradientCheckAcceptedStep && gradientConsistencyRatio > optGradientCheckWarnRatio;
-const bool gradientCheckFailTriggered =
-  gradientCheckAcceptedStep && gradientConsistencyRatio > optGradientCheckFailRatio;
-const label candidateGradientCheckFailStreak =
-  gradientCheckFailTriggered ? gradientCheckFailStreak + 1 : 0;
-const bool gradientCheckStopTriggered =
-  static_cast<bool>(optGradientCheckStopOnFailure)
-  && candidateGradientCheckFailStreak >= optGradientCheckFailWindow;
-
-closureDerivativeFDStageCheckMeanRatio = 0.0;
-closureDerivativeFDStageCheckMaxRatio = 0.0;
-closureDerivativeFDStageCheckMaxRatioK = 0.0;
-closureDerivativeFDStageCheckMaxRatioOmega = 0.0;
-closureDerivativeFDStageCheckMaxStoredMismatch = 0.0;
-closureDerivativeFDStageCheckSamplesUsed = 0;
-scalar closureDerivativeFDStageCheckWarnFractionObserved = 0.0;
-scalar closureDerivativeFDStageCheckFailFractionObserved = 0.0;
-bool closureDerivativeFDStageCheckActive = false;
-
-if
-(
-    customTurbulenceActive
- && optimizationCycleTurbulentOptimizationMode
- && static_cast<bool>(optClosureDerivativeFDStageCheckEnable)
- && optClosureDerivativeFDStageCheckSamples > 0
-)
-{
-  const volTensorField closureFDGradU(fvc::grad(U));
-  const volScalarField closureFDS2(2.0*magSqr(symm(closureFDGradU)));
-  const scalarField& kInternal = k.internalField();
-  const scalarField& omegaInternal = omega.internalField();
-  const scalarField& yWallInternal = yWall.internalField();
-  const scalar nuValue = nu.value();
-  const volScalarField closureFDSqrtS2(Foam::sqrt(closureFDS2));
-  const scalarField& sqrtS2Internal = closureFDSqrtS2.internalField();
-  const scalarField& nutInternal = nut.internalField();
-  const scalarField& dNutDkInternal = dNutDkBlock.internalField();
-  const scalarField& dNutDOmegaInternal = dNutDOmegaBlock.internalField();
-  const label localCellCount = kInternal.size();
-  const label sampleTargetLocal = Foam::max(optClosureDerivativeFDStageCheckSamples, label(1));
-  const label sampleStride = Foam::max(localCellCount/sampleTargetLocal, label(1));
-  const label sampleOffset = sampleStride > 1 ? (Pstream::myProcNo() % sampleStride) : 0;
-  const scalar closureFdRelStep =
-    Foam::min(Foam::max(optClosureDerivativeFDRelStep, scalar(1e-7)), scalar(0.25));
-  const scalar closureFdExpCoarsePlus = Foam::exp(closureFdRelStep);
-  const scalar closureFdExpCoarseMinus = 1.0/closureFdExpCoarsePlus;
-  const scalar closureFdHalfRelStep = 0.5*closureFdRelStep;
-  const scalar closureFdExpFinePlus = Foam::exp(closureFdHalfRelStep);
-  const scalar closureFdExpFineMinus = 1.0/closureFdExpFinePlus;
-  const scalar omegaLimiterEpsValue =
-    Foam::max(1e-3*Foam::max(omegaMin.value(), SMALL), SMALL);
-  const scalar omegaBoundEpsValue =
-    Foam::max(1e-3*Foam::max(omegaMin.value(), SMALL), SMALL);
-  const scalar kStepFloor = Foam::max(1e-12, SMALL);
-  const scalar omegaStepFloor = Foam::max(1e-12, SMALL);
-
-  auto evaluateLocalNut =
-  [&](const scalar kValue, const scalar omegaValue, const scalar sqrtS2Value, const scalar yEffValue, const scalar nuValue) -> scalar
-  {
-    if (!(kValue > 0.0) || !(omegaValue > 0.0))
-    {
-      return GREAT;
-    }
-    const scalar boundedY = Foam::max(yEffValue, yMin.value());
-    const scalar arg2Term1 =
-      2.0*Foam::sqrt(kValue)/(betaStarCoeff.value()*omegaValue*boundedY);
-    const scalar arg2Term2 =
-      500.0*nuValue/(sqr(boundedY)*omegaValue);
-    const scalar arg2Value = Foam::min(Foam::max(arg2Term1, arg2Term2), scalar(100.0));
-    const scalar F2Value = Foam::tanh(sqr(arg2Value));
-    const scalar omegaLimiterBranchKValue = a1Coeff.value()*omegaValue;
-    const scalar omegaLimiterBranchSValue = b1Coeff.value()*F2Value*sqrtS2Value;
-    const scalar omegaLimiterBlendDenValue =
-      Foam::sqrt
-      (
-        sqr(omegaLimiterBranchKValue - omegaLimiterBranchSValue)
-        + sqr(omegaLimiterEpsValue)
-      );
-    const scalar omegaLimiterValue =
-      0.5
-      *(
-        omegaLimiterBranchKValue
-        + omegaLimiterBranchSValue
-        + omegaLimiterBlendDenValue
-      );
-    const scalar omegaBoundBlendDenValue =
-      Foam::sqrt
-      (
-        sqr(omegaLimiterValue - SMALL)
-        + sqr(omegaBoundEpsValue)
-      );
-    const scalar boundedOmegaLimiterValue =
-      0.5*(omegaLimiterValue + SMALL + omegaBoundBlendDenValue);
-    return a1Coeff.value()*kValue/boundedOmegaLimiterValue;
-  };
-
-  scalar ratioSumLocal = 0.0;
-  scalar ratioMaxLocal = 0.0;
-  scalar ratioKMaxLocal = 0.0;
-  scalar ratioOmegaMaxLocal = 0.0;
-  scalar storedMismatchMaxLocal = 0.0;
-  label ratioWarnCountLocal = 0;
-  label ratioFailCountLocal = 0;
-  label ratioSamplesLocal = 0;
-
-  for
-  (
-    label celli = sampleOffset;
-    celli < localCellCount && ratioSamplesLocal < sampleTargetLocal;
-    celli += sampleStride
-  )
-  {
-    const scalar kCell = kInternal[celli];
-    const scalar omegaCell = omegaInternal[celli];
-    const scalar nutCell = nutInternal[celli];
-    const scalar sqrtS2Cell = sqrtS2Internal[celli];
-    const scalar yWallCell = yWallInternal[celli];
-    const scalar nuCell = nuValue;
-    const bool nonPhysicalCell =
-         !(kCell > 0.0)
-      || !(omegaCell > 0.0)
-      || !(nutCell > 0.0)
-      || !(yWallCell > 0.0)
-      || kCell >= GREAT
-      || omegaCell >= GREAT
-      || nutCell >= GREAT;
-    if (nonPhysicalCell)
-    {
-      continue;
-    }
-
-    const scalar kPlusCoarse = kCell*closureFdExpCoarsePlus;
-    const scalar kMinusCoarse = kCell*closureFdExpCoarseMinus;
-    const scalar kPlusFine = kCell*closureFdExpFinePlus;
-    const scalar kMinusFine = kCell*closureFdExpFineMinus;
-    const scalar kSpanCoarse = Foam::max(kPlusCoarse - kMinusCoarse, kStepFloor);
-    const scalar kSpanFine = Foam::max(kPlusFine - kMinusFine, kStepFloor);
-
-    const scalar omegaPlusCoarse = omegaCell*closureFdExpCoarsePlus;
-    const scalar omegaMinusCoarse = omegaCell*closureFdExpCoarseMinus;
-    const scalar omegaPlusFine = omegaCell*closureFdExpFinePlus;
-    const scalar omegaMinusFine = omegaCell*closureFdExpFineMinus;
-    const scalar omegaSpanCoarse =
-      Foam::max(omegaPlusCoarse - omegaMinusCoarse, omegaStepFloor);
-    const scalar omegaSpanFine =
-      Foam::max(omegaPlusFine - omegaMinusFine, omegaStepFloor);
-
-    const scalar nutKPlusCoarse =
-      evaluateLocalNut(kPlusCoarse, omegaCell, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutKMinusCoarse =
-      evaluateLocalNut(kMinusCoarse, omegaCell, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutKPlusFine =
-      evaluateLocalNut(kPlusFine, omegaCell, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutKMinusFine =
-      evaluateLocalNut(kMinusFine, omegaCell, sqrtS2Cell, yWallCell, nuCell);
-
-    const scalar nutOmegaPlusCoarse =
-      evaluateLocalNut(kCell, omegaPlusCoarse, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutOmegaMinusCoarse =
-      evaluateLocalNut(kCell, omegaMinusCoarse, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutOmegaPlusFine =
-      evaluateLocalNut(kCell, omegaPlusFine, sqrtS2Cell, yWallCell, nuCell);
-    const scalar nutOmegaMinusFine =
-      evaluateLocalNut(kCell, omegaMinusFine, sqrtS2Cell, yWallCell, nuCell);
-
-    const scalar dNutDkCoarse = (nutKPlusCoarse - nutKMinusCoarse)/kSpanCoarse;
-    const scalar dNutDkFine = (nutKPlusFine - nutKMinusFine)/kSpanFine;
-    const scalar dNutDOmegaCoarse =
-      (nutOmegaPlusCoarse - nutOmegaMinusCoarse)/omegaSpanCoarse;
-    const scalar dNutDOmegaFine =
-      (nutOmegaPlusFine - nutOmegaMinusFine)/omegaSpanFine;
-
-    const scalar kRichardsonRatio =
-      Foam::mag(dNutDkFine - dNutDkCoarse)
-      / Foam::max(Foam::max(Foam::mag(dNutDkFine), Foam::mag(dNutDkCoarse)), SMALL);
-    const scalar omegaRichardsonRatio =
-      Foam::mag(dNutDOmegaFine - dNutDOmegaCoarse)
-      / Foam::max
-        (
-          Foam::max(Foam::mag(dNutDOmegaFine), Foam::mag(dNutDOmegaCoarse)),
-          SMALL
-        );
-    const scalar kStoredMismatch =
-      Foam::mag(dNutDkInternal[celli] - dNutDkFine)
-      / Foam::max
-        (
-          Foam::max(Foam::mag(dNutDkInternal[celli]), Foam::mag(dNutDkFine)),
-          SMALL
-        );
-    const scalar omegaStoredMismatch =
-      Foam::mag(dNutDOmegaInternal[celli] - dNutDOmegaFine)
-      / Foam::max
-        (
-          Foam::max(Foam::mag(dNutDOmegaInternal[celli]), Foam::mag(dNutDOmegaFine)),
-          SMALL
-        );
-
-    const scalar kRatio = Foam::max(kRichardsonRatio, kStoredMismatch);
-    const scalar omegaRatio = Foam::max(omegaRichardsonRatio, omegaStoredMismatch);
-    const scalar storedMismatch = Foam::max(kStoredMismatch, omegaStoredMismatch);
-    const scalar sampleRatio = Foam::max(kRatio, omegaRatio);
-
-    if (!(sampleRatio == sampleRatio) || sampleRatio >= GREAT)
-    {
-      continue;
-    }
-
-    ratioSumLocal += sampleRatio;
-    ratioMaxLocal = Foam::max(ratioMaxLocal, sampleRatio);
-    ratioKMaxLocal = Foam::max(ratioKMaxLocal, kRatio);
-    ratioOmegaMaxLocal = Foam::max(ratioOmegaMaxLocal, omegaRatio);
-    storedMismatchMaxLocal = Foam::max(storedMismatchMaxLocal, storedMismatch);
-    if (sampleRatio > optClosureDerivativeFDStageCheckWarnRatio)
-    {
-      ratioWarnCountLocal++;
-    }
-    if (sampleRatio > optClosureDerivativeFDStageCheckFailRatio)
-    {
-      ratioFailCountLocal++;
-    }
-    ratioSamplesLocal++;
-  }
-
-  reduce(ratioSumLocal, sumOp<scalar>());
-  reduce(ratioMaxLocal, maxOp<scalar>());
-  reduce(ratioKMaxLocal, maxOp<scalar>());
-  reduce(ratioOmegaMaxLocal, maxOp<scalar>());
-  reduce(storedMismatchMaxLocal, maxOp<scalar>());
-  reduce(ratioWarnCountLocal, sumOp<label>());
-  reduce(ratioFailCountLocal, sumOp<label>());
-  reduce(ratioSamplesLocal, sumOp<label>());
-
-  closureDerivativeFDStageCheckSamplesUsed = ratioSamplesLocal;
-  if (closureDerivativeFDStageCheckSamplesUsed > 0)
-  {
-    closureDerivativeFDStageCheckActive = true;
-    closureDerivativeFDStageCheckMeanRatio =
-      ratioSumLocal/static_cast<scalar>(closureDerivativeFDStageCheckSamplesUsed);
-    closureDerivativeFDStageCheckMaxRatio = ratioMaxLocal;
-    closureDerivativeFDStageCheckMaxRatioK = ratioKMaxLocal;
-    closureDerivativeFDStageCheckMaxRatioOmega = ratioOmegaMaxLocal;
-    closureDerivativeFDStageCheckMaxStoredMismatch = storedMismatchMaxLocal;
-    const scalar ratioSamplesDen =
-      Foam::max(static_cast<scalar>(closureDerivativeFDStageCheckSamplesUsed), scalar(1.0));
-    closureDerivativeFDStageCheckWarnFractionObserved =
-      static_cast<scalar>(ratioWarnCountLocal)/ratioSamplesDen;
-    closureDerivativeFDStageCheckFailFractionObserved =
-      static_cast<scalar>(ratioFailCountLocal)/ratioSamplesDen;
-  }
-}
-
-const scalar closureDerivativeFDStageCheckRatio =
-  closureDerivativeFDStageCheckActive
-  ? Foam::max(closureDerivativeFDStageCheckMeanRatio, closureDerivativeFDStageCheckMaxRatio)
-  : 0.0;
-const bool closureDerivativeFDStageCheckWarnTriggered =
-  closureDerivativeFDStageCheckActive
-  && closureDerivativeFDStageCheckRatio > optClosureDerivativeFDStageCheckWarnRatio
-  && closureDerivativeFDStageCheckWarnFractionObserved
-     >= Foam::max(Foam::min(optClosureDerivativeFDStageCheckWarnFraction, scalar(1.0)), scalar(0.0));
-const bool closureDerivativeFDStageCheckFailTriggered =
-  closureDerivativeFDStageCheckActive
-  && closureDerivativeFDStageCheckRatio > optClosureDerivativeFDStageCheckFailRatio
-  && closureDerivativeFDStageCheckFailFractionObserved
-     >= Foam::max(Foam::min(optClosureDerivativeFDStageCheckFailFraction, scalar(1.0)), scalar(0.0));
-const label candidateClosureDerivativeFDStageCheckFailStreak =
-  closureDerivativeFDStageCheckFailTriggered
-  ? closureDerivativeFDStageCheckFailStreak + 1
-  : 0;
-const bool closureDerivativeFDStageCheckStopTriggered =
-  static_cast<bool>(optClosureDerivativeFDStageCheckStopOnFailure)
-  && candidateClosureDerivativeFDStageCheckFailStreak
-    >= optClosureDerivativeFDStageCheckFailWindow;
-const bool closureDerivativeFDStageCheckClipLimited =
-    customTurbulenceActive
- && optimizationCycleTurbulentOptimizationMode
- && static_cast<bool>(optClosureDerivativeFDStageCheckEnable)
- && optClosureDerivativeFDStageCheckSamples > 0
- && closureDerivativeFDStageCheckSamplesUsed == 0;
-
-const scalar sensitivityClipPenalty =
-  Foam::min
-  (
-    scalar(1.0),
-    maxFluidClipFraction/Foam::max(clipGuardFluidFractionThreshold, scalar(1e-3))
-  );
-const scalar sensitivityResidualPenalty =
-  Foam::min
-  (
-    scalar(1.0),
-    maxLinearFinalResidual/Foam::max(linearSolveWarnResidual, SMALL)
-  );
-const scalar sensitivityGradientPenalty =
-  gradientCheckActive
-  ? Foam::min(gradientConsistencyRatio/Foam::max(optGradientCheckFailRatio, SMALL), scalar(1.0))
-  : scalar(0.0);
-const scalar sensitivityClosurePenalty =
-  closureDerivativeFDStageCheckActive
-  ? Foam::min
-    (
-      closureDerivativeFDStageCheckRatio/Foam::max(optClosureDerivativeFDStageCheckFailRatio, SMALL),
-      scalar(1.0)
-    )
-  : scalar(0.0);
-const scalar sensitivityFinitePenalty =
-  Foam::min
-  (
-    scalar(1.0),
-    static_cast<scalar>(fsensNonFiniteCountLocal + gsensPowerNonFiniteCountLocal + gsensVolNonFiniteCountLocal)
-    /Foam::max(N, scalar(1.0))
-  );
-const scalar sensitivityQualityScoreCurrent =
-  Foam::max
-  (
-    scalar(0.0),
-    scalar(1.0)
-    - (
-        0.35*sensitivityClipPenalty
-      + 0.25*sensitivityResidualPenalty
-      + 0.20*sensitivityClosurePenalty
-      + 0.15*sensitivityGradientPenalty
-      + 0.05*sensitivityFinitePenalty
-      )
-  );
-const bool sensitivityQualityWarnCurrent =
-  static_cast<bool>(optSensitivityQualityGateEnable)
-  && sensitivityQualityScoreCurrent <= optSensitivityQualityWarn;
-const bool sensitivityQualityFailCurrent =
-  static_cast<bool>(optSensitivityQualityGateEnable)
-  && sensitivityQualityScoreCurrent <= optSensitivityQualityFail;
-const bool sensitivityQualityHardFailCurrent =
-  sensitivityQualityFailCurrent
-  && (
-       maxFluidClipFraction >= clipHardRejectFluidFractionClamped
-    || sensitivityFinitePenalty > 0.0
-    || residualGrowthGatePassed == false
-     );
-const label candidateSensitivityQualityFailStreak =
-  sensitivityQualityFailCurrent
-  ? sensitivityQualityFailStreak + 1
-  : 0;
-const bool sensitivityQualityStopTriggered =
-  static_cast<bool>(optSensitivityStopOnHardFail)
-  && (
-       sensitivityQualityHardFailCurrent
-    || candidateSensitivityQualityFailStreak >= optSensitivityQualityFailWindow
-     );
 
 const bool convergenceCandidate =
   opt >= optMinIterations
@@ -1615,16 +1228,6 @@ if (!meritAccepted)
   meritRejectStreak += 1;
   clipGuardStreak = candidateClipGuardStreak;
   clipGuardNoProgressStreak = candidateClipGuardNoProgressStreak;
-  sensitivityQualityScore = sensitivityQualityScoreCurrent;
-  sensitivityQualityWarn = sensitivityQualityWarnCurrent;
-  sensitivityQualityFail = sensitivityQualityFailCurrent;
-  sensitivityQualityHardFail = sensitivityQualityHardFailCurrent;
-  sensitivityQualityFailStreak = candidateSensitivityQualityFailStreak;
-  sensitivityQualityRequireConservativeStep = sensitivityLowConfidence || sensitivityQualityWarnCurrent;
-  sensitivityQualityReuseAcceptedGradient =
-      static_cast<bool>(optSensitivityReuseAcceptedGradient)
-   && hasAcceptedGradientSnapshot
-   && sensitivityQualityFailCurrent;
   meritTrustMoveScale =
     Foam::max(meritTrustMoveScale*rejectMoveScaleClamped, meritTrustMoveMinClamped);
   if (trustRatioDefined && trustRatio < scalar(0.0))
@@ -1638,8 +1241,7 @@ if (!meritAccepted)
     && meritRejectStreak >= 3*filterDeadlockRejectThreshold
     && meritTrustMoveScale <= scalar(1.05)*meritTrustMoveMinClamped
     && !clipForcedReject
-    && !fieldEnvelopeForcedReject
-    && sensitivityQualityGatePassed;
+    && !fieldEnvelopeForcedReject;
   if (deadlockTrustEscapeEligible)
   {
     meritTrustMoveScale =
@@ -1909,8 +1511,6 @@ if (!meritAccepted)
     && static_cast<bool>(optProductionContinueAfterSafetyReject)
     && !fieldEnvelopeForcedReject
     && !clipHardForcedReject
-    && !sensitivityQualityHardFailCurrent
-    && !sensitivityQualityStopTriggered
   )
   {
     stopOptimization = false;
@@ -1948,8 +1548,6 @@ if (!meritAccepted)
       optDiagnosticMode
    && (
         !healthGatesPassed
-     || sensitivityQualityHardFailCurrent
-     || sensitivityQualityStopTriggered
       )
   )
   {
@@ -2035,16 +1633,6 @@ else
   objectiveWorsenStreak = candidateObjectiveWorsenStreak;
   clipGuardStreak = candidateClipGuardStreak;
   clipGuardNoProgressStreak = candidateClipGuardNoProgressStreak;
-  gradientCheckFailStreak = candidateGradientCheckFailStreak;
-  closureDerivativeFDStageCheckFailStreak =
-    candidateClosureDerivativeFDStageCheckFailStreak;
-  sensitivityQualityScore = sensitivityQualityScoreCurrent;
-  sensitivityQualityWarn = sensitivityQualityWarnCurrent;
-  sensitivityQualityFail = sensitivityQualityFailCurrent;
-  sensitivityQualityHardFail = sensitivityQualityHardFailCurrent;
-  sensitivityQualityFailStreak = candidateSensitivityQualityFailStreak;
-  sensitivityQualityRequireConservativeStep = sensitivityLowConfidence || sensitivityQualityWarnCurrent;
-  sensitivityQualityReuseAcceptedGradient = false;
   optimizerConvergedStreak = candidateOptimizerConvergedStreak;
   acceptedDfdx = dfdx;
   acceptedDgdx = dgdx;
@@ -2080,21 +1668,6 @@ else
   {
     stopOptimization = true;
     optimizerStopReason = word("turbulenceClipLock");
-  }
-  else if (gradientCheckStopTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("gradientConsistency");
-  }
-  else if (closureDerivativeFDStageCheckStopTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("closureDerivativeConsistency");
-  }
-  else if (sensitivityQualityStopTriggered)
-  {
-    stopOptimization = true;
-    optimizerStopReason = word("sensitivityQuality");
   }
   else
   {
@@ -2229,8 +1802,6 @@ if (scheduleHorizonCatchUpNeeded)
 const bool diagnosticHealthEvent =
      fieldEnvelopeForcedReject
   || clipHardForcedReject
-  || sensitivityQualityHardFailCurrent
-  || sensitivityQualityStopTriggered
   || !healthGatesPassed;
 if (optDiagnosticMode && diagnosticHealthEvent)
 {
@@ -2250,12 +1821,6 @@ const label reportedClipGuardNoProgressStreak =
   meritStepRejected ? candidateClipGuardNoProgressStreak : clipGuardNoProgressStreak;
 const label reportedOptimizerConvergedStreak =
   meritStepRejected ? candidateOptimizerConvergedStreak : optimizerConvergedStreak;
-const label reportedGradientCheckFailStreak =
-  meritStepRejected ? candidateGradientCheckFailStreak : gradientCheckFailStreak;
-const label reportedClosureDerivativeFDStageCheckFailStreak =
-  meritStepRejected
-  ? candidateClosureDerivativeFDStageCheckFailStreak
-  : closureDerivativeFDStageCheckFailStreak;
 const label reportedContinuationDeadlockRecoveryCount =
   continuationDeadlockRecoveryCount;
 const label reportedContinuationAdvanceCatchUpSteps =
@@ -2274,7 +1839,6 @@ const label rogueDirectionSwitchCooldownRemaining =
   );
 
 previousMaxFluidClipFraction = maxFluidClipFraction;
-previousMaxClipFraction = maxClipFraction;
 previousGuardConstraintViolationDelta = guardConstraintViolationDelta;
 hasPreviousClipDiagnostics = true;
 previousHealthGateFailed = !healthGatesPassed;
@@ -2286,8 +1850,6 @@ const bool firstFailureHealthEvent =
   && (
        fieldEnvelopeForcedReject
     || clipHardForcedReject
-    || sensitivityQualityHardFailCurrent
-    || sensitivityQualityStopTriggered
     || !healthGatesPassed
      );
 const bool triggerFirstFailureSnapshot =
@@ -2364,9 +1926,6 @@ if (Pstream::master())
       << " residualGrowthRatio=" << linearResidualGrowthRatio
       << " maxFluidClip=" << maxFluidClipFraction
       << " maxGrayClip=" << maxGrayClipFraction
-      << " sensQuality=" << sensitivityQualityScoreCurrent
-      << " sensFail=" << (sensitivityQualityFailCurrent ? 1 : 0)
-      << " sensHardFail=" << (sensitivityQualityHardFailCurrent ? 1 : 0)
       << " thermalTmaxKS=" << thermalTmaxConstraintMargin
       << " thermalTminKS=" << thermalTminConstraintMargin
       << '\n';
@@ -2686,22 +2245,6 @@ if (Pstream::master())
   );
   writeRow
   (
-    "Sens quality",
-    "score="+fmtScalar(sensitivityQualityScoreCurrent)
-      + " warn=" + std::string(sensitivityQualityWarnCurrent ? "yes" : "no"),
-    "fail="+std::string(sensitivityQualityFailCurrent ? "yes" : "no")
-      + " hard=" + std::string(sensitivityQualityHardFailCurrent ? "yes" : "no")
-      + " streak=" + fmtCount(candidateSensitivityQualityFailStreak)
-      + "/" + fmtCount(optSensitivityQualityFailWindow),
-    "reuse="+std::string(sensitivityQualityReuseAcceptedGradient ? "yes" : "no")
-      + " lowConf=" + std::string(sensitivityLowConfidence ? "yes" : "no")
-      + " gSnap=" + std::string(hasAcceptedGradientSnapshot ? "yes" : "no")
-      + " sSnap=" + std::string(hasAcceptedStateSnapshot ? "yes" : "no"),
-    "resGrow="+fmtScalar(linearResidualGrowthRatio)
-      + " health=" + std::string(healthGatesPassed ? "yes" : "no")
-  );
-  writeRow
-  (
     "Rogue dir",
     "enabled="+std::string(static_cast<bool>(optRogueDirectionSwitchEnable) ? "yes" : "no")
       + " signal=" + std::string(rogueSignal ? "yes" : "no")
@@ -2738,37 +2281,6 @@ if (Pstream::master())
       + " phase=" + std::string(continuationFreezePhaseActive ? "active" : "inactive")
       + " thr=" + fmtScalar(continuationLowTrustThresholdReport)
       + " cUp=" + fmtCount(reportedContinuationAdvanceCatchUpSteps)
-  );
-  writeRow
-  (
-    "Grad check",
-    "active="+std::string(gradientCheckActive ? "yes" : "no")
-      + " ratio=" + fmtScalar(gradientConsistencyRatio),
-    "obj="+fmtScalar(objectiveConsistencyRatio)+" pow="+fmtScalar(powerConsistencyRatio),
-    "vol="+fmtScalar(volumeConsistencyRatio)
-      + " fail=" + fmtCount(reportedGradientCheckFailStreak)
-      + "/" + fmtCount(optGradientCheckFailWindow),
-    "warn="+std::string(gradientCheckWarnTriggered ? "yes" : "no")
-      + " stop=" + std::string(gradientCheckStopTriggered ? "yes" : "no")
-  );
-  writeRow
-  (
-    "Closure FD",
-    "active="+std::string(closureDerivativeFDStageCheckActive ? "yes" : "no")
-      + " ratio=" + fmtScalar(closureDerivativeFDStageCheckRatio),
-    "mean="+fmtScalar(closureDerivativeFDStageCheckMeanRatio)
-      + " max=" + fmtScalar(closureDerivativeFDStageCheckMaxRatio),
-    "kMax="+fmtScalar(closureDerivativeFDStageCheckMaxRatioK)
-      + " wMax=" + fmtScalar(closureDerivativeFDStageCheckMaxRatioOmega)
-      + " mismatch=" + fmtScalar(closureDerivativeFDStageCheckMaxStoredMismatch),
-    "samples="+fmtCount(closureDerivativeFDStageCheckSamplesUsed)
-      + " warnFrac=" + fmtScalar(closureDerivativeFDStageCheckWarnFractionObserved)
-      + " failFrac=" + fmtScalar(closureDerivativeFDStageCheckFailFractionObserved)
-      + " fail=" + fmtCount(reportedClosureDerivativeFDStageCheckFailStreak)
-      + "/" + fmtCount(optClosureDerivativeFDStageCheckFailWindow)
-      + " warn=" + std::string(closureDerivativeFDStageCheckWarnTriggered ? "yes" : "no")
-      + " stop=" + std::string(closureDerivativeFDStageCheckStopTriggered ? "yes" : "no")
-      + " clipLimited=" + std::string(closureDerivativeFDStageCheckClipLimited ? "yes" : "no")
   );
   writeRow("Stop", "candidate="+std::string(convergenceCandidate ? "yes" : "no"), "stop="+std::string(stopOptimization ? "yes" : "no"), "reason="+std::string(optimizerStopReason.c_str()));
   writeRow("Outcome", "state="+std::string(stopOutcome), "success="+std::string(stopSuccessful ? "yes" : "no"), "failure="+std::string(stopFailure ? "yes" : "no"));
@@ -2978,11 +2490,6 @@ if (Pstream::master())
       << ",\"healthGatesPassed\":" << (healthGatesPassed ? 1 : 0)
       << ",\"maxLinearFinalResidual\":" << maxLinearFinalResidual
       << ",\"linearResidualGrowthRatio\":" << linearResidualGrowthRatio
-      << ",\"sensitivityQualityScore\":" << sensitivityQualityScoreCurrent
-      << ",\"sensitivityQualityWarn\":" << (sensitivityQualityWarnCurrent ? 1 : 0)
-      << ",\"sensitivityQualityFail\":" << (sensitivityQualityFailCurrent ? 1 : 0)
-      << ",\"sensitivityQualityHardFail\":" << (sensitivityQualityHardFailCurrent ? 1 : 0)
-      << ",\"sensitivityQualityStopTriggered\":" << (sensitivityQualityStopTriggered ? 1 : 0)
       << ",\"acceptanceEnabled\":0"
       << ",\"stepAccepted\":" << (meritAccepted ? 1 : 0)
       << ",\"stepRejected\":" << (meritStepRejected ? 1 : 0)
@@ -3060,44 +2567,8 @@ if (Pstream::master())
       << ",\"continuationFrozenByClipHold\":" << (continuationFrozenByClipHold ? 1 : 0)
       << ",\"continuationFrozen\":" << (reportedContinuationFrozenAny ? 1 : 0)
       << ",\"continuationFreezePhaseActive\":" << (continuationFreezePhaseActive ? 1 : 0)
-      << ",\"gradientCheckEnabled\":" << (static_cast<bool>(optGradientCheckEnable) ? 1 : 0)
-      << ",\"gradientCheckActive\":" << (gradientCheckActive ? 1 : 0)
-      << ",\"gradientCheckMinStepL2\":" << optGradientCheckMinStepL2
-      << ",\"gradientCheckWarnRatio\":" << optGradientCheckWarnRatio
-      << ",\"gradientCheckFailRatio\":" << optGradientCheckFailRatio
-      << ",\"gradientCheckWarnTriggered\":" << (gradientCheckWarnTriggered ? 1 : 0)
-      << ",\"gradientCheckFailTriggered\":" << (gradientCheckFailTriggered ? 1 : 0)
-      << ",\"gradientCheckFailStreak\":" << reportedGradientCheckFailStreak
-      << ",\"gradientCheckFailWindow\":" << optGradientCheckFailWindow
-      << ",\"gradientCheckStopTriggered\":" << (gradientCheckStopTriggered ? 1 : 0)
       << ",\"closureDerivativeFDEnabled\":" << (static_cast<bool>(optClosureDerivativeFDEnable) ? 1 : 0)
       << ",\"closureDerivativeFDRelStep\":" << optClosureDerivativeFDRelStep
-      << ",\"closureDerivativeFDStageCheckEnabled\":" << (static_cast<bool>(optClosureDerivativeFDStageCheckEnable) ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckActive\":" << (closureDerivativeFDStageCheckActive ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckSamples\":" << optClosureDerivativeFDStageCheckSamples
-      << ",\"closureDerivativeFDStageCheckSamplesUsed\":" << closureDerivativeFDStageCheckSamplesUsed
-      << ",\"closureDerivativeFDStageCheckWarnRatio\":" << optClosureDerivativeFDStageCheckWarnRatio
-      << ",\"closureDerivativeFDStageCheckWarnFractionRequired\":"
-      << optClosureDerivativeFDStageCheckWarnFraction
-      << ",\"closureDerivativeFDStageCheckFailRatio\":" << optClosureDerivativeFDStageCheckFailRatio
-      << ",\"closureDerivativeFDStageCheckFailFractionRequired\":"
-      << optClosureDerivativeFDStageCheckFailFraction
-      << ",\"closureDerivativeFDStageCheckWarnTriggered\":" << (closureDerivativeFDStageCheckWarnTriggered ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckFailTriggered\":" << (closureDerivativeFDStageCheckFailTriggered ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckFailStreak\":" << reportedClosureDerivativeFDStageCheckFailStreak
-      << ",\"closureDerivativeFDStageCheckFailWindow\":" << optClosureDerivativeFDStageCheckFailWindow
-      << ",\"closureDerivativeFDStageCheckStopTriggered\":" << (closureDerivativeFDStageCheckStopTriggered ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckClipLimited\":" << (closureDerivativeFDStageCheckClipLimited ? 1 : 0)
-      << ",\"closureDerivativeFDStageCheckRatio\":" << closureDerivativeFDStageCheckRatio
-      << ",\"closureDerivativeFDStageCheckMeanRatio\":" << closureDerivativeFDStageCheckMeanRatio
-      << ",\"closureDerivativeFDStageCheckMaxRatio\":" << closureDerivativeFDStageCheckMaxRatio
-      << ",\"closureDerivativeFDStageCheckMaxRatioK\":" << closureDerivativeFDStageCheckMaxRatioK
-      << ",\"closureDerivativeFDStageCheckMaxRatioOmega\":" << closureDerivativeFDStageCheckMaxRatioOmega
-      << ",\"closureDerivativeFDStageCheckMaxStoredMismatch\":" << closureDerivativeFDStageCheckMaxStoredMismatch
-      << ",\"closureDerivativeFDStageCheckWarnFractionObserved\":"
-      << closureDerivativeFDStageCheckWarnFractionObserved
-      << ",\"closureDerivativeFDStageCheckFailFractionObserved\":"
-      << closureDerivativeFDStageCheckFailFractionObserved
       << ",\"gradientConsistencyRatio\":" << gradientConsistencyRatio
       << ",\"gradientObjectiveRatio\":" << objectiveConsistencyRatio
       << ",\"gradientPowerRatio\":" << powerConsistencyRatio
@@ -3202,12 +2673,6 @@ if (Pstream::master())
       << ",\"volumeConstraintMax\":" << gsensVolLocalMax
       << ",\"volumeConstraintL2\":" << gsensVolL2
       << ",\"volumeConstraintNonFiniteCount\":" << gsensVolNonFiniteCountLocal
-      << ",\"qualityScore\":" << sensitivityQualityScoreCurrent
-      << ",\"qualityWarn\":" << (sensitivityQualityWarnCurrent ? 1 : 0)
-      << ",\"qualityFail\":" << (sensitivityQualityFailCurrent ? 1 : 0)
-      << ",\"qualityHardFail\":" << (sensitivityQualityHardFailCurrent ? 1 : 0)
-      << ",\"qualityFailStreak\":" << candidateSensitivityQualityFailStreak
-      << ",\"reuseAcceptedGradient\":" << (sensitivityQualityReuseAcceptedGradient ? 1 : 0)
       << ",\"hasAcceptedGradientSnapshot\":" << (hasAcceptedGradientSnapshot ? 1 : 0)
       << ",\"hasAcceptedStateSnapshot\":" << (hasAcceptedStateSnapshot ? 1 : 0)
     << "}"

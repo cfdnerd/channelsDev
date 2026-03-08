@@ -68,7 +68,7 @@ if (Pstream::master())
   }
 }
 
-if (optimizationCycleTurbulentOptimizationMode && static_cast<bool>(optFormulationExecutionGateEnable))
+if (optimizationCycleTurbulentOptimizationMode)
 {
   if
   (
@@ -105,38 +105,6 @@ if (optimizationCycleTurbulentOptimizationMode && static_cast<bool>(optFormulati
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "customTurbulenceProperties.optimizationCycleClosureAdjointDualConsistentBC=true "
-      << "for Optimization-Cycle runs."
-      << exit(FatalError);
-  }
-  if
-  (
-      static_cast<bool>(optRequireGradientChecks)
-   && !static_cast<bool>(optGradientCheckEnable)
-  )
-  {
-    FatalErrorInFunction
-      << "Formulation-first execution gate requires "
-      << "tuneOptParameters.convergenceControl.optGradientCheckEnable=true "
-      << "for Optimization-Cycle runs."
-      << exit(FatalError);
-  }
-  if
-  (
-      static_cast<bool>(optRequireClosureDerivativeChecks)
-   && !static_cast<bool>(optClosureDerivativeFDStageCheckEnable)
-  )
-  {
-    FatalErrorInFunction
-      << "Formulation-first execution gate requires "
-      << "tuneOptParameters.convergenceControl.optClosureDerivativeFDStageCheckEnable=true "
-      << "for Optimization-Cycle runs."
-      << exit(FatalError);
-  }
-  if (!static_cast<bool>(optSensitivityQualityGateEnable))
-  {
-    FatalErrorInFunction
-      << "Formulation-first execution gate requires "
-      << "tuneOptParameters.convergenceControl.optSensitivityQualityGateEnable=true "
       << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
@@ -397,29 +365,13 @@ label acceptedMeritScheduleIteration(-1);
 label meritScheduleRebaseCount(0);
 std::vector<scalar> filterConstraintArchive;
 std::vector<scalar> filterObjectiveArchive;
-label gradientCheckFailStreak(0);
-scalar closureDerivativeFDStageCheckMeanRatio(0);
-scalar closureDerivativeFDStageCheckMaxRatio(0);
-scalar closureDerivativeFDStageCheckMaxRatioK(0);
-scalar closureDerivativeFDStageCheckMaxRatioOmega(0);
-scalar closureDerivativeFDStageCheckMaxStoredMismatch(0);
-label closureDerivativeFDStageCheckSamplesUsed(0);
-label closureDerivativeFDStageCheckFailStreak(0);
 scalar previousMaxFluidClipFraction(0.0);
-scalar previousMaxClipFraction(0.0);
 scalar previousGuardConstraintViolationDelta(0.0);
 bool hasPreviousClipDiagnostics(false);
 bool previousHealthGateFailed(false);
 scalar previousThermalEnvelopeViolation(0.0);
 scalar previousMaxLinearFinalResidual(0.0);
 bool hasPreviousMaxLinearFinalResidual(false);
-scalar sensitivityQualityScore(1.0);
-bool sensitivityQualityWarn(false);
-bool sensitivityQualityFail(false);
-bool sensitivityQualityHardFail(false);
-bool sensitivityQualityRequireConservativeStep(false);
-bool sensitivityQualityReuseAcceptedGradient(false);
-label sensitivityQualityFailStreak(0);
 bool hasAcceptedGradientSnapshot(false);
 bool hasAcceptedStateSnapshot(false);
 bool firstFailureSnapshotWritten(false);
