@@ -93,6 +93,8 @@ if (Pstream::master())
   writeSolveStats("p pressure", pLinearSolveStats);
   writeSolveStats("k turbulence", kLinearSolveStats);
   writeSolveStats("omega turbulence", omegaLinearSolveStats);
+  writeSolveStats("ka adjoint closure", kaLinearSolveStats);
+  writeSolveStats("omegaa adjoint closure", omegaaLinearSolveStats);
   writeSolveStats("T thermal", TLinearSolveStats);
   writeSolveStats("Ta adjoint thermal", TaLinearSolveStats);
   writeSolveStats("Tb adjoint thermal", TbLinearSolveStats);
