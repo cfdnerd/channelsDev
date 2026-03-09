@@ -61,7 +61,7 @@ convergenceControl
     // Thermal Envelope Constraints
     // --------------------------------------------------------------------- //
     optThermalEnvelopeConstraintsEnable true; // master switch for MMA Tmax/Tmin envelope constraints
-    optDedicatedThermalEnvelopeAdjointsEnable true; // when master=true: dedicated TbThermalTmax/Tmin adjoints; when false: surrogate map
+    optDedicatedThermalEnvelopeAdjointsEnable false; // when master=true: dedicated TbThermalTmax/Tmin adjoints; when false: surrogate map
     optThermalTmaxLimit           15.0; // upper envelope limit for Tmax KS constraint
     optThermalTminLimit           0.0; // lower envelope limit for Tmin KS constraint
     optThermalKSBeta              24.0; // KS aggregation sharpness for envelope constraints
