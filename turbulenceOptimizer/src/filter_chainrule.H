@@ -1,17 +1,7 @@
 if (turbulenceProModeActive)
 {
-  scalar fsensNormalization = gMax(mag(fsenshMeanT.primitiveField()));
-  scalar gsensPowerNormalization = gMax(mag(gsenshPowerDiss.primitiveField()));
-  if (fsensNormalization < SMALL || fsensNormalization != fsensNormalization)
-  {
-    fsensNormalization = 1.0;
-  }
-  if (gsensPowerNormalization < SMALL || gsensPowerNormalization != gsensPowerNormalization)
-  {
-    gsensPowerNormalization = 1.0;
-  }
-  fsenshMeanT=fsenshMeanT/fsensNormalization;
-  gsenshPowerDiss=gsenshPowerDiss/gsensPowerNormalization;
+  fsenshMeanT=fsenshMeanT/gMax(mag(fsenshMeanT.primitiveField()));
+  gsenshPowerDiss=gsenshPowerDiss/gMax(mag(gsenshPowerDiss.primitiveField()));
   gsenshVol.primitiveFieldRef() = 1.0;
   //***********************************//Heaviside_filter
   if(opt>1)

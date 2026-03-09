@@ -12,7 +12,10 @@ else
 {
  TEqn-=thermalSource;
 }
-TEqn.relax();
+if (!turbulenceProModeActive)
+{
+ TEqn.relax();
+}
 const auto TLinearSolvePerformance = TEqn.solve();
 recordLinearSolve
 (
@@ -21,4 +24,7 @@ recordLinearSolve
   TLinearSolvePerformance.finalResidual(),
   TLinearSolvePerformance.nIterations()
 );
-T2 = T;
+if (!turbulenceProModeActive)
+{
+ T2 = T;
+}

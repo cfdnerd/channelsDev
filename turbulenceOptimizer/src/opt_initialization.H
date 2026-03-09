@@ -57,7 +57,7 @@ if (Pstream::master())
   }
 }
 
-if (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive)
+if (optimizationCycleTurbulentOptimizationMode)
 {
   if
   (
@@ -68,7 +68,7 @@ if (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive)
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "customTurbulenceProperties.optimizationCycleTransportedClosureAdjoints=true "
-      << "for Optimization-Cycle or turbulenceProMode runs."
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   if
@@ -94,7 +94,7 @@ if (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive)
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "customTurbulenceProperties.optimizationCycleClosureAdjointDualConsistentBC=true "
-      << "for Optimization-Cycle or turbulenceProMode runs."
+      << "for Optimization-Cycle runs."
       << exit(FatalError);
   }
   const dictionary& solverControls = mesh.solutionDict().subDict("solvers");

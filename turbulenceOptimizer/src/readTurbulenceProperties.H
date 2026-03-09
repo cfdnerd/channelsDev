@@ -16,9 +16,16 @@ Switch turbulenceProMode
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("turbulenceProMode", false)
 );
+Switch proModeClosureAdjointSolves
+(
+    customTurbulenceProperties.lookupOrDefault<Switch>("proModeClosureAdjointSolves", true)
+);
 const bool turbulenceProModeActive =
     customTurbulenceActive
  && static_cast<bool>(turbulenceProMode);
+const bool proModeClosureAdjointSolvesActive =
+    turbulenceProModeActive
+ && static_cast<bool>(proModeClosureAdjointSolves);
 Switch adjointCycleThermalAdjointOnly
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleThermalAdjointOnly", false)
@@ -530,9 +537,11 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << ", formulation=" << optimizationCycleClosureAdjointFormulation
         << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
         << "). "
-        << "Adjoint correctors per loop: flow="
-        << optimizationCycleFlowAdjointCorrectors
-        << ", heat=" << optimizationCycleHeatAdjointCorrectors
+        << "Pro closure-adjoint solves="
+        << (proModeClosureAdjointSolvesActive ? "enabled" : "disabled")
+        << ". "
+        << "Adjoint correctors per loop: flow=40, heat=40"
+        << " (laminar-aligned Pro mode)"
         << "."
         << endl;
 }

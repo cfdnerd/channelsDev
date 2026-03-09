@@ -1,10 +1,8 @@
 const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
 const bool optimizationCycleFlowAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
-const bool turbulenceProFlowAdjointMode =
-    customTurbulenceActive && turbulenceProModeActive;
 const bool optimizationLikeFlowAdjointMode =
-    optimizationCycleFlowAdjointMode || turbulenceProFlowAdjointMode;
+    optimizationCycleFlowAdjointMode;
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationLikeFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
@@ -83,11 +81,7 @@ if (boundedFlowAdjointMode)
       const char* adjointCycleTraceTag =
           optimizationCycleFlowAdjointMode
         ? "[Optimization-Cycle Flow Adjoint Corrector Trace]"
-        : (
-              turbulenceProFlowAdjointMode
-            ? "[Pro-Mode Flow Adjoint Corrector Trace]"
-            : "[Adjoint-Cycle Flow Adjoint Corrector Trace]"
-          );
+        : "[Adjoint-Cycle Flow Adjoint Corrector Trace]";
       debugAdjointCycleLogFileStream
         << "\n" << adjointCycleTraceTag << "\n"
         << "  Iteration           : " << opt << "\n"
@@ -134,16 +128,6 @@ if (boundedFlowAdjointMode)
   adjointCycleBestUaInternal = Ua.internalField();
   adjointCycleBestPaInternal = pa.internalField();
   adjointCycleBestPhiaInternal = phia.internalField();
-}
-
-if (turbulenceProModeActive)
-{
-  // Prevent Pro-mode warm-start amplification across optimization iterations.
-  Ua = dimensionedVector("zeroProUa", Ua.dimensions(), vector::zero);
-  pa = dimensionedScalar("zeroProPa", pa.dimensions(), 0.0);
-  phia = dimensionedScalar("zeroProPhia", phia.dimensions(), 0.0);
-  Ua.correctBoundaryConditions();
-  pa.correctBoundaryConditions();
 }
 
 label adjointCycleNoImproveStreak = 0;
@@ -274,23 +258,6 @@ for (i = 0; i < adjointFlowCorrectors; i++)
   : HbyAa - rAtUa()*fvc::grad(pa);
   Ua.correctBoundaryConditions();
   fvOptions.correct(Ua);
-
-  if (turbulenceProModeActive)
-  {
-      const volScalarField proUaMagnitude(mag(Ua));
-      const scalar uaAbsMax = gMax(proUaMagnitude);
-      if (!(uaAbsMax < optimizationCycleAdjointMaxMagnitude))
-      {
-          const scalar proAdjointScale =
-            optimizationCycleAdjointMaxMagnitude/Foam::max(uaAbsMax, SMALL);
-          Ua.primitiveFieldRef() *= proAdjointScale;
-          pa.primitiveFieldRef() *= proAdjointScale;
-          phia.primitiveFieldRef() *= proAdjointScale;
-          Ua.correctBoundaryConditions();
-          pa.correctBoundaryConditions();
-          fvOptions.correct(Ua);
-      }
-  }
 
   if (boundedFlowAdjointMode)
   {

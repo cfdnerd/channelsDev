@@ -1,32 +1,30 @@
 const bool optimizationCycleObjectiveAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
-const bool turbulenceProHeatAdjointMode =
-    customTurbulenceActive && turbulenceProModeActive;
 const bool optimizationCycleHeatRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const volScalarField& thermalAdjointSourceField =
     optimizationCycleObjectiveAdjointMode ? optimizationCycleThermalAdjointField : Tb;
 const label adjointHeatCorrectors =
-    (optimizationCycleObjectiveAdjointMode || turbulenceProHeatAdjointMode)
+    optimizationCycleObjectiveAdjointMode
   ? optimizationCycleHeatAdjointCorrectors
   : 40;
 const scalar optimizationCycleHeatAdjointMagnitudeLimit =
-    (optimizationCycleObjectiveAdjointMode || turbulenceProHeatAdjointMode)
+    optimizationCycleObjectiveAdjointMode
   ? optimizationCycleAdjointMaxMagnitude
   : adjointCycleAdjointMaxMagnitude;
 const bool optimizationCycleHeatNoImproveCheckEnabled =
     optimizationCycleHeatRollbackGuardsEnabled
  && (
-      (optimizationCycleObjectiveAdjointMode || turbulenceProHeatAdjointMode)
+      optimizationCycleObjectiveAdjointMode
       ? static_cast<bool>(optimizationCycleNoImproveCheck)
       : static_cast<bool>(adjointCycleStagnationCheck)
     );
 const label optimizationCycleHeatNoImprovePatience =
-    (optimizationCycleObjectiveAdjointMode || turbulenceProHeatAdjointMode)
+    optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImprovePatience
   : adjointCycleStagnationPatience;
 const label optimizationCycleHeatNoImproveMinCorrectors =
-    (optimizationCycleObjectiveAdjointMode || turbulenceProHeatAdjointMode)
+    optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImproveMinCorrectors
   : label(1);
 const bool resetHeatAdjointState =
@@ -74,16 +72,6 @@ if (optimizationCycleObjectiveAdjointMode)
       << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
   }
-}
-
-if (turbulenceProModeActive)
-{
-  // Prevent Pro-mode warm-start amplification across optimization iterations.
-  Ub = dimensionedVector("zeroProUb", Ub.dimensions(), vector::zero);
-  pb = dimensionedScalar("zeroProPb", pb.dimensions(), 0.0);
-  phib = dimensionedScalar("zeroProPhib", phib.dimensions(), 0.0);
-  Ub.correctBoundaryConditions();
-  pb.correctBoundaryConditions();
 }
 
 for (i = 0; i < adjointHeatCorrectors; i++)
@@ -212,23 +200,6 @@ Ub =
 : HbyAb - rAtUb()*fvc::grad(pb);
 Ub.correctBoundaryConditions();
 fvOptions.correct(Ub);
-
-if (turbulenceProModeActive)
-{
-  const volScalarField proUbMagnitude(mag(Ub));
-  const scalar ubAbsMax = gMax(proUbMagnitude);
-  if (!(ubAbsMax < optimizationCycleAdjointMaxMagnitude))
-  {
-    const scalar proAdjointScale =
-      optimizationCycleAdjointMaxMagnitude/Foam::max(ubAbsMax, SMALL);
-    Ub.primitiveFieldRef() *= proAdjointScale;
-    pb.primitiveFieldRef() *= proAdjointScale;
-    phib.primitiveFieldRef() *= proAdjointScale;
-    Ub.correctBoundaryConditions();
-    pb.correctBoundaryConditions();
-    fvOptions.correct(Ub);
-  }
-}
 
 if (optimizationCycleObjectiveAdjointMode)
 {
