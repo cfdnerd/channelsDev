@@ -1,12 +1,16 @@
 //Tb=T2;
 sumT=0;
 maxT=gMax(T);
-for(i=0;i<n;i++)
+const scalar maxTSafe = Foam::max(Foam::mag(maxT), SMALL);
+if (objFunction==2)
 {
-   sumT=sumT+std::pow(T[i]/maxT,Pnorm);
-}      
-reduce(sumT, sumOp<scalar>());
-sumT=std::pow(sumT,1.0/Pnorm-1);
+   for(i=0;i<n;i++)
+   {
+      sumT=sumT+std::pow(T[i]/maxTSafe,Pnorm);
+   }
+   reduce(sumT, sumOp<scalar>());
+   sumT=std::pow(sumT,1.0/Pnorm-1);
+}
 
 fvScalarMatrix TEqnb
 (
@@ -19,7 +23,7 @@ if (objFunction==1)
 }
 if (objFunction==2)
 {
-   TEqnb -= b2*sumT*Foam::pow(T/maxT,Pnorm-1);
+   TEqnb -= b2*sumT*Foam::pow(T/maxTSafe,Pnorm-1);
 }
 if (objFunction==3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
 {
