@@ -25,12 +25,12 @@ xD 1.25;
 yDMin -0.8;
 yDMax 5.45;
 
-fNx 40;
 // Wall-function-compatible high-Re mesh: use targeted grading in Ny direction
 // rather than globally over-coarsening all channel-normal cells.
-fNy 30;
-Ny 90;
-Nx 125;
+fNx 48;
+fNy 60;
+Ny 360;
+Nx 220;
 
 vertices
 (
@@ -62,14 +62,17 @@ blocks
     hex (0 7 6 3 10 17 16 13)
     test_area
     ($Nx $Ny 1)
-    // x: larger cells near xMin wall; y: symmetric coarse-near-wall grading.
+    // Coarse first cells at xMin and y-walls, fine core resolution.
     simpleGrading
     (
-        0.35
         (
-            (0.20 0.10 0.10)
-            (0.60 0.80 1.00)
-            (0.20 0.10 10.00)
+            (0.20 0.02 0.20)
+            (0.80 0.98 1.00)
+        )
+        (
+            (0.15 0.02 0.20)
+            (0.70 0.96 1.00)
+            (0.15 0.02 5.00)
         )
         1
     )
@@ -77,14 +80,17 @@ blocks
     hex (7 1 2 6 17 11 12 16)
     test_area
     ($fNx $Ny 1)
-    // Match Ny-distribution with the neighboring main block.
+    // Keep i-grading identical to block 3 for shared-face compatibility.
     simpleGrading
     (
-        0.35
         (
-            (0.20 0.10 0.10)
-            (0.60 0.80 1.00)
-            (0.20 0.10 10.00)
+            (0.25 0.10 0.25)
+            (0.75 0.90 1.00)
+        )
+        (
+            (0.15 0.02 0.20)
+            (0.70 0.96 1.00)
+            (0.15 0.02 5.00)
         )
         1
     )
@@ -92,14 +98,30 @@ blocks
     hex (6 2 4 5 16 12 14 15)
     fluid_area
     ($fNx $fNy 1)
-    // Wall face is at local i=0 side (x=xD): use gx<1 for coarser near-wall cells.
-    simpleGrading (0.35 1 1)
+    // Wall face is at local i=0 side (x=xD): coarse near-wall cells.
+    simpleGrading
+    (
+        (
+            (0.25 0.10 0.25)
+            (0.75 0.90 1.00)
+        )
+        1
+        1
+    )
 
     hex (1 7 8 9 11 17 18 19)
     fluid_area
     ($fNx $fNy 1)
-    // Wall face is at local i=1 side (x=xD): use gx>1 for coarser near-wall cells.
-    simpleGrading (2.857142857 1 1)
+    // Wall face is at local i=1 side (x=xD): mirror i-grading of block 3.
+    simpleGrading
+    (
+        (
+            (0.75 0.90 1.00)
+            (0.25 0.10 4.00)
+        )
+        1
+        1
+    )
 );
 
 edges
