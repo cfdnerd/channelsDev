@@ -53,6 +53,20 @@ const label adjointFlowCorrectors =
   : (proModeFlowAdjointMode
     ? proModeFlowAdjointCorrectors
     : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40));
+const scalar uaPseudoInvTauValue =
+    proModeFlowAdjointMode
+  ? 8.0
+  : (optimizationCycleFlowAdjointMode ? 4.0 : (adjointCycleFlowAdjointMode ? 2.0 : 0.0));
+const dimensionedScalar uaPseudoInvTau
+(
+  "uaPseudoInvTau",
+  dimless/dimTime,
+  uaPseudoInvTauValue
+);
+const scalar uaSourceSplitStrength =
+    boundedFlowAdjointMode
+  ? 0.25
+  : 0.0;
 adjointCycleAdjointUNonlinearChange = 0.0;
 adjointCycleAdjointPNonlinearChange = 0.0;
 adjointCycleAdjointFlowConverged = !boundedFlowAdjointMode;
@@ -119,6 +133,8 @@ if (boundedFlowAdjointMode)
         << " stagnationGuard="
         << (stagnationCheckEnabled ? "true" : "false")
         << " |Ua|maxLimit=" << flowAdjointMagnitudeLimit
+        << " pseudoInvTau=" << uaPseudoInvTauValue
+        << " sourceSplit=" << uaSourceSplitStrength
         << " growth=" << adjointCycleDivergenceGrowthFactor
         << " minPass="
         << (optimizationLikeFlowAdjointMode ? noImproveMinCorrectors : adjointCycleDivergenceMinCorrectors)
@@ -166,8 +182,10 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       UaPrevious = Ua.internalField();
       paPrevious = pa.internalField();
   }
+  const volVectorField UaOldState(Ua);
 
   volVectorField adjointTransposeConvectiona((fvc::grad(U) & Ua));
+  volScalarField uaExplicitSourceMagnitude(mag(adjointTransposeConvectiona));
 
   tmp<fvVectorMatrix> tUaEqn
   (
@@ -201,7 +219,32 @@ for (i = 0; i < adjointFlowCorrectors; i++)
 
   if (includeTaSourceInUaEquation)
   {
-      UaEqn += b1*optimizationCycleThermalAdjointField*fvc::grad(T);
+      const volVectorField uaThermalSource
+      (
+        b1*optimizationCycleThermalAdjointField*fvc::grad(T)
+      );
+      UaEqn += uaThermalSource;
+      uaExplicitSourceMagnitude += mag(uaThermalSource);
+  }
+
+  if (boundedFlowAdjointMode)
+  {
+      const volScalarField uaPatankarRef
+      (
+        Foam::max
+        (
+          mag(UaOldState),
+          dimensionedScalar("uaPatankarRefFloor", Ua.dimensions(), 1.0)
+        )
+      );
+      const volScalarField uaSourceDampingCoeff
+      (
+        uaSourceSplitStrength*uaExplicitSourceMagnitude/uaPatankarRef
+      );
+      UaEqn += fvm::Sp(uaPseudoInvTau + uaSourceDampingCoeff, Ua);
+      UaEqn -=
+          uaPseudoInvTau*UaOldState
+        + uaSourceDampingCoeff*UaOldState;
   }
 
   UaEqn.relax();

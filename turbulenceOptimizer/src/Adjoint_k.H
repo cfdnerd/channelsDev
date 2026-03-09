@@ -173,12 +173,19 @@ if (customTurbulenceActive)
     if (optimizationCycleUseTransportedClosureAdjoints)
     {
       applyDualConsistentKaBC();
+      const volScalarField kaOldState(ka);
 
       const dimensionedScalar optimizationCycleClosureInvTau
       (
         "optimizationCycleClosureInvTau",
         dimless/dimTime,
         closureAdjointInvTauActive
+      );
+      const dimensionedScalar kaPseudoInvTau
+      (
+        "kaPseudoInvTau",
+        dimless/dimTime,
+        0.75*closureAdjointInvTauActive
       );
       volScalarField saTransportDiffusivity
       (
@@ -262,14 +269,47 @@ if (customTurbulenceActive)
       }
       saTransportDiffusivity.correctBoundaryConditions();
       saReactionCoeff.correctBoundaryConditions();
+      const volScalarField kaPatankarRef
+      (
+        Foam::max
+        (
+          mag(kaOldState),
+          dimensionedScalar("kaPatankarRefFloor", ka.dimensions(), 1.0)
+        )
+      );
+      const volScalarField kaSourceRaw
+      (
+        optimizationCycleClosureInvTau*adjointCycleSASourceProxy
+      );
+      const dimensionedScalar kaSourceZero
+      (
+        "kaSourceZero",
+        kaSourceRaw.dimensions(),
+        0.0
+      );
+      const volScalarField kaSourcePositive
+      (
+        Foam::max(kaSourceRaw, kaSourceZero)
+      );
+      const volScalarField kaSourceNegative
+      (
+        Foam::max(-kaSourceRaw, kaSourceZero)
+      );
+      const volScalarField kaSourceNegativeCoeff
+      (
+        kaSourceNegative/kaPatankarRef
+      );
       fvScalarMatrix kaEqn
       (
           fvm::div(phi, ka)
         - fvm::laplacian(saTransportDiffusivity, ka)
         + fvm::Sp(optimizationCycleClosureInvTau, ka)
         + fvm::Sp(saReactionCoeff, ka)
+        + fvm::Sp(kaPseudoInvTau, ka)
+        + fvm::Sp(kaSourceNegativeCoeff, ka)
        ==
-          optimizationCycleClosureInvTau*adjointCycleSASourceProxy
+          kaSourcePositive
+        + kaPseudoInvTau*kaOldState
       );
 
       kaEqn.relax();
@@ -333,6 +373,7 @@ if (customTurbulenceActive)
     if (optimizationCycleUseTransportedClosureAdjoints)
     {
       applyDualConsistentKaBC();
+      const volScalarField kaOldState(ka);
 
       if (static_cast<bool>(optimizationCycleUseLogClosureState))
       {
@@ -350,6 +391,12 @@ if (customTurbulenceActive)
         "optimizationCycleClosureInvTau",
         dimless/dimTime,
         closureAdjointInvTauActive
+      );
+      const dimensionedScalar kaPseudoInvTau
+      (
+        "kaPseudoInvTau",
+        dimless/dimTime,
+        0.75*closureAdjointInvTauActive
       );
       volScalarField optimizationCycleKReactionCoeff
       (
@@ -394,6 +441,37 @@ if (customTurbulenceActive)
          *closureAdjointCrossCouplingActive
          *(omegaa/omegaaScale);
       }
+      const volScalarField kaPatankarRef
+      (
+        Foam::max
+        (
+          mag(kaOldState),
+          dimensionedScalar("kaPatankarRefFloor", ka.dimensions(), 1.0)
+        )
+      );
+      const volScalarField kaSourceRaw
+      (
+          optimizationCycleClosureInvTau*adjointCycleKSourceProxy
+        + optimizationCycleKCrossSource
+      );
+      const dimensionedScalar kaSourceZero
+      (
+        "kaSourceZero",
+        kaSourceRaw.dimensions(),
+        0.0
+      );
+      const volScalarField kaSourcePositive
+      (
+        Foam::max(kaSourceRaw, kaSourceZero)
+      );
+      const volScalarField kaSourceNegative
+      (
+        Foam::max(-kaSourceRaw, kaSourceZero)
+      );
+      const volScalarField kaSourceNegativeCoeff
+      (
+        kaSourceNegative/kaPatankarRef
+      );
       const volScalarField kaTransportDiffusivity
       (
         turbulenceAdjointTransportDiffusionScale*(nu + alphaKField*nut)
@@ -404,9 +482,11 @@ if (customTurbulenceActive)
         - fvm::laplacian(kaTransportDiffusivity, ka)
         + fvm::Sp(optimizationCycleClosureInvTau, ka)
         + fvm::Sp(optimizationCycleKReactionCoeff, ka)
+        + fvm::Sp(kaPseudoInvTau, ka)
+        + fvm::Sp(kaSourceNegativeCoeff, ka)
        ==
-          optimizationCycleClosureInvTau*adjointCycleKSourceProxy
-        + optimizationCycleKCrossSource
+          kaSourcePositive
+        + kaPseudoInvTau*kaOldState
       );
 
       kaEqn.relax();

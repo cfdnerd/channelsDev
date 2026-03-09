@@ -44,6 +44,20 @@ const bool useLegacyPbRelax =
     optimizationCycleObjectiveAdjointMode
   ? static_cast<bool>(adjointCycleUseLegacyPressureRelax)
   : (proModeHeatAdjointMode ? static_cast<bool>(proModeAdjointUseLegacyPressureRelax) : static_cast<bool>(adjointCycleUseLegacyPressureRelax));
+const scalar ubPseudoInvTauValue =
+    proModeHeatAdjointMode
+  ? 10.0
+  : (optimizationCycleObjectiveAdjointMode ? 5.0 : 0.0);
+const dimensionedScalar ubPseudoInvTau
+(
+  "ubPseudoInvTau",
+  dimless/dimTime,
+  ubPseudoInvTauValue
+);
+const scalar ubSourceSplitStrength =
+    optimizationLikeHeatAdjointMode
+  ? 0.35
+  : 0.0;
 
 vectorField optimizationCycleBestUbInternal;
 scalarField optimizationCycleBestPbInternal;
@@ -87,6 +101,8 @@ if (optimizationLikeHeatAdjointMode)
       << (optimizationCycleHeatNoImproveCheckEnabled ? "true" : "false")
       << " minPass=" << optimizationCycleHeatNoImproveMinCorrectors
       << " patience=" << optimizationCycleHeatNoImprovePatience
+      << " pseudoInvTau=" << ubPseudoInvTauValue
+      << " sourceSplit=" << ubSourceSplitStrength
       << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
   }
@@ -104,8 +120,17 @@ if (optimizationLikeHeatAdjointMode)
   optimizationCycleUbPrevious = Ub.internalField();
   optimizationCyclePbPrevious = pb.internalField();
 }
+const volVectorField UbOldState(Ub);
 
 volVectorField adjointTransposeConvectionb((fvc::grad(U) & Ub));
+const volVectorField ubThermalSource
+(
+  b1*thermalAdjointSourceField*fvc::grad(T)
+);
+volScalarField ubExplicitSourceMagnitude
+(
+  mag(adjointTransposeConvectionb) + mag(ubThermalSource)
+);
 
 tmp<fvVectorMatrix> tUbEqn
 (
@@ -118,7 +143,6 @@ tmp<fvVectorMatrix> tUbEqn
         + adjointTransposeConvectionb
         - fvm::laplacian(nuEff, Ub)
         + fvm::Sp(alpha, Ub)
-        + b1*thermalAdjointSourceField*fvc::grad(T)
        ==
           fvOptions(Ub)
       )
@@ -131,13 +155,34 @@ tmp<fvVectorMatrix> tUbEqn
         + adjointTransposeConvectionb
         - fvm::laplacian(nu, Ub)
         + fvm::Sp(alpha, Ub)
-        + b1*thermalAdjointSourceField*fvc::grad(T)
        ==
           fvOptions(Ub)
       )
   )
 );
 fvVectorMatrix& UbEqn = tUbEqn.ref();
+
+UbEqn += ubThermalSource;
+
+if (optimizationLikeHeatAdjointMode)
+{
+  const volScalarField ubPatankarRef
+  (
+    Foam::max
+    (
+      mag(UbOldState),
+      dimensionedScalar("ubPatankarRefFloor", Ub.dimensions(), 1.0)
+    )
+  );
+  const volScalarField ubSourceDampingCoeff
+  (
+    ubSourceSplitStrength*ubExplicitSourceMagnitude/ubPatankarRef
+  );
+  UbEqn += fvm::Sp(ubPseudoInvTau + ubSourceDampingCoeff, Ub);
+  UbEqn -=
+      ubPseudoInvTau*UbOldState
+    + ubSourceDampingCoeff*UbOldState;
+}
 
 UbEqn.relax();
 
