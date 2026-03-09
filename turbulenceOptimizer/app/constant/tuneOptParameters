@@ -68,9 +68,9 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)
     // --------------------------------------------------------------------- //
-    optThermalBoundedObjectiveEnable true; // enable SmoothExcessT bounded objective when objFunction=3
-    optThermalExcessTref          1.5; // hotspot threshold temperature for SmoothExcessT
-    optThermalExcessSoftplusScale 1.0; // smoother excess transition for better gradient stability
+    optThermalBoundedObjectiveEnable true; // required for SmoothExcessT when objFunction=3
+    optThermalExcessTref          2.8; // focus objective on upper thermal tail (hotspot range)
+    optThermalExcessSoftplusScale 0.75; // moderate smoothing: sharper than 1.0, safer than very small values
 
     // Convergence Stop
     // --------------------------------------------------------------------- //
