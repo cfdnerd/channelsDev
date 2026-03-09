@@ -215,7 +215,8 @@ fvOptions.correct(Ub);
 
 if (turbulenceProModeActive)
 {
-  const scalar ubAbsMax = gMax(mag(Ub));
+  const volScalarField proUbMagnitude(mag(Ub));
+  const scalar ubAbsMax = gMax(proUbMagnitude);
   if (!(ubAbsMax < optimizationCycleAdjointMaxMagnitude))
   {
     const scalar proAdjointScale =

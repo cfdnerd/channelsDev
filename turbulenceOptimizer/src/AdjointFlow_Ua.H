@@ -277,7 +277,8 @@ for (i = 0; i < adjointFlowCorrectors; i++)
 
   if (turbulenceProModeActive)
   {
-      const scalar uaAbsMax = gMax(mag(Ua));
+      const volScalarField proUaMagnitude(mag(Ua));
+      const scalar uaAbsMax = gMax(proUaMagnitude);
       if (!(uaAbsMax < optimizationCycleAdjointMaxMagnitude))
       {
           const scalar proAdjointScale =
