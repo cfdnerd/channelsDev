@@ -78,6 +78,60 @@ if (optimizationCycleTurbulentSensitivityMode && optimizationCycleUseTaThermalAd
 
 if (useDedicatedThermalEnvelopeAdjoints)
 {
+  auto auditFiniteScalarField =
+  [&](const volScalarField& field, const char* context)
+  {
+    const scalar fieldMin = gMin(field);
+    const scalar fieldMax = gMax(field);
+
+    label localInvalidCount = 0;
+    label localFirstInvalidCell = -1;
+    scalar localFirstInvalidValue = 0.0;
+    const scalarField& fieldInternal = field.internalField();
+    forAll(fieldInternal, celli)
+    {
+      const scalar value = fieldInternal[celli];
+      const bool invalidValue =
+           !std::isfinite(static_cast<double>(value))
+        || Foam::mag(value) > GREAT;
+      if (!invalidValue)
+      {
+        continue;
+      }
+
+      localInvalidCount++;
+      if (localFirstInvalidCell < 0)
+      {
+        localFirstInvalidCell = celli;
+        localFirstInvalidValue = value;
+      }
+    }
+
+    label globalInvalidCount = localInvalidCount;
+    reduce(globalInvalidCount, sumOp<label>());
+    if
+    (
+         std::isfinite(static_cast<double>(fieldMin))
+      && std::isfinite(static_cast<double>(fieldMax))
+      && globalInvalidCount == 0
+    )
+    {
+      return;
+    }
+
+    FatalErrorInFunction
+      << "Non-finite field detected during dedicated thermal-envelope adjoint assembly."
+      << " Context=" << context
+      << " min=" << fieldMin
+      << " max=" << fieldMax
+      << " globalInvalidCount=" << globalInvalidCount
+      << " localInvalidCount=" << localInvalidCount
+      << " localFirstInvalidCell=" << localFirstInvalidCell
+      << " localFirstInvalidValue=" << localFirstInvalidValue
+      << " proc=" << Pstream::myProcNo()
+      << exit(FatalError);
+  };
+
   scalar thetaMaxPeakLocal = -GREAT;
   scalar thetaMinPeakLocal = -GREAT;
   for (i = 0; i < n; i++)
@@ -151,6 +205,9 @@ if (useDedicatedThermalEnvelopeAdjoints)
   }
   thermalTmaxWeight.correctBoundaryConditions();
   thermalTminWeight.correctBoundaryConditions();
+  auditFiniteScalarField(thermalTmaxWeight, "thermalTmaxWeight");
+  auditFiniteScalarField(thermalTminWeight, "thermalTminWeight");
+  auditFiniteScalarField(DT, "DT");
 
   volScalarField TbThermalTmax
   (
@@ -162,10 +219,10 @@ if (useDedicatedThermalEnvelopeAdjoints)
       IOobject::NO_READ,
       IOobject::NO_WRITE
     ),
-    mesh,
-    dimensionedScalar("zeroTbThermalTmax", T.dimensions(), 0.0),
-    zeroGradientFvPatchScalarField::typeName
+    objectiveThermalAdjoint
   );
+  TbThermalTmax =
+    dimensionedScalar("zeroTbThermalTmax", T.dimensions(), 0.0);
   volScalarField TbThermalTmin
   (
     IOobject
@@ -176,25 +233,35 @@ if (useDedicatedThermalEnvelopeAdjoints)
       IOobject::NO_READ,
       IOobject::NO_WRITE
     ),
-    mesh,
-    dimensionedScalar("zeroTbThermalTmin", T.dimensions(), 0.0),
-    zeroGradientFvPatchScalarField::typeName
+    objectiveThermalAdjoint
+  );
+  TbThermalTmin =
+    dimensionedScalar("zeroTbThermalTmin", T.dimensions(), 0.0);
+  const dimensionedScalar thermalAdjointDiagReg
+  (
+    "thermalAdjointDiagReg",
+    unitThermalSource.dimensions(),
+    1e-12
   );
 
   fvScalarMatrix TbThermalTmaxEqn
   (
      -fvm::div(-phi, TbThermalTmax)
      +fvm::laplacian(DT, TbThermalTmax)
+     +fvm::Sp(thermalAdjointDiagReg, TbThermalTmax)
   );
   TbThermalTmaxEqn -= unitThermalSource*thermalTmaxWeight;
+  Info<< "Solving dedicated thermal-envelope adjoint TbThermalTmax\n" << endl;
   TbThermalTmaxEqn.solve();
 
   fvScalarMatrix TbThermalTminEqn
   (
      -fvm::div(-phi, TbThermalTmin)
      +fvm::laplacian(DT, TbThermalTmin)
+     +fvm::Sp(thermalAdjointDiagReg, TbThermalTmin)
   );
   TbThermalTminEqn -= unitThermalSource*thermalTminWeight;
+  Info<< "Solving dedicated thermal-envelope adjoint TbThermalTmin\n" << endl;
   TbThermalTminEqn.solve();
 
   gsenshThermalTmax =
