@@ -30,15 +30,6 @@ convergenceControl
     optThermalAdjointMode tbOriginal; // ta | tbOriginal | tbLaminar
 
     // --------------------------------------------------------------------- //
-    // Thermal Objective/Constraint Targets
-    // --------------------------------------------------------------------- //
-    optThermalExcessTref          1.0;
-    optThermalExcessSoftplusScale 0.5;
-    optThermalTmaxLimit           15.0;
-    optThermalTminLimit           0.0;
-    optThermalKSBeta              24.0;
-
-    // --------------------------------------------------------------------- //
     // MMA Step Controls
     // --------------------------------------------------------------------- //
     optPowerConstraintWeight      1;
@@ -66,9 +57,20 @@ convergenceControl
     optAdaptiveMoveLimitGrowFactor     1.15;
     optAdaptiveMoveLimitNegativeTrustDamping  0.50;
 
-    // Dedicated thermal-envelope sensitivity controls.
-    optThermalEnvelopeConstraintsEnable true;
-    optDedicatedThermalEnvelopeAdjointsEnable true;
+    // --------------------------------------------------------------------- //
+    // Thermal Envelope Constraints
+    // --------------------------------------------------------------------- //
+    optThermalEnvelopeConstraintsEnable true; // master switch for MMA Tmax/Tmin envelope constraints
+    optDedicatedThermalEnvelopeAdjointsEnable true; // when master=true: dedicated TbThermalTmax/Tmin adjoints; when false: surrogate map
+    optThermalTmaxLimit           15.0; // upper envelope limit for Tmax KS constraint
+    optThermalTminLimit           0.0; // lower envelope limit for Tmin KS constraint
+    optThermalKSBeta              24.0; // KS aggregation sharpness for envelope constraints
+
+    // --------------------------------------------------------------------- //
+    // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)
+    // --------------------------------------------------------------------- //
+    optThermalExcessTref          1.0; // reference temperature Tref used only by SmoothExcessT objective (objFunction=3)
+    optThermalExcessSoftplusScale 0.5; // smoothness scale for SmoothExcessT and envelope softplus transitions
 
     // Convergence Stop
     // --------------------------------------------------------------------- //

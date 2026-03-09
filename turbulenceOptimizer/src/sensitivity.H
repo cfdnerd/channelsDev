@@ -240,7 +240,7 @@ if (useDedicatedThermalEnvelopeAdjoints)
   const dimensionedScalar thermalAdjointDiagReg
   (
     "thermalAdjointDiagReg",
-    unitThermalSource.dimensions(),
+    dimensionSet(0,0,-1,0,0,0,0),
     1e-12
   );
 
