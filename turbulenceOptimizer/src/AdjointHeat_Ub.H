@@ -28,11 +28,19 @@ const bool optimizationCycleHeatNoImproveCheckEnabled =
 const label optimizationCycleHeatNoImprovePatience =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImprovePatience
-  : (proModeHeatAdjointMode ? proModeAdjointNoImprovePatience : adjointCycleStagnationPatience);
+  : (proModeHeatAdjointMode ? Foam::max(proModeAdjointNoImprovePatience, label(2)) : adjointCycleStagnationPatience);
 const label optimizationCycleHeatNoImproveMinCorrectors =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImproveMinCorrectors
-  : (proModeHeatAdjointMode ? proModeAdjointNoImproveMinCorrectors : label(1));
+  : (proModeHeatAdjointMode ? Foam::max(proModeAdjointNoImproveMinCorrectors, label(3)) : label(1));
+const scalar optimizationCycleHeatNoImproveTolerance =
+    optimizationCycleObjectiveAdjointMode
+  ? scalar(0.02)
+  : (proModeHeatAdjointMode ? scalar(0.05) : scalar(0.02));
+const scalar optimizationCycleHeatGrowthFactor =
+    optimizationCycleObjectiveAdjointMode
+  ? scalar(1.75)
+  : (proModeHeatAdjointMode ? scalar(2.00) : scalar(1.75));
 const bool resetHeatAdjointState =
     optimizationCycleObjectiveAdjointMode
  ? static_cast<bool>(optimizationCycleResetAdjointState)
@@ -111,6 +119,8 @@ vectorField optimizationCycleBestUbInternal;
 scalarField optimizationCycleBestPbInternal;
 scalarField optimizationCycleBestPhibInternal;
 scalar optimizationCycleBestCombinedMetric = GREAT;
+scalar optimizationCycleBestUbMax = GREAT;
+scalar optimizationCycleBestPbRange = GREAT;
 label optimizationCycleNoImproveStreak = 0;
 label optimizationCycleBestCorrector = 0;
 label optimizationCycleAdjointCorrectorsUsed = 0;
@@ -392,6 +402,8 @@ if (optimizationLikeHeatAdjointMode)
   const scalar optimizationCyclePTargetRatio =
     optimizationCyclePNonlinearChange/Foam::max(adjointCycleAdjointPNonlinearTol, SMALL);
   const scalar optimizationCycleCombinedMetric = Foam::max(optimizationCycleUTargetRatio, optimizationCyclePTargetRatio);
+  const scalar optimizationCycleBestMetricSafe =
+    Foam::max(optimizationCycleBestCombinedMetric, SMALL);
   const volScalarField optimizationCycleUbMagnitude(mag(Ub));
   const scalar optimizationCycleUbMax = gMax(optimizationCycleUbMagnitude);
   const scalar optimizationCyclePbRange = gMax(pb) - gMin(pb);
@@ -402,6 +414,7 @@ if (optimizationLikeHeatAdjointMode)
   bool optimizationCycleIsBestPass(false);
   bool optimizationCyclePendingRollback(false);
   bool optimizationCycleMagnitudeGuardTriggered(false);
+  bool optimizationCycleGrowthDiverged(false);
   bool optimizationCycleNoImproveDiverged(false);
   if
   (
@@ -417,10 +430,16 @@ if (optimizationLikeHeatAdjointMode)
   if
   (
       !optimizationCycleMagnitudeGuardTriggered
-   && (optimizationCycleBestCorrector == 0 || optimizationCycleCombinedMetric < optimizationCycleBestCombinedMetric)
+   && (
+        optimizationCycleBestCorrector == 0
+     || optimizationCycleCombinedMetric
+        < (scalar(1.0) - optimizationCycleHeatNoImproveTolerance)*optimizationCycleBestMetricSafe
+      )
   )
   {
     optimizationCycleBestCombinedMetric = optimizationCycleCombinedMetric;
+    optimizationCycleBestUbMax = optimizationCycleUbMax;
+    optimizationCycleBestPbRange = optimizationCyclePbRange;
     optimizationCycleBestUbInternal = optimizationCycleUbCurrent;
     optimizationCycleBestPbInternal = optimizationCyclePbCurrent;
     optimizationCycleBestPhibInternal = phib.internalField();
@@ -444,11 +463,35 @@ if (optimizationLikeHeatAdjointMode)
   (
       !optimizationCycleMagnitudeGuardTriggered
    && !optimizationCycleConverged
+   && optimizationCycleHeatRollbackGuardsEnabled
+   && optimizationCycleBestCorrector > 0
+   && optimizationCycleAdjointCorrectorsUsed > optimizationCycleBestCorrector
+   && optimizationCycleAdjointCorrectorsUsed >= optimizationCycleHeatNoImproveMinCorrectors
+   && (
+        optimizationCycleUbMax
+        > optimizationCycleHeatGrowthFactor*Foam::max(optimizationCycleBestUbMax, scalar(1.0))
+     || optimizationCyclePbRange
+        > optimizationCycleHeatGrowthFactor*Foam::max(optimizationCycleBestPbRange, scalar(1.0))
+      )
+  )
+  {
+    optimizationCycleGrowthDiverged = true;
+    optimizationCyclePendingRollback = true;
+    optimizationCycleHeatStopReason = "growth-diverged";
+  }
+
+  if
+  (
+      !optimizationCycleMagnitudeGuardTriggered
+   && !optimizationCycleGrowthDiverged
+   && !optimizationCycleConverged
    && optimizationCycleHeatNoImproveCheckEnabled
    && optimizationCycleBestCorrector > 0
    && optimizationCycleAdjointCorrectorsUsed > optimizationCycleBestCorrector
    && optimizationCycleAdjointCorrectorsUsed >= optimizationCycleHeatNoImproveMinCorrectors
    && optimizationCycleNoImproveStreak >= optimizationCycleHeatNoImprovePatience
+   && optimizationCycleCombinedMetric
+      > (scalar(1.0) + optimizationCycleHeatNoImproveTolerance)*optimizationCycleBestMetricSafe
   )
   {
     optimizationCycleNoImproveDiverged = true;
@@ -482,7 +525,7 @@ if (optimizationLikeHeatAdjointMode)
     {
       optimizationCyclePassState = "converged";
     }
-    else if (optimizationCycleMagnitudeGuardTriggered || optimizationCycleNoImproveDiverged)
+    else if (optimizationCycleMagnitudeGuardTriggered || optimizationCycleGrowthDiverged || optimizationCycleNoImproveDiverged)
     {
       optimizationCyclePassState = "rollback";
     }
@@ -526,6 +569,10 @@ if (optimizationLikeHeatAdjointMode)
     if (optimizationCycleMagnitudeGuardTriggered)
     {
       optimizationCycleHeatStopReason = "magnitude-guard-rollback";
+    }
+    else if (optimizationCycleGrowthDiverged)
+    {
+      optimizationCycleHeatStopReason = "growth-diverged-rollback";
     }
     else if (optimizationCycleNoImproveDiverged)
     {
