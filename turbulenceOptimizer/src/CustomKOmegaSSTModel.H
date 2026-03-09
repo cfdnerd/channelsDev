@@ -385,8 +385,22 @@
     alphaEff = DT + alphat;
     if (wallTreatmentModeWallFunctionCompatible)
     {
-      nut.correctBoundaryConditions();
-      alphat.correctBoundaryConditions();
+      forAll(mesh.boundary(), patchi)
+      {
+        if (mesh.boundary()[patchi].type() != "wall")
+        {
+          continue;
+        }
+        fvPatchScalarField& nutPatch = nut.boundaryFieldRef()[patchi];
+        fvPatchScalarField& alphatPatch = alphat.boundaryFieldRef()[patchi];
+        const labelUList& faceCells = mesh.boundary()[patchi].faceCells();
+        forAll(nutPatch, facei)
+        {
+          const label celli = faceCells[facei];
+          nutPatch[facei] = Foam::max(nut[celli], nutFloor.value());
+          alphatPatch[facei] = Foam::max(alphat[celli], scalar(0.0));
+        }
+      }
     }
   }
   else

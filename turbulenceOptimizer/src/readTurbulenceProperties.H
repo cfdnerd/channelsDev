@@ -1086,37 +1086,59 @@ if (customTurbulenceActive)
         const bool kWallFunctionPatch = isWallFunctionPatchType(kPatch);
         const bool omegaWallFunctionPatch = isWallFunctionPatchType(omegaPatch);
         const bool nutWallFunctionPatch = isWallFunctionPatchType(nutPatch);
+        const bool kFixedValuePatch = kPatch.type() == word("fixedValue");
+        const bool omegaFixedValuePatch = omegaPatch.type() == word("fixedValue");
+        const bool nutFixedValuePatch = nutPatch.type() == word("fixedValue");
 
         if
         (
-            wallTreatmentModeWallFunctionCompatible
-         && (!kWallFunctionPatch || !omegaWallFunctionPatch || !nutWallFunctionPatch)
+            kWallFunctionPatch
+         || omegaWallFunctionPatch
+         || nutWallFunctionPatch
         )
         {
             FatalErrorInFunction
-                << "wallTreatmentMode=wallFunctionCompatible requires wall-function BCs "
-                << "for k, omega, and nut on each wall patch. Patch="
+                << "OpenFOAM wall-function BCs are not supported in this solver branch because "
+                << "no standard turbulenceModel object is registered in objectRegistry. Patch="
                 << mesh.boundary()[patchi].name()
                 << " has kType=" << kPatch.type()
                 << ", omegaType=" << omegaPatch.type()
                 << ", nutType=" << nutPatch.type()
-                << ". Use kqRWallFunction, omegaWallFunction, and nutkWallFunction (or equivalents)."
+                << ". Use fixedValue BCs and rely on wallTreatmentMode="
+                << wallTreatmentMode
+                << " internal wall handling."
                 << exit(FatalError);
         }
 
         if
         (
             wallTreatmentModeLegacyFixedKOmega
-         && (kWallFunctionPatch || omegaWallFunctionPatch)
+         && (!kFixedValuePatch || !omegaFixedValuePatch)
         )
         {
             WarningInFunction
                 << "wallTreatmentMode=legacyFixedKOmega overrides wall k/omega values every iteration. "
-                << "Detected wall-function BCs on patch="
+                << "Expected fixedValue BCs on patch="
                 << mesh.boundary()[patchi].name()
                 << " (kType=" << kPatch.type()
                 << ", omegaType=" << omegaPatch.type() << ")."
                 << endl;
+        }
+
+        if
+        (
+            wallTreatmentModeWallFunctionCompatible
+         && (!kFixedValuePatch || !omegaFixedValuePatch || !nutFixedValuePatch)
+        )
+        {
+            FatalErrorInFunction
+                << "wallTreatmentMode=wallFunctionCompatible requires fixedValue BCs for "
+                << "k, omega, and nut (solver-internal wall-function-compatible treatment). Patch="
+                << mesh.boundary()[patchi].name()
+                << " has kType=" << kPatch.type()
+                << ", omegaType=" << omegaPatch.type()
+                << ", nutType=" << nutPatch.type()
+                << exit(FatalError);
         }
     }
 }

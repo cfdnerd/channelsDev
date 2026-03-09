@@ -26,15 +26,16 @@ Rationale:
 ## Fix 3: Case-level wall-function BC workflow
 
 - Updated templates:
-  - `0/k`: `kqRWallFunction`
-  - `0/omega`: `omegaWallFunction`
-  - new `0/nut`: `nutkWallFunction`
-- Added startup BC consistency checks per wall patch in wall-function mode.
+  - `0/k`: `fixedValue`
+  - `0/omega`: `fixedValue`
+  - `0/nut`: `fixedValue`
+- Added startup BC consistency checks per wall patch in wall-treatment mode.
 
 Rationale:
-- High-Re wall-function workflows must keep turbulence-wall BCs consistent across `k`, `omega`, and `nut` to avoid nonphysical wall closure behavior.
+- This solver branch uses a custom turbulence closure and does not register the standard OpenFOAM `turbulenceModel` object required by built-in `*WallFunction` patch fields.
+- Therefore wall treatment is implemented internally (solver-side), while boundary patch types stay `fixedValue` for robustness and compatibility.
 - References:
-  - OpenFOAM wall-function BC docs (`kqRWallFunction`, `nutkWallFunction`).
+  - OpenFOAM wall-function BC framework notes (for required `turbulenceModel` coupling).
   - Yoon (2016), *Computer Methods in Applied Mechanics and Engineering* 303, doi:10.1016/j.cma.2016.01.014.
 
 ## Fix 4: y+ diagnostics and warnings
