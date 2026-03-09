@@ -885,8 +885,7 @@ if (Pstream::master())
   writeSectionHeader("Solver Diagnostics");
   const label effectivePrimalCorrectors = momentumCorrectors;
   const bool optimizationStyleAdjointMode =
-      optimizationCycleTurbulentOptimizationMode
-   || turbulenceProModeActive;
+      optimizationCycleTurbulentOptimizationMode;
   const label effectiveAdjPowerCorrectors =
       optimizationStyleAdjointMode
     ? optimizationCycleFlowAdjointCorrectors

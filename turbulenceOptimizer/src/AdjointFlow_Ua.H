@@ -1,7 +1,6 @@
 const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
 const bool optimizationCycleFlowAdjointMode =
-    customTurbulenceActive
- && (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive);
+    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationCycleFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
@@ -219,7 +218,9 @@ for (i = 0; i < adjointFlowCorrectors; i++)
   {
       fvScalarMatrix paEqn
       (
-          fvm::laplacian(rAtUa(), pa) == fvc::div(phiHbyAa)
+          turbulenceProModeActive
+        ? fvm::laplacian(rAUa, pa) == fvc::div(phiHbyAa)
+        : fvm::laplacian(rAtUa(), pa) == fvc::div(phiHbyAa)
       );
 
       paEqn.setReference(paRefCell, paRefValue);
@@ -249,7 +250,10 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       pa.relax();
   }
 
-  Ua = HbyAa - rAtUa()*fvc::grad(pa);
+  Ua =
+    turbulenceProModeActive
+  ? HbyAa - rAUa*fvc::grad(pa)
+  : HbyAa - rAtUa()*fvc::grad(pa);
   Ua.correctBoundaryConditions();
   fvOptions.correct(Ua);
 

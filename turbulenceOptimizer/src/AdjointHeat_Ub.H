@@ -1,6 +1,5 @@
 const bool optimizationCycleObjectiveAdjointMode =
-    customTurbulenceActive
- && (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive);
+    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
 const bool optimizationCycleHeatRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const volScalarField& thermalAdjointSourceField =
@@ -151,7 +150,9 @@ while (simple.correctNonOrthogonal())
 {
     fvScalarMatrix pbEqn
     (
-        fvm::laplacian(rAtUb(), pb) == fvc::div(phiHbyAb)
+        turbulenceProModeActive
+      ? fvm::laplacian(rAUb, pb) == fvc::div(phiHbyAb)
+      : fvm::laplacian(rAtUb(), pb) == fvc::div(phiHbyAb)
     );
 
     pbEqn.setReference(pbRefCell, pbRefValue);
@@ -184,7 +185,10 @@ if (!optimizationCycleObjectiveAdjointMode || adjointCycleUseLegacyPressureRelax
 }
 
 // Adjoint momentum corrector
-Ub = HbyAb - rAtUb()*fvc::grad(pb);
+Ub =
+  turbulenceProModeActive
+? HbyAb - rAUb*fvc::grad(pb)
+: HbyAb - rAtUb()*fvc::grad(pb);
 Ub.correctBoundaryConditions();
 fvOptions.correct(Ub);
 
