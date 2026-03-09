@@ -126,10 +126,14 @@ if (customTurbulenceActive)
        *optimizationCycleClosureCrossCoupling
        *(omegaa/omegaaScale);
     }
+    const volScalarField kaTransportDiffusivity
+    (
+      turbulenceAdjointTransportDiffusionScale*(nu + alphaKField*nut)
+    );
     fvScalarMatrix kaEqn
     (
         fvm::div(phi, ka)
-      - fvm::laplacian(nu + alphaKField*nut, ka)
+      - fvm::laplacian(kaTransportDiffusivity, ka)
       + fvm::Sp(optimizationCycleClosureInvTau, ka)
       + fvm::Sp(optimizationCycleKReactionCoeff, ka)
      ==

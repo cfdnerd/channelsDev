@@ -77,6 +77,10 @@ if (customTurbulenceActive)
 
   const bool positivityPreservingLinearizationEnabled =
     static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
+  const volScalarField omegaTransportDiffusivity
+  (
+    turbulencePrimalTransportDiffusionScale*(nu + alphaOmegaField*nut)
+  );
 
   // Positivity-preserving source treatment:
   // split raw sources into positive explicit part and negative implicit sink.
@@ -143,7 +147,7 @@ if (customTurbulenceActive)
     fvScalarMatrix omegaEqn
     (
         fvm::div(phi, omega)
-      - fvm::laplacian(nu + alphaOmegaField*nut, omega)
+      - fvm::laplacian(omegaTransportDiffusivity, omega)
      ==
         omegaProductionPositive
       + omegaCrossDiffPositive
@@ -170,7 +174,7 @@ if (customTurbulenceActive)
     fvScalarMatrix omegaEqn
     (
         fvm::div(phi, omega)
-      - fvm::laplacian(nu + alphaOmegaField*nut, omega)
+      - fvm::laplacian(omegaTransportDiffusivity, omega)
      ==
         omegaProductionRaw
       + omegaCrossDiffField

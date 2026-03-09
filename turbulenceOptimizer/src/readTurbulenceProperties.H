@@ -99,6 +99,22 @@ dimensionedScalar nutMax(customTurbulenceProperties.lookup("nutMax"));
 dimensionedScalar yMin(customTurbulenceProperties.lookup("yMin"));
 dimensionedScalar nutFloor(customTurbulenceProperties.lookup("nutFloor"));
 scalar turbulenceDampingCoeff(readScalar(customTurbulenceProperties.lookup("turbulenceDampingCoeff")));
+scalar turbulencePrimalTransportDiffusionScale
+(
+    customTurbulenceProperties.lookupOrDefault<scalar>
+    (
+        "turbulencePrimalTransportDiffusionScale",
+        1.0
+    )
+);
+scalar turbulenceAdjointTransportDiffusionScale
+(
+    customTurbulenceProperties.lookupOrDefault<scalar>
+    (
+        "turbulenceAdjointTransportDiffusionScale",
+        1.0
+    )
+);
 if (kMin.value() <= SMALL)
 {
     FatalErrorInFunction
@@ -169,6 +185,20 @@ if (turbulenceDampingCoeff < 0.0)
     FatalErrorInFunction
         << "customTurbulenceProperties.turbulenceDampingCoeff must be non-negative. Found "
         << turbulenceDampingCoeff
+        << exit(FatalError);
+}
+if (turbulencePrimalTransportDiffusionScale < 1.0)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.turbulencePrimalTransportDiffusionScale must be >= 1. "
+        << "Found " << turbulencePrimalTransportDiffusionScale
+        << exit(FatalError);
+}
+if (turbulenceAdjointTransportDiffusionScale < 1.0)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.turbulenceAdjointTransportDiffusionScale must be >= 1. "
+        << "Found " << turbulenceAdjointTransportDiffusionScale
         << exit(FatalError);
 }
 Switch porousAwareTurbulenceTransport
@@ -555,6 +585,14 @@ else if (customTurbulenceActive)
         << "both optimizationCycleGradientClosure and enableTurbulentOptimization to true, "
         << "or set turbulenceProMode=true (with both gate keys false)."
         << exit(FatalError);
+}
+if (customTurbulenceActive)
+{
+    Info<< "Turbulence transport diffusion scales: primal(k/omega)="
+        << turbulencePrimalTransportDiffusionScale
+        << ", closureAdjoint(ka/omegaa)="
+        << turbulenceAdjointTransportDiffusionScale
+        << endl;
 }
 
 if

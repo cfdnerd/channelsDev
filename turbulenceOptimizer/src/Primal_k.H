@@ -68,6 +68,10 @@ if (customTurbulenceActive)
 
   const bool positivityPreservingLinearizationEnabled =
     static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
+  const volScalarField kTransportDiffusivity
+  (
+    turbulencePrimalTransportDiffusionScale*(nu + alphaKField*nut)
+  );
   // Patankar-style source split: keep explicit source non-negative and treat
   // any negative part implicitly as a sink coefficient.
   const volScalarField kPatankarRef
@@ -103,7 +107,7 @@ if (customTurbulenceActive)
       fvScalarMatrix kEqn
       (
           fvm::div(phi, k)
-        - fvm::laplacian(nu + alphaKField*nut, k)
+        - fvm::laplacian(kTransportDiffusivity, k)
        ==
           kProductionPositive
         - fvm::Sp(kProductionNegativeCoeff, k)
@@ -124,7 +128,7 @@ if (customTurbulenceActive)
       fvScalarMatrix kEqn
       (
           fvm::div(phi, k)
-        - fvm::laplacian(nu + alphaKField*nut, k)
+        - fvm::laplacian(kTransportDiffusivity, k)
        ==
           kProductionRaw
         - fvm::Sp

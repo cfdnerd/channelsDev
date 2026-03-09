@@ -59,6 +59,8 @@ nutFloor                        nutFloor [0 2 -1 0 0 0 0] 1e-12;
 nutMax                          nutMax [0 2 -1 0 0 0 0] 1e-2;
 yMin                            yMin [0 1 0 0 0 0 0] 1e-8;
 turbulenceDampingCoeff          1.0;        // Required damping scale.
+turbulencePrimalTransportDiffusionScale 1.5; // >1 adds dissipation for k/omega transport.
+turbulenceAdjointTransportDiffusionScale 2.0; // >1 adds dissipation for ka/omegaa transport.
 
 // ------------------------------------------------------------------------- //
 // Primal Nonlinear Solve
