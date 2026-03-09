@@ -28,6 +28,7 @@ enableTurbulentOptimization     false;      // Set true only with optimizationCy
 // ------------------------------------------------------------------------- //
 // Inlet Reference
 // ------------------------------------------------------------------------- //
+Uin                             0.5;         // Inlet speed reference [m/s].
 inletTurbulenceMode             directFields; // Use inlet values from 0/ fields.
 turbulenceLengthScale           turbulenceLengthScale [0 1 0 0 0 0 0] 2.8e-4; // Lt reference.
 
