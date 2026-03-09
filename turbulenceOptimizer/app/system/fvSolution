@@ -20,7 +20,7 @@ solvers
     "(pa|pb)"
     {
         solver          PBiCGStab;
-        preconditioner  DILU;
+        preconditioner  DIC;
         tolerance       1e-10;
         relTol          0;
         maxIter         20000;
