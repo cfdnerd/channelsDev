@@ -807,25 +807,15 @@ if (Pstream::master())
       << std::left
       << std::setw(8) << "Iter"
       << std::setw(14) << "HealthScore"
-      << std::setw(14) << "HealthBand"
       << std::setw(14) << "PenTotal"
       << std::setw(14) << "RollPen"
-      << std::setw(14) << "ConPen"
       << std::setw(14) << "LinPen"
+      << std::setw(14) << "ConPen"
       << std::setw(14) << "ClipPen"
       << std::setw(14) << "ConsPen"
       << std::setw(14) << "TrustPen"
-      << std::setw(14) << "GuardCon"
-      << std::setw(14) << "MaxLinRes"
-      << std::setw(14) << "ClipFrac"
-      << std::setw(14) << "GradCons"
-      << std::setw(10) << "TrustDef"
-      << std::setw(14) << "TrustRatio"
       << std::setw(10) << "FlowRB"
       << std::setw(10) << "HeatRB"
-      << std::setw(10) << "FlowDiv"
-      << std::setw(10) << "FlowMagG"
-      << std::setw(10) << "HeatMagG"
       << '\n';
   }
   healthFile
@@ -833,26 +823,16 @@ if (Pstream::master())
     << std::setw(8) << opt
     << std::fixed << std::setprecision(2)
     << std::setw(14) << optimizerHealthScore
-    << std::setw(14) << optimizerHealthBand
     << std::scientific << std::setprecision(6)
     << std::setw(14) << healthPenaltyTotal
     << std::setw(14) << rollbackPenalty
-    << std::setw(14) << constraintPenalty
     << std::setw(14) << linearPenalty
+    << std::setw(14) << constraintPenalty
     << std::setw(14) << clipPenalty
     << std::setw(14) << consistencyPenalty
     << std::setw(14) << trustPenalty
-    << std::setw(14) << guardConstraintViolation
-    << std::setw(14) << maxLinearFinalResidual
-    << std::setw(14) << maxClipFraction
-    << std::setw(14) << gradientConsistencyRatio
-    << std::setw(10) << static_cast<int>(trustRatioDefined)
-    << std::setw(14) << trustRatio
     << std::setw(10) << static_cast<int>(adjointCycleAdjointRolledBack)
     << std::setw(10) << static_cast<int>(optimizationCycleHeatAdjointRolledBack)
-    << std::setw(10) << static_cast<int>(adjointCycleAdjointFlowDiverged)
-    << std::setw(10) << static_cast<int>(flowMagnitudeGuardHit)
-    << std::setw(10) << static_cast<int>(heatMagnitudeGuardHit)
     << '\n';
   if (triggerFirstFailureSnapshot)
   {
