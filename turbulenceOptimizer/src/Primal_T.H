@@ -16,7 +16,10 @@ if (!turbulenceProModeActive)
 {
  TEqn.relax();
 }
-const auto TLinearSolvePerformance = TEqn.solve();
+const auto TLinearSolvePerformance =
+  proModeRobustScalarSolverActive
+? TEqn.solve(proModeRobustScalarSolverControls)
+: TEqn.solve();
 recordLinearSolve
 (
   TLinearSolveStats,

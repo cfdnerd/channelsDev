@@ -20,12 +20,46 @@ Switch proModeClosureAdjointSolves
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("proModeClosureAdjointSolves", true)
 );
+Switch proModeAdjointStabilityPack
+(
+    customTurbulenceProperties.lookupOrDefault<Switch>("proModeAdjointStabilityPack", true)
+);
 const bool turbulenceProModeActive =
     customTurbulenceActive
  && static_cast<bool>(turbulenceProMode);
 const bool proModeClosureAdjointSolvesActive =
     turbulenceProModeActive
  && static_cast<bool>(proModeClosureAdjointSolves);
+const bool proModeAdjointStabilityPackActive =
+    turbulenceProModeActive
+ && static_cast<bool>(proModeAdjointStabilityPack);
+// Pro-mode stability pack (hardcoded): activated by one dict toggle.
+const label proModeFlowAdjointCorrectors =
+    proModeAdjointStabilityPackActive ? label(20) : label(40);
+const label proModeHeatAdjointCorrectors =
+    proModeAdjointStabilityPackActive ? label(20) : label(40);
+const bool proModeResetAdjointState = proModeAdjointStabilityPackActive;
+const bool proModeAdjointNoImproveCheck = proModeAdjointStabilityPackActive;
+const label proModeAdjointNoImproveMinCorrectors(3);
+const label proModeAdjointNoImprovePatience(2);
+const scalar proModeAdjointMaxMagnitude(1e8);
+const bool proModeAdjointUseNuEff = proModeAdjointStabilityPackActive;
+const bool proModeAdjointUseLegacyPressureRelax = proModeAdjointStabilityPackActive;
+const bool proModeTransportedClosureAdjoints = true;
+const word proModeClosureAdjointFormulation("transportedResidualDraft");
+const bool proModeClosureAdjointDualConsistentBC(true);
+const scalar proModeClosureAdjointInvTau(3.0);
+const scalar proModeClosureCrossCoupling(0.15);
+const bool proModeRobustScalarSolverActive = proModeAdjointStabilityPackActive;
+dictionary proModeRobustScalarSolverControls;
+if (proModeRobustScalarSolverActive)
+{
+    proModeRobustScalarSolverControls.add("solver", word("PBiCGStab"));
+    proModeRobustScalarSolverControls.add("preconditioner", word("DILU"));
+    proModeRobustScalarSolverControls.add("tolerance", 1e-10);
+    proModeRobustScalarSolverControls.add("relTol", 0.0);
+    proModeRobustScalarSolverControls.add("maxIter", 20000);
+}
 Switch adjointCycleThermalAdjointOnly
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleThermalAdjointOnly", false)
@@ -296,6 +330,46 @@ Switch optimizationCycleUseLogClosureState
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleUseLogClosureState", true)
 );
+const bool closureAdjointTransportedActive =
+    turbulenceProModeActive
+ ? (
+      proModeAdjointStabilityPackActive
+      ? static_cast<bool>(proModeTransportedClosureAdjoints)
+      : static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
+   )
+ : static_cast<bool>(optimizationCycleTransportedClosureAdjoints);
+const word closureAdjointFormulationActive =
+    turbulenceProModeActive
+ ? (
+      proModeAdjointStabilityPackActive
+      ? proModeClosureAdjointFormulation
+      : optimizationCycleClosureAdjointFormulation
+   )
+ : optimizationCycleClosureAdjointFormulation;
+const bool closureAdjointDualConsistentBCActive =
+    turbulenceProModeActive
+ ? (
+      proModeAdjointStabilityPackActive
+      ? static_cast<bool>(proModeClosureAdjointDualConsistentBC)
+      : static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC)
+   )
+ : static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC);
+const scalar closureAdjointInvTauActive =
+    turbulenceProModeActive
+ ? (
+      proModeAdjointStabilityPackActive
+      ? proModeClosureAdjointInvTau
+      : optimizationCycleClosureAdjointInvTau
+   )
+ : optimizationCycleClosureAdjointInvTau;
+const scalar closureAdjointCrossCouplingActive =
+    turbulenceProModeActive
+ ? (
+      proModeAdjointStabilityPackActive
+      ? proModeClosureCrossCoupling
+      : optimizationCycleClosureCrossCoupling
+   )
+ : optimizationCycleClosureCrossCoupling;
 // Retired dictionary tuning knobs: fixed staged-adjoint guard policy.
 scalar adjointCycleAdjointUNonlinearTol(5e-3);
 scalar adjointCycleAdjointPNonlinearTol(5e-3);
@@ -348,6 +422,20 @@ if
         << "be proxyNormalized, transportedResidualDraft, or "
         << "transportedCrossCoupledV3. Found "
         << optimizationCycleClosureAdjointFormulation
+        << exit(FatalError);
+}
+if
+(
+    proModeClosureAdjointFormulation != "proxyNormalized"
+ && proModeClosureAdjointFormulation != "transportedResidualDraft"
+ && proModeClosureAdjointFormulation != "transportedCrossCoupledV3"
+)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeClosureAdjointFormulation must "
+        << "be proxyNormalized, transportedResidualDraft, or "
+        << "transportedCrossCoupledV3. Found "
+        << proModeClosureAdjointFormulation
         << exit(FatalError);
 }
 if (porousTurbulenceProductionExponent < 1.0)
@@ -431,6 +519,15 @@ if (optimizationCycleFlowAdjointCorrectors < 1 || optimizationCycleHeatAdjointCo
         << ", heat=" << optimizationCycleHeatAdjointCorrectors
         << exit(FatalError);
 }
+if (proModeFlowAdjointCorrectors < 1 || proModeHeatAdjointCorrectors < 1)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeFlowAdjointCorrectors and "
+        << "proModeHeatAdjointCorrectors must both be >= 1. Found flow="
+        << proModeFlowAdjointCorrectors
+        << ", heat=" << proModeHeatAdjointCorrectors
+        << exit(FatalError);
+}
 if (optimizationCycleClosureAdjointInvTau <= SMALL)
 {
     FatalErrorInFunction
@@ -443,6 +540,55 @@ if (optimizationCycleClosureCrossCoupling < 0.0 || optimizationCycleClosureCross
     FatalErrorInFunction
         << "customTurbulenceProperties.optimizationCycleClosureCrossCoupling must be in [0, 1]. Found "
         << optimizationCycleClosureCrossCoupling
+        << exit(FatalError);
+}
+if (proModeClosureAdjointInvTau <= SMALL)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeClosureAdjointInvTau must be > 0. Found "
+        << proModeClosureAdjointInvTau
+        << exit(FatalError);
+}
+if (proModeClosureCrossCoupling < 0.0 || proModeClosureCrossCoupling > 1.0)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeClosureCrossCoupling must be in [0, 1]. Found "
+        << proModeClosureCrossCoupling
+        << exit(FatalError);
+}
+if (proModeAdjointMaxMagnitude <= SMALL)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeAdjointMaxMagnitude must be > 0. Found "
+        << proModeAdjointMaxMagnitude
+        << exit(FatalError);
+}
+if (proModeAdjointNoImproveMinCorrectors < 1)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeAdjointNoImproveMinCorrectors must be >= 1. Found "
+        << proModeAdjointNoImproveMinCorrectors
+        << exit(FatalError);
+}
+if
+(
+    proModeAdjointNoImproveMinCorrectors
+ > Foam::max(proModeFlowAdjointCorrectors, proModeHeatAdjointCorrectors)
+)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeAdjointNoImproveMinCorrectors must be <= "
+        << "max(proModeFlowAdjointCorrectors, proModeHeatAdjointCorrectors). Found minPass="
+        << proModeAdjointNoImproveMinCorrectors
+        << ", flow=" << proModeFlowAdjointCorrectors
+        << ", heat=" << proModeHeatAdjointCorrectors
+        << exit(FatalError);
+}
+if (proModeAdjointNoImprovePatience < 1)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeAdjointNoImprovePatience must be >= 1. Found "
+        << proModeAdjointNoImprovePatience
         << exit(FatalError);
 }
 if
@@ -561,17 +707,29 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << "cost/sensitivity/filter/update logic without turbulent sensitivity terms."
         << endl;
     Info<< "Pro mode closure adjoints="
-        << (optimizationCycleTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
-        << " (invTau=" << optimizationCycleClosureAdjointInvTau
-        << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
-        << ", formulation=" << optimizationCycleClosureAdjointFormulation
-        << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
+        << (closureAdjointTransportedActive ? "transported-PDE" : "proxy-reconstruction")
+        << " (invTau=" << closureAdjointInvTauActive
+        << ", crossCoupling=" << closureAdjointCrossCouplingActive
+        << ", formulation=" << closureAdjointFormulationActive
+        << ", dualBC=" << (closureAdjointDualConsistentBCActive ? "true" : "false")
         << "). "
         << "Pro closure-adjoint solves="
         << (proModeClosureAdjointSolvesActive ? "enabled" : "disabled")
         << ". "
-        << "Adjoint correctors per loop: flow=40, heat=40"
-        << " (laminar-aligned Pro mode)"
+        << "StabilityPack="
+        << (proModeAdjointStabilityPackActive ? "on" : "off")
+        << ". "
+        << "Adjoint correctors per loop: flow=" << proModeFlowAdjointCorrectors
+        << ", heat=" << proModeHeatAdjointCorrectors
+        << ". Pro adjoint tuning: reset="
+        << (proModeResetAdjointState ? "true" : "false")
+        << " noImproveGuard=" << (proModeAdjointNoImproveCheck ? "true" : "false")
+        << " (minPass=" << proModeAdjointNoImproveMinCorrectors
+        << ", patience=" << proModeAdjointNoImprovePatience << ")"
+        << " |Uadj|max<=" << proModeAdjointMaxMagnitude
+        << " viscosity=" << (proModeAdjointUseNuEff ? "nuEff" : "nu")
+        << " legacyPressureRelax="
+        << (proModeAdjointUseLegacyPressureRelax ? "true" : "false")
         << "."
         << endl;
 }

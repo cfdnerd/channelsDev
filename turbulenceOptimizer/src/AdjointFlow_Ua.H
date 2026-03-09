@@ -1,38 +1,58 @@
 const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
 const bool optimizationCycleFlowAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+const bool proModeFlowAdjointMode =
+    customTurbulenceActive
+ && turbulenceProModeActive
+ && proModeAdjointStabilityPackActive;
 const bool optimizationLikeFlowAdjointMode =
-    optimizationCycleFlowAdjointMode;
+    optimizationCycleFlowAdjointMode || proModeFlowAdjointMode;
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationLikeFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const bool resetAdjointState =
     (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
- || (optimizationLikeFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState));
+ || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState))
+ || (proModeFlowAdjointMode && static_cast<bool>(proModeResetAdjointState));
 const bool stagnationCheckEnabled =
     adjointRollbackGuardsEnabled
  && (
       (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleStagnationCheck))
-   || (optimizationLikeFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck))
+   || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck))
+   || (proModeFlowAdjointMode && static_cast<bool>(proModeAdjointNoImproveCheck))
     );
 const label noImprovePatience =
-    optimizationLikeFlowAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
+    optimizationCycleFlowAdjointMode
+  ? optimizationCycleNoImprovePatience
+  : (proModeFlowAdjointMode ? proModeAdjointNoImprovePatience : adjointCycleStagnationPatience);
 const label noImproveMinCorrectors =
-    optimizationLikeFlowAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
+    optimizationCycleFlowAdjointMode
+  ? optimizationCycleNoImproveMinCorrectors
+  : (proModeFlowAdjointMode ? proModeAdjointNoImproveMinCorrectors : label(1));
 const bool divergenceCheckEnabled =
     adjointRollbackGuardsEnabled
  && adjointCycleFlowAdjointMode
  && adjointCycleDivergenceCheck;
 const scalar flowAdjointMagnitudeLimit =
-    optimizationLikeFlowAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
+    optimizationCycleFlowAdjointMode
+  ? optimizationCycleAdjointMaxMagnitude
+  : (proModeFlowAdjointMode ? proModeAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude);
 const bool useNuEffInUaEquation =
-    optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleUseNuEff);
+    optimizationCycleFlowAdjointMode
+ || (proModeFlowAdjointMode && static_cast<bool>(proModeAdjointUseNuEff))
+ || (adjointCycleFlowAdjointMode && adjointCycleUseNuEff);
 const bool includeTaSourceInUaEquation =
     optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleIncludeThermalMomentumSource);
+const bool useLegacyPressureRelax =
+    optimizationCycleFlowAdjointMode
+  ? static_cast<bool>(adjointCycleUseLegacyPressureRelax)
+  : (proModeFlowAdjointMode ? static_cast<bool>(proModeAdjointUseLegacyPressureRelax) : static_cast<bool>(adjointCycleUseLegacyPressureRelax));
 const label adjointFlowCorrectors =
-    optimizationLikeFlowAdjointMode
+    optimizationCycleFlowAdjointMode
   ? optimizationCycleFlowAdjointCorrectors
-  : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40);
+  : (proModeFlowAdjointMode
+    ? proModeFlowAdjointCorrectors
+    : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40));
 adjointCycleAdjointUNonlinearChange = 0.0;
 adjointCycleAdjointPNonlinearChange = 0.0;
 adjointCycleAdjointFlowConverged = !boundedFlowAdjointMode;
@@ -81,7 +101,9 @@ if (boundedFlowAdjointMode)
       const char* adjointCycleTraceTag =
           optimizationCycleFlowAdjointMode
         ? "[Optimization-Cycle Flow Adjoint Corrector Trace]"
-        : "[Adjoint-Cycle Flow Adjoint Corrector Trace]";
+        : (proModeFlowAdjointMode
+          ? "[Pro-Mode Flow Adjoint Corrector Trace]"
+          : "[Adjoint-Cycle Flow Adjoint Corrector Trace]");
       debugAdjointCycleLogFileStream
         << "\n" << adjointCycleTraceTag << "\n"
         << "  Iteration           : " << opt << "\n"
@@ -91,7 +113,7 @@ if (boundedFlowAdjointMode)
         << " TaSource="
         << (includeTaSourceInUaEquation ? "true" : "false")
         << " legacyPaRelax="
-        << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
+        << (useLegacyPressureRelax ? "true" : "false")
         << " divergenceGuard="
         << (divergenceCheckEnabled ? "true" : "false")
         << " stagnationGuard="
@@ -99,7 +121,7 @@ if (boundedFlowAdjointMode)
         << " |Ua|maxLimit=" << flowAdjointMagnitudeLimit
         << " growth=" << adjointCycleDivergenceGrowthFactor
         << " minPass="
-        << (optimizationCycleFlowAdjointMode ? noImproveMinCorrectors : adjointCycleDivergenceMinCorrectors)
+        << (optimizationLikeFlowAdjointMode ? noImproveMinCorrectors : adjointCycleDivergenceMinCorrectors)
         << " patience=" << noImprovePatience
         << "\n"
         << "  "
@@ -247,7 +269,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       }
   }
 
-  if (!boundedFlowAdjointMode || adjointCycleUseLegacyPressureRelax)
+  if (!boundedFlowAdjointMode || useLegacyPressureRelax)
   {
       pa.relax();
   }

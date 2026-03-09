@@ -66,7 +66,10 @@ if
    thermalExcessWeight.correctBoundaryConditions();
    TEqnb -= unitThermalSource*thermalExcessWeight;
 }
-const auto TbLinearSolvePerformance = TEqnb.solve();
+const auto TbLinearSolvePerformance =
+  proModeRobustScalarSolverActive
+? TEqnb.solve(proModeRobustScalarSolverControls)
+: TEqnb.solve();
 recordLinearSolve
 (
   TbLinearSolveStats,

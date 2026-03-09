@@ -1,5 +1,11 @@
 const bool optimizationCycleObjectiveAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+const bool proModeHeatAdjointMode =
+    customTurbulenceActive
+ && turbulenceProModeActive
+ && proModeAdjointStabilityPackActive;
+const bool optimizationLikeHeatAdjointMode =
+    optimizationCycleObjectiveAdjointMode || proModeHeatAdjointMode;
 const bool optimizationCycleHeatRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const volScalarField& thermalAdjointSourceField =
@@ -7,28 +13,37 @@ const volScalarField& thermalAdjointSourceField =
 const label adjointHeatCorrectors =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleHeatAdjointCorrectors
-  : 40;
+  : (proModeHeatAdjointMode ? proModeHeatAdjointCorrectors : 40);
 const scalar optimizationCycleHeatAdjointMagnitudeLimit =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleAdjointMaxMagnitude
-  : adjointCycleAdjointMaxMagnitude;
+  : (proModeHeatAdjointMode ? proModeAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude);
 const bool optimizationCycleHeatNoImproveCheckEnabled =
     optimizationCycleHeatRollbackGuardsEnabled
  && (
       optimizationCycleObjectiveAdjointMode
       ? static_cast<bool>(optimizationCycleNoImproveCheck)
-      : static_cast<bool>(adjointCycleStagnationCheck)
+      : (proModeHeatAdjointMode ? static_cast<bool>(proModeAdjointNoImproveCheck) : static_cast<bool>(adjointCycleStagnationCheck))
     );
 const label optimizationCycleHeatNoImprovePatience =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImprovePatience
-  : adjointCycleStagnationPatience;
+  : (proModeHeatAdjointMode ? proModeAdjointNoImprovePatience : adjointCycleStagnationPatience);
 const label optimizationCycleHeatNoImproveMinCorrectors =
     optimizationCycleObjectiveAdjointMode
   ? optimizationCycleNoImproveMinCorrectors
-  : label(1);
+  : (proModeHeatAdjointMode ? proModeAdjointNoImproveMinCorrectors : label(1));
 const bool resetHeatAdjointState =
-    optimizationCycleObjectiveAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState);
+    optimizationCycleObjectiveAdjointMode
+ ? static_cast<bool>(optimizationCycleResetAdjointState)
+ : (proModeHeatAdjointMode ? static_cast<bool>(proModeResetAdjointState) : false);
+const bool useNuEffInUbEquation =
+    optimizationCycleObjectiveAdjointMode
+ || (proModeHeatAdjointMode && static_cast<bool>(proModeAdjointUseNuEff));
+const bool useLegacyPbRelax =
+    optimizationCycleObjectiveAdjointMode
+  ? static_cast<bool>(adjointCycleUseLegacyPressureRelax)
+  : (proModeHeatAdjointMode ? static_cast<bool>(proModeAdjointUseLegacyPressureRelax) : static_cast<bool>(adjointCycleUseLegacyPressureRelax));
 
 vectorField optimizationCycleBestUbInternal;
 scalarField optimizationCycleBestPbInternal;
@@ -37,9 +52,9 @@ scalar optimizationCycleBestCombinedMetric = GREAT;
 label optimizationCycleNoImproveStreak = 0;
 label optimizationCycleBestCorrector = 0;
 label optimizationCycleAdjointCorrectorsUsed = 0;
-word optimizationCycleHeatStopReason(optimizationCycleObjectiveAdjointMode ? "max-correctors" : "legacy");
+word optimizationCycleHeatStopReason(optimizationLikeHeatAdjointMode ? "max-correctors" : "legacy");
 
-if (optimizationCycleObjectiveAdjointMode)
+if (optimizationLikeHeatAdjointMode)
 {
   if (resetHeatAdjointState)
   {
@@ -58,13 +73,16 @@ if (optimizationCycleObjectiveAdjointMode)
   {
     std::ofstream debugAdjointCycleLogFileStream(debugAdjointCycleLogFile, std::ios::app);
     debugAdjointCycleLogFileStream
-      << "\n[Optimization-Cycle Heat Adjoint Corrector Trace]\n"
+      << "\n"
+      << (optimizationCycleObjectiveAdjointMode
+          ? "[Optimization-Cycle Heat Adjoint Corrector Trace]\n"
+          : "[Pro-Mode Heat Adjoint Corrector Trace]\n")
       << "  Iteration           : " << opt << "\n"
       << "  Config              : reset="
       << (resetHeatAdjointState ? "true" : "false")
-      << " viscosity=" << (optimizationCycleObjectiveAdjointMode ? "nuEff" : "nu")
+      << " viscosity=" << (useNuEffInUbEquation ? "nuEff" : "nu")
       << " legacyPbRelax="
-      << (adjointCycleUseLegacyPressureRelax ? "true" : "false")
+      << (useLegacyPbRelax ? "true" : "false")
       << " noImproveGuard="
       << (optimizationCycleHeatNoImproveCheckEnabled ? "true" : "false")
       << " minPass=" << optimizationCycleHeatNoImproveMinCorrectors
@@ -81,7 +99,7 @@ scalarField optimizationCyclePbPrevious;
 scalar optimizationCyclePbPassInitialResidual = 0.0;
 scalar optimizationCyclePbPassFinalResidual = 0.0;
 label optimizationCyclePbPassIterations = 0;
-if (optimizationCycleObjectiveAdjointMode)
+if (optimizationLikeHeatAdjointMode)
 {
   optimizationCycleUbPrevious = Ub.internalField();
   optimizationCyclePbPrevious = pb.internalField();
@@ -91,7 +109,7 @@ volVectorField adjointTransposeConvectionb((fvc::grad(U) & Ub));
 
 tmp<fvVectorMatrix> tUbEqn
 (
-  optimizationCycleObjectiveAdjointMode
+  useNuEffInUbEquation
 ? tmp<fvVectorMatrix>
   (
       new fvVectorMatrix
@@ -188,7 +206,7 @@ while (simple.correctNonOrthogonal())
 
 //#include "adjointContinuityErrs.H"
 
-if (!optimizationCycleObjectiveAdjointMode || adjointCycleUseLegacyPressureRelax)
+if (!optimizationLikeHeatAdjointMode || useLegacyPbRelax)
 {
   pb.relax();
 }
@@ -201,7 +219,7 @@ Ub =
 Ub.correctBoundaryConditions();
 fvOptions.correct(Ub);
 
-if (optimizationCycleObjectiveAdjointMode)
+if (optimizationLikeHeatAdjointMode)
 {
   const vectorField& optimizationCycleUbCurrent = Ub.internalField();
   const scalarField& optimizationCyclePbCurrent = pb.internalField();

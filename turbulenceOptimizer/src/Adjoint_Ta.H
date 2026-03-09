@@ -65,7 +65,10 @@ if (mesh.nCells() > 0)
    TaEqn.setReference(0, 0.0);
 }
 
-const auto TaLinearSolvePerformance = TaEqn.solve();
+const auto TaLinearSolvePerformance =
+  proModeRobustScalarSolverActive
+? TaEqn.solve(proModeRobustScalarSolverControls)
+: TaEqn.solve();
 recordLinearSolve
 (
   TaLinearSolveStats,

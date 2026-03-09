@@ -2,18 +2,18 @@ if (customTurbulenceActive)
 {
   const bool optimizationCycleUseTransportedClosureAdjoints =
     turbulenceAdjointClosureMode
-    && static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
+    && closureAdjointTransportedActive
     && static_cast<bool>(optDualConsistentStateMapEnforce);
   const bool optimizationCycleUseResidualDraftClosureAdjoints =
     optimizationCycleUseTransportedClosureAdjoints
-    && optimizationCycleClosureAdjointFormulation == word("transportedResidualDraft");
+    && closureAdjointFormulationActive == word("transportedResidualDraft");
   const bool optimizationCycleUseCrossCoupledClosureAdjoints =
     optimizationCycleUseTransportedClosureAdjoints
-    && optimizationCycleClosureAdjointFormulation == word("transportedCrossCoupledV3");
+    && closureAdjointFormulationActive == word("transportedCrossCoupledV3");
   auto applyDualConsistentKaBC =
   [&]()
   {
-    if (optimizationCycleUseTransportedClosureAdjoints && static_cast<bool>(optimizationCycleClosureAdjointDualConsistentBC))
+    if (optimizationCycleUseTransportedClosureAdjoints && closureAdjointDualConsistentBCActive)
     {
       forAll(ka.boundaryFieldRef(), patchi)
       {
@@ -81,7 +81,7 @@ if (customTurbulenceActive)
     (
       "optimizationCycleClosureInvTau",
       dimless/dimTime,
-      optimizationCycleClosureAdjointInvTau
+      closureAdjointInvTauActive
     );
     volScalarField optimizationCycleKReactionCoeff
     (
@@ -123,7 +123,7 @@ if (customTurbulenceActive)
       );
       optimizationCycleKCrossSource =
         optimizationCycleClosureInvTau
-       *optimizationCycleClosureCrossCoupling
+       *closureAdjointCrossCouplingActive
        *(omegaa/omegaaScale);
     }
     const volScalarField kaTransportDiffusivity

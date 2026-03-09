@@ -82,4 +82,9 @@ optimizationCycleTransportedClosureAdjoints  true; // Enable ka/omegaa PDE.
 optimizationCycleClosureAdjointFormulation   transportedCrossCoupledV3;
 optimizationCycleClosureAdjointDualConsistentBC true; // Dual-consistent BC.
 
+// ------------------------------------------------------------------------- //
+// Pro-Mode Adjoint Tuning
+// ------------------------------------------------------------------------- //
+proModeAdjointStabilityPack          true; // Single toggle: enables hardcoded Pro-mode stability package (Ua/Ub tuning + closure damping + T/Ta/Tb PBiCGStab/DILU).
+
 // ************************************************************************* //
