@@ -147,14 +147,21 @@ if (useDedicatedThermalEnvelopeAdjoints)
 
   scalar ksMaxExpSumLocal = 0.0;
   scalar ksMinExpSumLocal = 0.0;
+  const scalar thermalExpArgClamp = optThermalEnvelopeExpArgClamp;
   for (i = 0; i < n; i++)
   {
     const scalar Ti = T[i];
     const scalar cellV = mesh.V()[i];
     const scalar thetaMax = (Ti - optThermalTmaxLimit)/Foam::max(optThermalExcessSoftplusScale, SMALL);
     const scalar thetaMin = (optThermalTminLimit - Ti)/Foam::max(optThermalExcessSoftplusScale, SMALL);
-    ksMaxExpSumLocal += std::exp(thermalKSBeta*(thetaMax - thetaMaxPeakLocal))*cellV;
-    ksMinExpSumLocal += std::exp(thermalKSBeta*(thetaMin - thetaMinPeakLocal))*cellV;
+    const scalar expArgMax = thermalKSBeta*(thetaMax - thetaMaxPeakLocal);
+    const scalar expArgMin = thermalKSBeta*(thetaMin - thetaMinPeakLocal);
+    const scalar boundedExpArgMax =
+      Foam::max(-thermalExpArgClamp, Foam::min(thermalExpArgClamp, expArgMax));
+    const scalar boundedExpArgMin =
+      Foam::max(-thermalExpArgClamp, Foam::min(thermalExpArgClamp, expArgMin));
+    ksMaxExpSumLocal += std::exp(boundedExpArgMax)*cellV;
+    ksMinExpSumLocal += std::exp(boundedExpArgMin)*cellV;
   }
   reduce(ksMaxExpSumLocal, sumOp<scalar>());
   reduce(ksMinExpSumLocal, sumOp<scalar>());
@@ -198,8 +205,14 @@ if (useDedicatedThermalEnvelopeAdjoints)
     const scalar cellV = VInternal[celli];
     const scalar thetaMax = (Ti - optThermalTmaxLimit)/thermalScale;
     const scalar thetaMin = (optThermalTminLimit - Ti)/thermalScale;
-    const scalar expMax = std::exp(thermalKSBeta*(thetaMax - thetaMaxPeakLocal));
-    const scalar expMin = std::exp(thermalKSBeta*(thetaMin - thetaMinPeakLocal));
+    const scalar expArgMax = thermalKSBeta*(thetaMax - thetaMaxPeakLocal);
+    const scalar expArgMin = thermalKSBeta*(thetaMin - thetaMinPeakLocal);
+    const scalar boundedExpArgMax =
+      Foam::max(-thermalExpArgClamp, Foam::min(thermalExpArgClamp, expArgMax));
+    const scalar boundedExpArgMin =
+      Foam::max(-thermalExpArgClamp, Foam::min(thermalExpArgClamp, expArgMin));
+    const scalar expMax = std::exp(boundedExpArgMax);
+    const scalar expMin = std::exp(boundedExpArgMin);
     thermalTmaxWeightInternal[celli] = (expMax*cellV/ksMaxExpDen)/thermalScale;
     thermalTminWeightInternal[celli] = -(expMin*cellV/ksMinExpDen)/thermalScale;
   }
@@ -241,7 +254,7 @@ if (useDedicatedThermalEnvelopeAdjoints)
   (
     "thermalAdjointDiagReg",
     dimensionSet(0,0,-1,0,0,0,0),
-    1e-12
+    optThermalAdjointDiagReg
   );
 
   fvScalarMatrix TbThermalTmaxEqn

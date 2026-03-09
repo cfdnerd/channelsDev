@@ -88,7 +88,7 @@ solvers
         nCellsInCoarsestLevel 20;
         maxIter         20000;
     }
-     "(Ta|Tb|TbThermalTmax|TbThermalTmin)"
+     "(Ta|Tb)"
     {
         solver          GAMG;
         tolerance       1e-10;
@@ -102,6 +102,14 @@ solvers
         nFinestSweeps   2;
         nCellsInCoarsestLevel 20;
         maxIter         20000;
+    }
+     "(TbThermalTmax|TbThermalTmin)"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-10;
+        relTol          0;
+        maxIter         40000;
     }
      "(xp|fsensMeanT|gsensVol|gsensPowerDiss|gsensThermalTmax|gsensThermalTmin)"
     {

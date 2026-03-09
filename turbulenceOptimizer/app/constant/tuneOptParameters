@@ -65,6 +65,8 @@ convergenceControl
     optThermalTmaxLimit           15.0; // upper envelope limit for Tmax KS constraint
     optThermalTminLimit           0.0; // lower envelope limit for Tmin KS constraint
     optThermalKSBeta              24.0; // KS aggregation sharpness for envelope constraints
+    optThermalEnvelopeExpArgClamp 60.0; // clamps KS exponent arguments to [-value,+value] to avoid overflow/underflow
+    optThermalAdjointDiagReg      1e-8; // diagonal regularization for TbThermalTmax/Tmin equations (units: 1/s)
 
     // --------------------------------------------------------------------- //
     // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)

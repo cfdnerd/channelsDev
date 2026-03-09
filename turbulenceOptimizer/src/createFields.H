@@ -154,6 +154,14 @@ scalar optThermalKSBeta
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalKSBeta", 24.0)
 );
+scalar optThermalEnvelopeExpArgClamp
+(
+  convergenceControl.lookupOrDefault<scalar>("optThermalEnvelopeExpArgClamp", 60.0)
+);
+scalar optThermalAdjointDiagReg
+(
+  convergenceControl.lookupOrDefault<scalar>("optThermalAdjointDiagReg", 1e-8)
+);
 scalar optThermalEnvelopePenalty
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalEnvelopePenalty", 0.10)
@@ -290,6 +298,20 @@ if (optThermalEnvelopePenalty < 0.0)
   FatalErrorInFunction
     << "tuneOptParameters.convergenceControl.optThermalEnvelopePenalty must be >= 0. Found "
     << optThermalEnvelopePenalty
+    << exit(FatalError);
+}
+if (optThermalEnvelopeExpArgClamp <= 0.0)
+{
+  FatalErrorInFunction
+    << "optThermalEnvelopeExpArgClamp must be > 0. Found "
+    << optThermalEnvelopeExpArgClamp
+    << exit(FatalError);
+}
+if (optThermalAdjointDiagReg <= 0.0)
+{
+  FatalErrorInFunction
+    << "optThermalAdjointDiagReg must be > 0 (units: 1/s). Found "
+    << optThermalAdjointDiagReg
     << exit(FatalError);
 }
 if (optSensitivityGradientL2Eps <= 0.0)
