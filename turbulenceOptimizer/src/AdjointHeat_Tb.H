@@ -25,7 +25,12 @@ if (objFunction==2)
 {
    TEqnb -= b2*sumT*Foam::pow(T/maxTSafe,Pnorm-1);
 }
-if (objFunction==3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
+if
+(
+   objFunction==3
+&& static_cast<bool>(optThermalBoundedObjectiveEnable)
+&& !turbulenceProModeActive
+)
 {
    volScalarField thermalExcessWeight
    (
