@@ -774,6 +774,8 @@ const bool flowGrowthHit =
   flowAdjStopReason.find("growth-diverged") != std::string::npos;
 const bool flowRollbackHit = adjointCycleAdjointRolledBack;
 const bool heatRollbackHit = optimizationCycleHeatAdjointRolledBack;
+const label flowRollbackCorrector = adjointCycleAdjointRollbackCorrector;
+const label heatRollbackCorrector = optimizationCycleHeatAdjointRollbackCorrector;
 const bool proModeCatastrophicAdjointEvent =
     flowRollbackHit
  && heatRollbackHit
@@ -1306,6 +1308,7 @@ if (Pstream::master())
   writeRow("thermal field", "TMin="+fmtScalar(TLocalMin), "TMax="+fmtScalar(TLocalMax));
   writeRow("adjoint power", "|Ua|max="+fmtScalar(UaMaxMagLocal), "|Ua|mean="+fmtScalar(UaMeanMag), "paMin="+fmtScalar(paLocalMin), "paMax="+fmtScalar(paLocalMax));
   writeRow("adjoint heat", "|Ub|max="+fmtScalar(UbMaxMagLocal), "|Ub|mean="+fmtScalar(UbMeanMag), "pbMin="+fmtScalar(pbLocalMin), "pbMax="+fmtScalar(pbLocalMax));
+  writeRow("adj stop", "flow="+flowAdjStopReason, "heat="+heatAdjStopReason, "flowRbTo="+fmtCount(flowRollbackCorrector), "heatRbTo="+fmtCount(heatRollbackCorrector));
   if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
   {
     writeRow
@@ -1510,6 +1513,10 @@ if (Pstream::master())
       << "\"primalFlowSweeps\":" << effectivePrimalCorrectors
       << ",\"adjointFlowPowerSweeps\":" << effectiveAdjPowerCorrectors
       << ",\"adjointFlowHeatSweeps\":" << effectiveAdjHeatCorrectors
+      << ",\"flowAdjointStopReason\":\"" << flowAdjStopReason << "\""
+      << ",\"heatAdjointStopReason\":\"" << heatAdjStopReason << "\""
+      << ",\"flowRollbackCorrector\":" << flowRollbackCorrector
+      << ",\"heatRollbackCorrector\":" << heatRollbackCorrector
       << ",\"uMaxMag\":" << UMaxMagLocal
       << ",\"uMeanMag\":" << UMeanMag
       << ",\"pMin\":" << pLocalMin
