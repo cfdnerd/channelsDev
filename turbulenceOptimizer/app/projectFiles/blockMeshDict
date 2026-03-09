@@ -26,8 +26,10 @@ yDMin -0.8;
 yDMax 5.45;
 
 fNx 40;
-fNy 80;
-Ny 465;
+// Wall-function-compatible high-Re mesh: use targeted grading in Ny direction
+// rather than globally over-coarsening all channel-normal cells.
+fNy 30;
+Ny 90;
 Nx 125;
 
 vertices
@@ -58,23 +60,46 @@ vertices
 blocks
 (
     hex (0 7 6 3 10 17 16 13)
+    test_area
     ($Nx $Ny 1)
-    simpleGrading (1 1 1)
+    // x: larger cells near xMin wall; y: symmetric coarse-near-wall grading.
+    simpleGrading
+    (
+        0.35
+        (
+            (0.20 0.10 0.10)
+            (0.60 0.80 1.00)
+            (0.20 0.10 10.00)
+        )
+        1
+    )
 
     hex (7 1 2 6 17 11 12 16)
     test_area
     ($fNx $Ny 1)
-    simpleGrading (1 1 1)
+    // Match Ny-distribution with the neighboring main block.
+    simpleGrading
+    (
+        0.35
+        (
+            (0.20 0.10 0.10)
+            (0.60 0.80 1.00)
+            (0.20 0.10 10.00)
+        )
+        1
+    )
 
     hex (6 2 4 5 16 12 14 15)
     fluid_area
     ($fNx $fNy 1)
-    simpleGrading (1 1 1)
+    // Wall face is at local i=0 side (x=xD): use gx<1 for coarser near-wall cells.
+    simpleGrading (0.35 1 1)
 
     hex (1 7 8 9 11 17 18 19)
     fluid_area
     ($fNx $fNy 1)
-    simpleGrading (1 1 1)
+    // Wall face is at local i=1 side (x=xD): use gx>1 for coarser near-wall cells.
+    simpleGrading (2.857142857 1 1)
 );
 
 edges

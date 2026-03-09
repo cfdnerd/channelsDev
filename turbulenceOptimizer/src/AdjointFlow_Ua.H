@@ -91,7 +91,7 @@ const scalar uaPseudoDecay =
     proModeFlowAdjointMode
   ? Foam::max
     (
-      proModePseudoInvTauFloorRatio,
+      Foam::max(proModePseudoInvTauFloorRatio, scalar(0.40)),
       scalar(1.0)
     - (scalar(1.0) - proModePseudoInvTauFloorRatio)*proModeWarmupProgressUa
     )
@@ -108,7 +108,11 @@ const dimensionedScalar uaPseudoInvTau
 );
 const scalar uaSourceSplitStrength =
     boundedFlowAdjointMode
-  ? 0.25
+  ? (
+      proModeFlowAdjointMode
+      ? (0.55 - 0.20*proModeUaRamp)
+      : 0.30
+    )
   : 0.0;
 const bool useProModeRobustFlowLinearSolvers =
     proModeFlowAdjointMode
@@ -135,6 +139,7 @@ adjointCycleAdjointPhiaNet = 0.0;
 adjointCycleAdjointFlowDiverged = false;
 adjointCycleAdjointDivergedCorrector = 0;
 adjointCycleAdjointRolledBack = false;
+adjointCycleAdjointFlowControlledStop = false;
 adjointCycleAdjointRollbackCorrector = 0;
 adjointCycleAdjointStopReason = boundedFlowAdjointMode ? "max-correctors" : "not-bounded";
 
@@ -534,6 +539,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
 
       bool adjointCycleGrowthDiverged(false);
       bool adjointCycleNoImproveDiverged(false);
+      bool adjointCycleNoImproveControlledStop(false);
       if
       (
           !adjointCycleMagnitudeGuardTriggered
@@ -578,8 +584,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       )
       {
           adjointCycleNoImproveDiverged = true;
-          adjointCycleAdjointFlowDiverged = true;
-          adjointCycleAdjointDivergedCorrector = adjointCycleAdjointCorrectorsUsed;
+          adjointCycleNoImproveControlledStop = true;
           adjointCycleAdjointStopReason =
             std::string("no-improve-") + adjointCycleCurrentBlocker;
           adjointCyclePendingRollback = true;
@@ -613,6 +618,10 @@ for (i = 0; i < adjointFlowCorrectors; i++)
           if (adjointCycleAdjointFlowConverged)
           {
               adjointCyclePassState = "converged";
+          }
+          else if (adjointCycleNoImproveControlledStop)
+          {
+              adjointCyclePassState = "controlled-stop";
           }
           else if (adjointCycleNoImproveDiverged)
           {
@@ -660,9 +669,27 @@ for (i = 0; i < adjointFlowCorrectors; i++)
           Ua.correctBoundaryConditions();
           pa.correctBoundaryConditions();
           fvOptions.correct(Ua);
-
-          adjointCycleAdjointRolledBack = true;
-          adjointCycleAdjointRollbackCorrector = adjointCycleAdjointBestCorrector;
+          const bool adjointCycleHardRollback =
+              adjointCycleMagnitudeGuardTriggered
+           || adjointCycleGrowthDiverged;
+          if (adjointCycleHardRollback)
+          {
+              adjointCycleAdjointRolledBack = true;
+              adjointCycleAdjointFlowControlledStop = false;
+              adjointCycleAdjointRollbackCorrector = adjointCycleAdjointBestCorrector;
+          }
+          else if (adjointCycleNoImproveControlledStop)
+          {
+              adjointCycleAdjointRolledBack = false;
+              adjointCycleAdjointFlowControlledStop = true;
+              adjointCycleAdjointRollbackCorrector = adjointCycleAdjointBestCorrector;
+          }
+          else
+          {
+              adjointCycleAdjointRolledBack = false;
+              adjointCycleAdjointFlowControlledStop = false;
+              adjointCycleAdjointRollbackCorrector = 0;
+          }
           if (adjointCycleAdjointBestCorrector > 0)
           {
               adjointCycleAdjointUNonlinearChange = adjointCycleAdjointBestUNonlinearChange;
@@ -680,7 +707,10 @@ for (i = 0; i < adjointFlowCorrectors; i++)
           }
           else if (adjointCycleNoImproveDiverged)
           {
-              adjointCycleAdjointStopReason += "-rollback";
+              adjointCycleAdjointStopReason +=
+                proModeFlowAdjointMode && proModeWarmupProgressUa < scalar(1.0)
+              ? "-warmup-stop"
+              : "-stop";
           }
           else if (adjointCycleMagnitudeGuardTriggered)
           {

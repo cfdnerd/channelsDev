@@ -772,17 +772,22 @@ const bool heatNoImproveHit =
   heatAdjStopReason.find("no-improve") != std::string::npos;
 const bool flowGrowthHit =
   flowAdjStopReason.find("growth-diverged") != std::string::npos;
-const bool flowRollbackHit = adjointCycleAdjointRolledBack;
+const bool flowControlledStopHit = adjointCycleAdjointFlowControlledStop;
+const bool flowHardRollbackHit =
+  adjointCycleAdjointRolledBack && !flowControlledStopHit;
 const bool heatControlledStopHit = optimizationCycleHeatAdjointControlledStop;
 const bool heatHardRollbackHit =
   optimizationCycleHeatAdjointRolledBack && !heatControlledStopHit;
-const label flowRollbackCorrector = adjointCycleAdjointRollbackCorrector;
+const label flowRollbackCorrector =
+  flowHardRollbackHit ? adjointCycleAdjointRollbackCorrector : 0;
+const label flowControlledStopCorrector =
+  flowControlledStopHit ? adjointCycleAdjointRollbackCorrector : 0;
 const label heatRollbackCorrector =
   heatHardRollbackHit ? optimizationCycleHeatAdjointRollbackCorrector : 0;
 const label heatControlledStopCorrector =
   heatControlledStopHit ? optimizationCycleHeatAdjointRollbackCorrector : 0;
 const bool proModeCatastrophicAdjointEvent =
-    flowRollbackHit
+    flowHardRollbackHit
  && heatHardRollbackHit
  && (flowMagnitudeGuardHit || heatMagnitudeGuardHit || adjointCycleAdjointFlowDiverged);
 if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
@@ -797,7 +802,7 @@ if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
     proModeHeatNoImproveWindowCount = 0;
     proModeFlowGrowthWindowCount = 0;
   }
-  proModeFlowRollbackTotal += flowRollbackHit ? 1 : 0;
+  proModeFlowRollbackTotal += flowHardRollbackHit ? 1 : 0;
   proModeHeatRollbackTotal += heatHardRollbackHit ? 1 : 0;
   proModeFlowMagnitudeGuardTotal += flowMagnitudeGuardHit ? 1 : 0;
   proModeHeatMagnitudeGuardTotal += heatMagnitudeGuardHit ? 1 : 0;
@@ -805,7 +810,7 @@ if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
   proModeHeatNoImproveTotal += heatNoImproveHit ? 1 : 0;
   proModeFlowGrowthTotal += flowGrowthHit ? 1 : 0;
 
-  proModeFlowRollbackWindowCount += flowRollbackHit ? 1 : 0;
+  proModeFlowRollbackWindowCount += flowHardRollbackHit ? 1 : 0;
   proModeHeatRollbackWindowCount += heatHardRollbackHit ? 1 : 0;
   proModeFlowMagnitudeGuardWindowCount += flowMagnitudeGuardHit ? 1 : 0;
   proModeHeatMagnitudeGuardWindowCount += heatMagnitudeGuardHit ? 1 : 0;
@@ -813,7 +818,7 @@ if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
   proModeHeatNoImproveWindowCount += heatNoImproveHit ? 1 : 0;
   proModeFlowGrowthWindowCount += flowGrowthHit ? 1 : 0;
 
-  if (flowRollbackHit || heatHardRollbackHit)
+  if (flowHardRollbackHit || heatHardRollbackHit)
   {
     proModeAdjointRollbackFreeStreak = 0;
   }
@@ -874,7 +879,7 @@ if (Pstream::master())
     ? "WARN"
     : ((solverSeverity == 1 || turbulenceClipSeverity == 1) ? "OBS" : "OK");
   scalar rollbackPenalty = 0.0;
-  if (adjointCycleAdjointRolledBack)
+  if (flowHardRollbackHit)
   {
     rollbackPenalty += 20.0;
   }
@@ -1007,7 +1012,7 @@ if (Pstream::master())
     << std::setw(14) << clipPenalty
     << std::setw(14) << consistencyPenalty
     << std::setw(14) << trustPenalty
-    << std::setw(10) << static_cast<int>(adjointCycleAdjointRolledBack)
+    << std::setw(10) << static_cast<int>(flowHardRollbackHit)
     << std::setw(10) << static_cast<int>(heatHardRollbackHit)
     << '\n';
   if (triggerFirstFailureSnapshot)
@@ -1314,13 +1319,13 @@ if (Pstream::master())
   writeRow("adjoint power", "|Ua|max="+fmtScalar(UaMaxMagLocal), "|Ua|mean="+fmtScalar(UaMeanMag), "paMin="+fmtScalar(paLocalMin), "paMax="+fmtScalar(paLocalMax));
   writeRow("adjoint heat", "|Ub|max="+fmtScalar(UbMaxMagLocal), "|Ub|mean="+fmtScalar(UbMeanMag), "pbMin="+fmtScalar(pbLocalMin), "pbMax="+fmtScalar(pbLocalMax));
   writeRow("adj stop", "flow="+flowAdjStopReason, "heat="+heatAdjStopReason, "flowRbTo="+fmtCount(flowRollbackCorrector), "heatRbTo="+fmtCount(heatRollbackCorrector));
-  writeRow("adj ctrl", "heatControlled="+fmtCount(heatControlledStopHit ? 1 : 0), "heatStopTo="+fmtCount(heatControlledStopCorrector), "flowNoImp="+fmtCount(flowNoImproveHit ? 1 : 0), "heatNoImp="+fmtCount(heatNoImproveHit ? 1 : 0));
+  writeRow("adj ctrl", "flowControlled="+fmtCount(flowControlledStopHit ? 1 : 0), "flowStopTo="+fmtCount(flowControlledStopCorrector), "heatControlled="+fmtCount(heatControlledStopHit ? 1 : 0), "heatStopTo="+fmtCount(heatControlledStopCorrector));
   if (turbulenceProModeActive && proModeAdjointStabilityPackActive)
   {
     writeRow
     (
       "adj rb events",
-      "flowRB="+fmtCount(flowRollbackHit ? 1 : 0),
+      "flowRB="+fmtCount(flowHardRollbackHit ? 1 : 0),
       "heatRB="+fmtCount(heatHardRollbackHit ? 1 : 0),
       "flowMagG="+fmtCount(flowMagnitudeGuardHit ? 1 : 0),
       "heatMagG="+fmtCount(heatMagnitudeGuardHit ? 1 : 0)
@@ -1522,6 +1527,8 @@ if (Pstream::master())
       << ",\"flowAdjointStopReason\":\"" << flowAdjStopReason << "\""
       << ",\"heatAdjointStopReason\":\"" << heatAdjStopReason << "\""
       << ",\"flowRollbackCorrector\":" << flowRollbackCorrector
+      << ",\"flowControlledStop\":" << (flowControlledStopHit ? 1 : 0)
+      << ",\"flowControlledStopCorrector\":" << flowControlledStopCorrector
       << ",\"heatRollbackCorrector\":" << heatRollbackCorrector
       << ",\"heatControlledStop\":" << (heatControlledStopHit ? 1 : 0)
       << ",\"heatControlledStopCorrector\":" << heatControlledStopCorrector

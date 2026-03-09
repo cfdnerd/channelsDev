@@ -69,14 +69,17 @@ const bool proModeAdjointUseLegacyPressureRelax = proModeAdjointStabilityPackAct
 const label proModeAdjointWarmupIterations(80);
 const label proModeAdjointRampRollbackFreeWindow(8);
 const scalar proModePseudoInvTauFloorRatio(0.20);
-const scalar proModeUaPseudoInvTauBase(8.0);
+const scalar proModeUaPseudoInvTauBase
+(
+    proModeSAAdjointClosureSelected ? 16.0 : 12.0
+);
 const scalar proModeUbPseudoInvTauBase
 (
     proModeSAAdjointClosureSelected ? 30.0 : 20.0
 );
 const scalar proModeClosurePseudoInvTauScale(0.75);
-const scalar proModeUaEqnRelaxMin(0.15);
-const scalar proModeUaEqnRelaxMax(0.35);
+const scalar proModeUaEqnRelaxMin(0.08);
+const scalar proModeUaEqnRelaxMax(0.20);
 const scalar proModeUbEqnRelaxMin(0.05);
 const scalar proModeUbEqnRelaxMax(0.15);
 const scalar proModeClosureEqnRelaxMin(0.10);

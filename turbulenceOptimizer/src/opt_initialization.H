@@ -478,6 +478,7 @@ scalar adjointCycleAdjointPhiaNet(0);
 bool adjointCycleAdjointFlowDiverged(false);
 label adjointCycleAdjointDivergedCorrector(0);
 bool adjointCycleAdjointRolledBack(false);
+bool adjointCycleAdjointFlowControlledStop(false);
 label adjointCycleAdjointRollbackCorrector(0);
 word adjointCycleAdjointStopReason("not-run");
 bool optimizationCycleHeatAdjointRolledBack(false);
