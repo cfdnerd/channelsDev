@@ -37,6 +37,9 @@ const bool proModeClosureAdjointSolvesActive =
 const bool proModeAdjointStabilityPackActive =
     turbulenceProModeActive
  && static_cast<bool>(proModeAdjointStabilityPack);
+const bool adjointRollbackGuardsEffective =
+    static_cast<bool>(optAdjointRollbackGuardsEnable)
+ || proModeAdjointStabilityPackActive;
 const bool proModeSAAdjointClosureSelected =
     turbulenceProModeActive
  && proModeAdjointClosureModel == word("sa");
@@ -667,7 +670,7 @@ else if (customTurbulenceActive && adjointCycleFullAdjointVerification)
         << endl;
     Info<< "Adjoint-Cycle verification toggles: reset="
         << (adjointCycleResetAdjointState ? "true" : "false")
-        << " rollbackGuards=" << (optAdjointRollbackGuardsEnable ? "true" : "false")
+        << " rollbackGuards=" << (adjointRollbackGuardsEffective ? "true" : "false")
         << " viscosity=" << (adjointCycleUseNuEff ? "nuEff" : "nu")
         << " thermalSource="
         << (adjointCycleIncludeThermalMomentumSource ? "true" : "false")
@@ -713,7 +716,7 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ". "
         << "No-improve rollback guard="
         << (optimizationCycleNoImproveCheck ? "true" : "false")
-        << " globalRollbackGuards=" << (optAdjointRollbackGuardsEnable ? "true" : "false")
+        << " globalRollbackGuards=" << (adjointRollbackGuardsEffective ? "true" : "false")
         << " (minPass=" << optimizationCycleNoImproveMinCorrectors
         << ", patience=" << optimizationCycleNoImprovePatience << "). "
         << "Thermal adjoint mode=" << optThermalAdjointMode
@@ -752,6 +755,7 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << " noImproveGuard=" << (proModeAdjointNoImproveCheck ? "true" : "false")
         << " (minPass=" << proModeAdjointNoImproveMinCorrectors
         << ", patience=" << proModeAdjointNoImprovePatience << ")"
+        << " rollbackGuards=" << (adjointRollbackGuardsEffective ? "true" : "false")
         << " |Uadj|max<=" << proModeAdjointMaxMagnitude
         << " viscosity=" << (proModeAdjointUseNuEff ? "nuEff" : "nu")
         << " legacyPressureRelax="

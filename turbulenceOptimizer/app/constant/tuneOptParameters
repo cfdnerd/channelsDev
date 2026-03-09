@@ -22,7 +22,7 @@ convergenceControl
     // --------------------------------------------------------------------- //
     optRunMode production; // production | diagnostic
     optFirstFailureSnapshotEnable       true; // write first failure snapshot
-    optAdjointRollbackGuardsEnable      false; // Ua/Ub rollback guards
+    optAdjointRollbackGuardsEnable      false; // Ua/Ub rollback guards (forced on in Pro mode when proModeAdjointStabilityPack=true)
 
     // --------------------------------------------------------------------- //
     // Thermal Adjoint Selector

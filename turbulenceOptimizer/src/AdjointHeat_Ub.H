@@ -7,7 +7,7 @@ const bool proModeHeatAdjointMode =
 const bool optimizationLikeHeatAdjointMode =
     optimizationCycleObjectiveAdjointMode || proModeHeatAdjointMode;
 const bool optimizationCycleHeatRollbackGuardsEnabled =
-    static_cast<bool>(optAdjointRollbackGuardsEnable);
+    adjointRollbackGuardsEffective;
 const volScalarField& thermalAdjointSourceField =
     optimizationCycleObjectiveAdjointMode ? optimizationCycleThermalAdjointField : Tb;
 const label adjointHeatCorrectors =

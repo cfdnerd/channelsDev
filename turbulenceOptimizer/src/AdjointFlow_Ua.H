@@ -9,7 +9,7 @@ const bool optimizationLikeFlowAdjointMode =
     optimizationCycleFlowAdjointMode || proModeFlowAdjointMode;
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationLikeFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
-    static_cast<bool>(optAdjointRollbackGuardsEnable);
+    adjointRollbackGuardsEffective;
 const bool resetAdjointState =
     (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
  || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState))
