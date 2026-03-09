@@ -256,10 +256,7 @@ if (customTurbulenceActive)
     }
     else
     {
-      FatalErrorInFunction
-        << "Frozen closure-adjoint proxy reconstruction is removed. "
-        << "Require transported omegaa adjoint formulation."
-        << exit(FatalError);
+      omegaa = adjointCycleOmegaSourceProxy;
     }
   }
 

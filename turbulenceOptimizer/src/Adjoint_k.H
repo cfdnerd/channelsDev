@@ -392,10 +392,7 @@ if (customTurbulenceActive)
     }
     else
     {
-      FatalErrorInFunction
-        << "Frozen closure-adjoint proxy reconstruction is removed. "
-        << "Require transported ka adjoint formulation."
-        << exit(FatalError);
+      ka = adjointCycleSASourceProxy;
     }
   }
   else
@@ -586,10 +583,18 @@ if (customTurbulenceActive)
     }
     else
     {
-      FatalErrorInFunction
-        << "Frozen closure-adjoint proxy reconstruction is removed. "
-        << "Require transported ka adjoint formulation."
-        << exit(FatalError);
+      if (static_cast<bool>(optimizationCycleUseLogClosureState))
+      {
+        const volScalarField logKMagnitude(mag(logKClosureState));
+        const dimensionedScalar logKScale
+        (
+          "logKScale",
+          logKClosureState.dimensions(),
+          Foam::max(gMax(logKMagnitude), SMALL)
+        );
+        adjointCycleKSourceProxy += 0.05*logKClosureState/logKScale;
+      }
+      ka = adjointCycleKSourceProxy;
     }
   }
 

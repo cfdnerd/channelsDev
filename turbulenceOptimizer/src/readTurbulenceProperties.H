@@ -487,13 +487,14 @@ if
 if
 (
     customTurbulenceActive
+ && optimizationCycleClosureAdjointFormulation != "proxyNormalized"
  && optimizationCycleClosureAdjointFormulation != "transportedResidualDraft"
  && optimizationCycleClosureAdjointFormulation != "transportedCrossCoupledV3"
 )
 {
     FatalErrorInFunction
         << "customTurbulenceProperties.optimizationCycleClosureAdjointFormulation must "
-        << "be transportedResidualDraft or "
+        << "be proxyNormalized, transportedResidualDraft, or "
         << "transportedCrossCoupledV3. Found "
         << optimizationCycleClosureAdjointFormulation
         << exit(FatalError);
@@ -501,36 +502,16 @@ if
 if
 (
     customTurbulenceActive
+ && proModeClosureAdjointFormulation != "proxyNormalized"
  && proModeClosureAdjointFormulation != "transportedResidualDraft"
  && proModeClosureAdjointFormulation != "transportedCrossCoupledV3"
 )
 {
     FatalErrorInFunction
         << "customTurbulenceProperties.proModeClosureAdjointFormulation must "
-        << "be transportedResidualDraft or "
+        << "be proxyNormalized, transportedResidualDraft, or "
         << "transportedCrossCoupledV3. Found "
         << proModeClosureAdjointFormulation
-        << exit(FatalError);
-}
-if (customTurbulenceActive && !optimizationCycleTransportedClosureAdjoints)
-{
-    FatalErrorInFunction
-        << "Frozen turbulence closure is removed. "
-        << "Set customTurbulenceProperties.optimizationCycleTransportedClosureAdjoints=true."
-        << exit(FatalError);
-}
-if (customTurbulenceActive && turbulenceProModeActive && !proModeClosureAdjointSolvesActive)
-{
-    FatalErrorInFunction
-        << "Frozen turbulence closure reconstruction is removed. "
-        << "In turbulenceProMode, customTurbulenceProperties.proModeClosureAdjointSolves must be true."
-        << exit(FatalError);
-}
-if (customTurbulenceActive && !closureAdjointTransportedActive)
-{
-    FatalErrorInFunction
-        << "Frozen turbulence closure paths are removed. "
-        << "Active run must use transported closure adjoints."
         << exit(FatalError);
 }
 if
@@ -777,7 +758,8 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", heat=" << optimizationCycleHeatAdjointCorrectors << ". "
         << "Adjoint magnitude guard: |Uadj|max <= "
         << optimizationCycleAdjointMaxMagnitude << ". "
-        << "Closure adjoints=transported-PDE"
+        << "Closure adjoints="
+        << (optimizationCycleTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
         << " (invTau=" << optimizationCycleClosureAdjointInvTau
         << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
         << ", formulation=" << optimizationCycleClosureAdjointFormulation
@@ -814,7 +796,8 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << "adjoint state, while optimizer updates use laminar-style "
         << "cost/sensitivity/filter/update logic without turbulent sensitivity terms."
         << endl;
-    Info<< "Pro mode closure adjoints=transported-PDE"
+    Info<< "Pro mode closure adjoints="
+        << (closureAdjointTransportedActive ? "transported-PDE" : "proxy-reconstruction")
         << " (invTau=" << closureAdjointInvTauActive
         << ", crossCoupling=" << closureAdjointCrossCouplingActive
         << ", formulation=" << closureAdjointFormulationActive
