@@ -79,12 +79,12 @@ if (customTurbulenceActive)
       dimensionedScalar("zeroDNutDNuTilda", dimless, 0.0)
     );
     const scalarField& nutInternal = nut.internalField();
-    const scalarField& nuInternal = nu.internalField();
-    scalarField& saNuTildaInternal = saNuTildaState.internalFieldRef();
-    scalarField& dNutDNuTildaInternal = dNutDNuTilda.internalFieldRef();
+    const scalar nuUniform = Foam::max(nu.value(), SMALL);
+    scalarField& saNuTildaInternal = saNuTildaState.primitiveFieldRef();
+    scalarField& dNutDNuTildaInternal = dNutDNuTilda.primitiveFieldRef();
     forAll(saNuTildaInternal, celli)
     {
-      const scalar nuCell = Foam::max(nuInternal[celli], SMALL);
+      const scalar nuCell = nuUniform;
       const scalar nutCell = Foam::max(nutInternal[celli], scalar(0.0));
       scalar nuTildaCell = Foam::max(nutCell, scalar(1e-6)*nuCell);
       for (label saNewtonIter = 0; saNewtonIter < 6; ++saNewtonIter)
@@ -207,15 +207,15 @@ if (customTurbulenceActive)
         dimensionedScalar("zeroSaReactionCoeff", dimless/dimTime, 0.0)
       );
       scalarField& saTransportDiffusivityInternal =
-        saTransportDiffusivity.internalFieldRef();
-      scalarField& saReactionCoeffInternal = saReactionCoeff.internalFieldRef();
+        saTransportDiffusivity.primitiveFieldRef();
+      scalarField& saReactionCoeffInternal = saReactionCoeff.primitiveFieldRef();
       const scalarField& yWallInternal = yWall.internalField();
       const scalarField& alphaInternal = alpha.internalField();
       const scalarField& vorticityMagInternal =
         adjointCycleVorticityMagnitude.internalField();
       forAll(saReactionCoeffInternal, celli)
       {
-        const scalar nuCell = Foam::max(nuInternal[celli], SMALL);
+        const scalar nuCell = nuUniform;
         const scalar nuTildaCell = Foam::max(saNuTildaInternal[celli], scalar(0.0));
         const scalar yCell = Foam::max(yWallInternal[celli], yMin.value());
         const scalar chi = nuTildaCell/nuCell;

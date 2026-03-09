@@ -238,10 +238,29 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
     turbulenceProModeActive
     && proModeClosureAdjointSolvesActive
     && proModeSAAdjointClosureActive;
-  const volScalarField optimizationCycleTransportedClosureMix
+  volScalarField optimizationCycleTransportedClosureMix
   (
-    optimizationCycleUseSAClosureAdjoint ? ka : (ka + omegaa)
+    IOobject
+    (
+      "optimizationCycleTransportedClosureMix",
+      runTime.timeName(),
+      mesh,
+      IOobject::NO_READ,
+      IOobject::NO_WRITE
+    ),
+    mesh,
+    dimensionedScalar
+    (
+      "zeroOptimizationCycleTransportedClosureMix",
+      ka.dimensions(),
+      0.0
+    )
   );
+  optimizationCycleTransportedClosureMix = ka;
+  if (!optimizationCycleUseSAClosureAdjoint)
+  {
+    optimizationCycleTransportedClosureMix += omegaa;
+  }
   const volScalarField optimizationCycleLogClosureMix
   (
     logKClosureState + logOmegaClosureState
