@@ -85,10 +85,6 @@ int main(int argc, char *argv[])
             customTurbulenceActive
          && optimizationCycleTurbulentOptimizationMode
          && optThermalAdjointMode == word("ta");
-        const bool optimizationCycleUseTbLaminarThermalAdjoint =
-            customTurbulenceActive
-         && optimizationCycleTurbulentOptimizationMode
-         && optThermalAdjointMode == word("tbLaminar");
         const volScalarField& optimizationCycleThermalAdjointField =
             optimizationCycleUseTaThermalAdjoint ? Ta : Tb;
         if (customTurbulenceActive && adjointCycleThermalAdjointOnly)
@@ -111,10 +107,6 @@ int main(int argc, char *argv[])
             if (optimizationCycleUseTaThermalAdjoint)
             {
                 #include "Adjoint_Ta.H"
-            }
-            else if (optimizationCycleUseTbLaminarThermalAdjoint)
-            {
-                #include "AdjointHeat_TbLaminarIdentical.H"
             }
             else
             {

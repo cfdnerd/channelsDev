@@ -489,8 +489,7 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << " (minPass=" << optimizationCycleNoImproveMinCorrectors
         << ", patience=" << optimizationCycleNoImprovePatience << "). "
         << "Thermal adjoint mode=" << optThermalAdjointMode
-        << " (ta=explicit Ta, tbOriginal=legacy turbulent Tb, "
-        << "tbLaminar=laminar-identical Tb)."
+        << " (ta=explicit Ta, tb=legacy turbulent Tb)."
         << endl;
 }
 else if (customTurbulenceActive)

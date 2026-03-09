@@ -22,8 +22,7 @@ Laminar is effectively fixed to `Tb`.
 
 Turbulence supports thermal-adjoint mode selection:
 - `ta`
-- `tbOriginal`
-- `tbLaminar`
+- `tb`
 
 This changes which thermal adjoint drives momentum adjoints and sensitivity paths.
 
@@ -31,7 +30,6 @@ Key files:
 - `turbulenceOptimizer/src/createFields.H`
 - `turbulenceOptimizer/src/Adjoint_Ta.H`
 - `turbulenceOptimizer/src/AdjointHeat_Tb.H`
-- `turbulenceOptimizer/src/AdjointHeat_TbLaminarIdentical.H`
 
 ## 3) Closure Adjoint Extension (k/omega)
 Laminar has no turbulence-closure adjoint equations.

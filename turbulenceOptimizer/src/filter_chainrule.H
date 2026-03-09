@@ -1,14 +1,5 @@
 scalar fsensNormalization = gMax(mag(fsenshMeanT.primitiveField()));
 scalar gsensPowerNormalization = gMax(mag(gsenshPowerDiss.primitiveField()));
-scalar gsensThermalTmaxNormalization = 1.0;
-scalar gsensThermalTminNormalization = 1.0;
-if (useDedicatedThermalEnvelopeAdjoints)
-{
-  gsensThermalTmaxNormalization =
-    gMax(mag(gsenshThermalTmax.primitiveField()));
-  gsensThermalTminNormalization =
-    gMax(mag(gsenshThermalTmin.primitiveField()));
-}
 if
 (
     fsensNormalization != fsensNormalization
@@ -27,38 +18,9 @@ if
 {
   gsensPowerNormalization = 1.0;
 }
-if
-(
-    useDedicatedThermalEnvelopeAdjoints
- && (
-       gsensThermalTmaxNormalization != gsensThermalTmaxNormalization
-    || Foam::mag(gsensThermalTmaxNormalization) > GREAT
-    || gsensThermalTmaxNormalization < SMALL
-    )
-)
-{
-  gsensThermalTmaxNormalization = 1.0;
-}
-if
-(
-    useDedicatedThermalEnvelopeAdjoints
- && (
-       gsensThermalTminNormalization != gsensThermalTminNormalization
-    || Foam::mag(gsensThermalTminNormalization) > GREAT
-    || gsensThermalTminNormalization < SMALL
-    )
-)
-{
-  gsensThermalTminNormalization = 1.0;
-}
 fsenshMeanT = fsenshMeanT/fsensNormalization;
 gsenshPowerDiss = gsenshPowerDiss/gsensPowerNormalization;
 gsenshVol.primitiveFieldRef() = 1.0;
-if (useDedicatedThermalEnvelopeAdjoints)
-{
-  gsenshThermalTmax = gsenshThermalTmax/gsensThermalTmaxNormalization;
-  gsenshThermalTmin = gsenshThermalTmin/gsensThermalTminNormalization;
-}
 //***********************************//Heaviside_filter
 if(opt>1)
 {
@@ -96,11 +58,6 @@ if(opt>1)
   fsenshMeanT=fsenshMeanT*drho;
   gsenshPowerDiss=gsenshPowerDiss*drho;
   gsenshVol=gsenshVol*drho;
-  if (useDedicatedThermalEnvelopeAdjoints)
-  {
-    gsenshThermalTmax = gsenshThermalTmax*drho;
-    gsenshThermalTmin = gsenshThermalTmin*drho;
-  }
 }
 //***********************************//PDE filter
 const auto fsensFilterLinearSolvePerformance =
@@ -132,30 +89,8 @@ recordLinearSolve
   gsensVolFilterLinearSolvePerformance.finalResidual(),
   gsensVolFilterLinearSolvePerformance.nIterations()
 );
-if (useDedicatedThermalEnvelopeAdjoints)
-{
-  solve
-  (
-    fvm::laplacian(gsensThermalTmax)
-   -fvm::Sp(b, gsensThermalTmax)
-   +gsenshThermalTmax*b
-  );
-  solve
-  (
-    fvm::laplacian(gsensThermalTmin)
-   -fvm::Sp(b, gsensThermalTmin)
-   +gsenshThermalTmin*b
-  );
-}
 
 const scalar maxCellVolume = Foam::max(gMax(mesh.V()), SMALL);
 fsensMeanT.primitiveFieldRef()=fsensMeanT.primitiveFieldRef()*mesh.V()/maxCellVolume;
 gsensPowerDiss.primitiveFieldRef()=gsensPowerDiss.primitiveFieldRef()*mesh.V()/maxCellVolume;
 gsensVol.primitiveFieldRef()=gsensVol.primitiveFieldRef()*mesh.V()/maxCellVolume;
-if (useDedicatedThermalEnvelopeAdjoints)
-{
-  gsensThermalTmax.primitiveFieldRef()=
-    gsensThermalTmax.primitiveFieldRef()*mesh.V()/maxCellVolume;
-  gsensThermalTmin.primitiveFieldRef()=
-    gsensThermalTmin.primitiveFieldRef()*mesh.V()/maxCellVolume;
-}

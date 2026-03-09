@@ -658,7 +658,7 @@ if (Pstream::master())
     ? "WARN"
     : (grayVolumeFraction > 0.50 ? "OBS" : "OK");
   const char* constraintHealth =
-    (powerConstraintMargin > 0 || volumeConstraintMargin > 0 || thermalEnvelopeViolation > 0)
+    (powerViolationPositive > 0 || volumeViolationPositive > 0 || thermalEnvelopeViolation > 0)
     ? "WARN"
     : "OK";
   const char* sensitivityHealth =

@@ -27,7 +27,7 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Thermal Adjoint Selector
     // --------------------------------------------------------------------- //
-    optThermalAdjointMode ta; // ta | tbOriginal | tbLaminar
+    optThermalAdjointMode ta; // ta | tb
 
     // --------------------------------------------------------------------- //
     // MMA Step Controls
@@ -60,19 +60,17 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Thermal Envelope Constraints
     // --------------------------------------------------------------------- //
-    optThermalEnvelopeConstraintsEnable true; // master switch for MMA Tmax/Tmin envelope constraints
-    optDedicatedThermalEnvelopeAdjointsEnable true; // when master=true: dedicated TbThermalTmax/Tmin adjoints; when false: surrogate map
+    optThermalEnvelopeConstraintsEnable false; // disable while tuning objFunction=3 to avoid envelope/obj coupling
     optThermalTmaxLimit           15.0; // upper envelope limit for Tmax KS constraint
     optThermalTminLimit           0.0; // lower envelope limit for Tmin KS constraint
     optThermalKSBeta              24.0; // KS aggregation sharpness for envelope constraints
-    optThermalEnvelopeExpArgClamp 60.0; // clamps KS exponent arguments to [-value,+value] to avoid overflow/underflow
-    optThermalAdjointDiagReg      1e-8; // diagonal regularization for TbThermalTmax/Tmin equations (units: 1/s)
 
     // --------------------------------------------------------------------- //
     // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)
     // --------------------------------------------------------------------- //
-    optThermalExcessTref          1.0; // reference temperature Tref used only by SmoothExcessT objective (objFunction=3)
-    optThermalExcessSoftplusScale 0.5; // smoothness scale for SmoothExcessT and envelope softplus transitions
+    optThermalBoundedObjectiveEnable true; // enable SmoothExcessT bounded objective when objFunction=3
+    optThermalExcessTref          1.5; // hotspot threshold temperature for SmoothExcessT
+    optThermalExcessSoftplusScale 1.0; // smoother excess transition for better gradient stability
 
     // Convergence Stop
     // --------------------------------------------------------------------- //

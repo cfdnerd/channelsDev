@@ -110,14 +110,13 @@ word optThermalAdjointMode
 if
 (
     optThermalAdjointMode != word("ta")
- && optThermalAdjointMode != word("tbOriginal")
- && optThermalAdjointMode != word("tbLaminar")
+ && optThermalAdjointMode != word("tb")
 )
 {
   FatalErrorInFunction
     << "Unsupported tuneOptParameters.convergenceControl.optThermalAdjointMode='"
     << optThermalAdjointMode
-    << "'. Supported values: ta, tbOriginal, tbLaminar."
+    << "'. Supported values: ta, tb."
     << exit(FatalError);
 }
 scalar optThermalExcessTref
@@ -153,14 +152,6 @@ scalar optThermalTminLimit
 scalar optThermalKSBeta
 (
   convergenceControl.lookupOrDefault<scalar>("optThermalKSBeta", 24.0)
-);
-scalar optThermalEnvelopeExpArgClamp
-(
-  convergenceControl.lookupOrDefault<scalar>("optThermalEnvelopeExpArgClamp", 60.0)
-);
-scalar optThermalAdjointDiagReg
-(
-  convergenceControl.lookupOrDefault<scalar>("optThermalAdjointDiagReg", 1e-8)
 );
 scalar optThermalEnvelopePenalty
 (
@@ -234,11 +225,6 @@ scalar optAdaptiveMoveLimitNegativeTrustDamping
 (
   convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitNegativeTrustDamping", 0.50)
 );
-Switch optDedicatedThermalEnvelopeAdjointsEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optDedicatedThermalEnvelopeAdjointsEnable", true)
-);
-
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
   FatalErrorInFunction
@@ -298,20 +284,6 @@ if (optThermalEnvelopePenalty < 0.0)
   FatalErrorInFunction
     << "tuneOptParameters.convergenceControl.optThermalEnvelopePenalty must be >= 0. Found "
     << optThermalEnvelopePenalty
-    << exit(FatalError);
-}
-if (optThermalEnvelopeExpArgClamp <= 0.0)
-{
-  FatalErrorInFunction
-    << "optThermalEnvelopeExpArgClamp must be > 0. Found "
-    << optThermalEnvelopeExpArgClamp
-    << exit(FatalError);
-}
-if (optThermalAdjointDiagReg <= 0.0)
-{
-  FatalErrorInFunction
-    << "optThermalAdjointDiagReg must be > 0 (units: 1/s). Found "
-    << optThermalAdjointDiagReg
     << exit(FatalError);
 }
 if (optSensitivityGradientL2Eps <= 0.0)
