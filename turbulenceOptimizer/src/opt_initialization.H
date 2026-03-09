@@ -1,5 +1,6 @@
 Info<< "Initialization\n" << endl;
 const char* optimizationHistoryFile = "optimization.hst";
+const char* healthMonitorFile = "healthMonitor.hst";
 const char* suggestedPowerDiss0File = "suggestedPowerDiss0.log";
 const char* debugOptimizerJsonFile = "debugOptimizer.jsonl";
 const char* debugOptimizerLogFile = "debugOptimizer.log";
@@ -10,6 +11,7 @@ const char* firstFailureSnapshotFile = "firstFailureSnapshot.log";
 if (Pstream::master())
 {
   std::remove(optimizationHistoryFile);
+  std::remove(healthMonitorFile);
   std::remove(suggestedPowerDiss0File);
   std::remove(debugOptimizerJsonFile);
   std::remove(debugOptimizerLogFile);
@@ -19,7 +21,7 @@ if (Pstream::master())
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
     << "# MTO_ThermalFluid optimization history\n"
-    << "# Cols: Iter PDActLog PDCon PD0Sug V MeanT MaxT HealthScore HealthBand RollbackPen ConstraintPen LinearPen ClipPen ConsistencyPen TrustPen\n"
+    << "# Cols: Iter PDActLog PDCon PD0Sug V MeanT MaxT\n"
     << "# PDActLog=PDCon*PowerDiss0, PDCon=PowerDiss used by MMA\n"
     << "# PD0Sug=PowerDiss0*(PDCon/PowerDissMax) when PDCon>PowerDissRelax; else PowerDiss0\n"
     << std::left
@@ -30,14 +32,44 @@ if (Pstream::master())
     << std::setw(16) << "V"
     << std::setw(16) << "MeanT"
     << std::setw(16) << "MaxT"
+    << '\n';
+
+  std::ofstream healthFile(healthMonitorFile, std::ios::out);
+  healthFile
+    << "# MTO_ThermalFluid optimizer health monitor\n"
+    << "# HealthScore=100-PenTotal, clamped to [0,100]\n"
+    << "# PenTotal=RollPen+ConPen+LinPen+ClipPen+ConsPen+TrustPen\n"
+    << "# HealthBand: good(>=85), watch([70,85)), poor([50,70)), critical(<50)\n"
+    << "# RollPen: rollback/divergence/magnitude-guard penalties (cap 45)\n"
+    << "# ConPen: 5*log10(1 + GuardCon/optConstraintTol), cap 25\n"
+    << "# LinPen: 6*log10(1 + MaxLinRes/linearSolveWarnResidual), +5 if residual growth violated, cap 20\n"
+    << "# ClipPen: turbulence clipping penalty from ClipFrac=max(maxFluidClipFraction,maxGrayClipFraction), cap 15\n"
+    << "# ConsPen: gradient consistency penalty from GradCons=max(1,|actual/predicted|) for opt>10, cap 10\n"
+    << "# TrustPen: trust-ratio deviation penalty when TrustDef=1, cap 10\n"
+    << "# FlowRB/HeatRB/FlowDiv/FlowMagG/HeatMagG are binary indicators (0 or 1)\n"
+    << "# Cols: Iter HealthScore HealthBand PenTotal RollPen ConPen LinPen ClipPen ConsPen TrustPen GuardCon MaxLinRes ClipFrac GradCons TrustDef TrustRatio FlowRB HeatRB FlowDiv FlowMagG HeatMagG\n"
+    << std::left
+    << std::setw(8) << "Iter"
     << std::setw(14) << "HealthScore"
     << std::setw(14) << "HealthBand"
+    << std::setw(14) << "PenTotal"
     << std::setw(14) << "RollPen"
     << std::setw(14) << "ConPen"
     << std::setw(14) << "LinPen"
     << std::setw(14) << "ClipPen"
     << std::setw(14) << "ConsPen"
     << std::setw(14) << "TrustPen"
+    << std::setw(14) << "GuardCon"
+    << std::setw(14) << "MaxLinRes"
+    << std::setw(14) << "ClipFrac"
+    << std::setw(14) << "GradCons"
+    << std::setw(10) << "TrustDef"
+    << std::setw(14) << "TrustRatio"
+    << std::setw(10) << "FlowRB"
+    << std::setw(10) << "HeatRB"
+    << std::setw(10) << "FlowDiv"
+    << std::setw(10) << "FlowMagG"
+    << std::setw(10) << "HeatMagG"
     << '\n';
 
   std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::out);
