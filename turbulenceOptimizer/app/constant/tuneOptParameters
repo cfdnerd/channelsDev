@@ -33,7 +33,7 @@ convergenceControl
     // MMA Step Controls
     // --------------------------------------------------------------------- //
     optPowerConstraintWeight      1;
-    optVolumeConstraintWeight     2;
+    optVolumeConstraintWeight     1;
 
     // --------------------------------------------------------------------- //
     // Formulation Controls
@@ -44,7 +44,7 @@ convergenceControl
     optKOmegaPositivityPreservingLinearizationEnable true;
 
     // Smooth projection (tanh) controls for Heaviside continuation.
-    optProjectionSmoothingEnable true;
+    optProjectionSmoothingEnable false;
     optProjectionBetaScale    1.0;
 
     // Trust-ratio-based adaptive MMA move-limit controls.
@@ -68,7 +68,7 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)
     // --------------------------------------------------------------------- //
-    optThermalBoundedObjectiveEnable true; // required for SmoothExcessT when objFunction=3
+    optThermalBoundedObjectiveEnable false; // required for SmoothExcessT when objFunction=3
     optThermalExcessTref          2.8; // focus objective on upper thermal tail (hotspot range)
     optThermalExcessSoftplusScale 0.75; // moderate smoothing: sharper than 1.0, safer than very small values
 
