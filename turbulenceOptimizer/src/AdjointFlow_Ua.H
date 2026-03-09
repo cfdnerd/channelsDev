@@ -203,8 +203,7 @@ for (i = 0; i < adjointFlowCorrectors; i++)
 
   tmp<volScalarField> rAtUa(rAUa);
 
-  const bool useConsistentCorrection = simple.consistent() && !turbulenceProModeActive;
-  if (useConsistentCorrection)
+  if (simple.consistent())
   {
       rAtUa = 1.0/(1.0/rAUa - UaEqn.H1());
       phiHbyAa +=

@@ -135,8 +135,7 @@ adjustPhi(phiHbyAb, Ub, pb);
 
 tmp<volScalarField> rAtUb(rAUb);
 
-const bool useConsistentCorrection = simple.consistent() && !turbulenceProModeActive;
- if (useConsistentCorrection)
+ if (simple.consistent())
 {
     rAtUb = 1.0/(1.0/rAUb - UbEqn.H1());
     phiHbyAb +=
