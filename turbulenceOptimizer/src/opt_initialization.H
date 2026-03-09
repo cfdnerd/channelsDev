@@ -481,6 +481,7 @@ bool adjointCycleAdjointRolledBack(false);
 label adjointCycleAdjointRollbackCorrector(0);
 word adjointCycleAdjointStopReason("not-run");
 bool optimizationCycleHeatAdjointRolledBack(false);
+bool optimizationCycleHeatAdjointControlledStop(false);
 label optimizationCycleHeatAdjointRollbackCorrector(0);
 word optimizationCycleHeatAdjointStopReason("not-run");
 label proModeAdjointRollbackFreeStreak(0);

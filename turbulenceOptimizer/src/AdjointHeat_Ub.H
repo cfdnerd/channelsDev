@@ -4,6 +4,9 @@ const bool proModeHeatAdjointMode =
     customTurbulenceActive
  && turbulenceProModeActive
  && proModeAdjointStabilityPackActive;
+const bool proModeSAHeatAdjointMode =
+    proModeHeatAdjointMode
+ && proModeSAAdjointClosureSelected;
 const bool optimizationLikeHeatAdjointMode =
     optimizationCycleObjectiveAdjointMode || proModeHeatAdjointMode;
 const bool optimizationCycleHeatRollbackGuardsEnabled =
@@ -109,8 +112,24 @@ const dimensionedScalar ubPseudoInvTau
 );
 const scalar ubSourceSplitStrength =
     optimizationLikeHeatAdjointMode
-  ? 0.35
+  ? (
+        proModeHeatAdjointMode
+      ? (
+            proModeSAHeatAdjointMode
+          ? (0.95 - 0.40*proModeUbRamp)
+          : (0.80 - 0.30*proModeUbRamp)
+        )
+      : 0.50
+    )
   : 0.0;
+const scalar ubThermalSourceRamp =
+    proModeHeatAdjointMode
+  ? (
+        proModeSAHeatAdjointMode
+      ? (0.10 + 0.90*proModeWarmupProgressUb)
+      : (0.20 + 0.80*proModeWarmupProgressUb)
+    )
+  : scalar(1.0);
 const bool useProModeRobustHeatLinearSolvers =
     proModeHeatAdjointMode
  && proModeRobustLinearSolverActive;
@@ -126,6 +145,7 @@ label optimizationCycleBestCorrector = 0;
 label optimizationCycleAdjointCorrectorsUsed = 0;
 word optimizationCycleHeatStopReason(optimizationLikeHeatAdjointMode ? "max-correctors" : "legacy");
 optimizationCycleHeatAdjointRolledBack = false;
+optimizationCycleHeatAdjointControlledStop = false;
 optimizationCycleHeatAdjointRollbackCorrector = 0;
 optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
 
@@ -165,6 +185,7 @@ if (optimizationLikeHeatAdjointMode)
       << " pseudoInvTau=" << ubPseudoInvTauValue
       << " UbRelax=" << ubEqnRelaxFactor
       << " sourceSplit=" << ubSourceSplitStrength
+      << " sourceRamp=" << ubThermalSourceRamp
       << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
   }
@@ -187,7 +208,7 @@ const volVectorField UbOldState(Ub);
 volVectorField adjointTransposeConvectionb((fvc::grad(U) & Ub));
 const volVectorField ubThermalSource
 (
-  b1*thermalAdjointSourceField*fvc::grad(T)
+  ubThermalSourceRamp*b1*thermalAdjointSourceField*fvc::grad(T)
 );
 volScalarField ubExplicitSourceMagnitude
 (
@@ -416,6 +437,7 @@ if (optimizationLikeHeatAdjointMode)
   bool optimizationCycleMagnitudeGuardTriggered(false);
   bool optimizationCycleGrowthDiverged(false);
   bool optimizationCycleNoImproveDiverged(false);
+  bool optimizationCycleNoImproveControlledStop(false);
   if
   (
       optimizationCycleHeatRollbackGuardsEnabled
@@ -495,6 +517,7 @@ if (optimizationLikeHeatAdjointMode)
   )
   {
     optimizationCycleNoImproveDiverged = true;
+    optimizationCycleNoImproveControlledStop = true;
     optimizationCyclePendingRollback = true;
     optimizationCycleHeatStopReason = "no-improve";
   }
@@ -525,9 +548,13 @@ if (optimizationLikeHeatAdjointMode)
     {
       optimizationCyclePassState = "converged";
     }
-    else if (optimizationCycleMagnitudeGuardTriggered || optimizationCycleGrowthDiverged || optimizationCycleNoImproveDiverged)
+    else if (optimizationCycleMagnitudeGuardTriggered || optimizationCycleGrowthDiverged)
     {
       optimizationCyclePassState = "rollback";
+    }
+    else if (optimizationCycleNoImproveControlledStop)
+    {
+      optimizationCyclePassState = "controlled-stop";
     }
     else if (optimizationCycleIsBestPass)
     {
@@ -566,6 +593,9 @@ if (optimizationLikeHeatAdjointMode)
     Ub.correctBoundaryConditions();
     pb.correctBoundaryConditions();
     fvOptions.correct(Ub);
+    const bool optimizationCycleHardRollback =
+        optimizationCycleMagnitudeGuardTriggered
+     || optimizationCycleGrowthDiverged;
     if (optimizationCycleMagnitudeGuardTriggered)
     {
       optimizationCycleHeatStopReason = "magnitude-guard-rollback";
@@ -576,10 +606,29 @@ if (optimizationLikeHeatAdjointMode)
     }
     else if (optimizationCycleNoImproveDiverged)
     {
-      optimizationCycleHeatStopReason = "no-improve-rollback";
+      optimizationCycleHeatStopReason =
+        proModeHeatAdjointMode && proModeWarmupProgressUb < scalar(1.0)
+      ? "no-improve-warmup-stop"
+      : "no-improve-stop";
     }
-    optimizationCycleHeatAdjointRolledBack = true;
-    optimizationCycleHeatAdjointRollbackCorrector = optimizationCycleBestCorrector;
+    if (optimizationCycleHardRollback)
+    {
+      optimizationCycleHeatAdjointRolledBack = true;
+      optimizationCycleHeatAdjointControlledStop = false;
+      optimizationCycleHeatAdjointRollbackCorrector = optimizationCycleBestCorrector;
+    }
+    else if (optimizationCycleNoImproveControlledStop)
+    {
+      optimizationCycleHeatAdjointRolledBack = false;
+      optimizationCycleHeatAdjointControlledStop = true;
+      optimizationCycleHeatAdjointRollbackCorrector = optimizationCycleBestCorrector;
+    }
+    else
+    {
+      optimizationCycleHeatAdjointRolledBack = false;
+      optimizationCycleHeatAdjointControlledStop = false;
+      optimizationCycleHeatAdjointRollbackCorrector = 0;
+    }
     optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
     break;
   }
@@ -588,7 +637,11 @@ if (optimizationLikeHeatAdjointMode)
 Ub.storePrevIter();
 pb.storePrevIter();
 phib.storePrevIter();
-if (!optimizationCycleHeatAdjointRolledBack)
+if
+(
+    !optimizationCycleHeatAdjointRolledBack
+ && !optimizationCycleHeatAdjointControlledStop
+)
 {
   optimizationCycleHeatAdjointRollbackCorrector = 0;
 }

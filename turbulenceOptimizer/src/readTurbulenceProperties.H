@@ -61,21 +61,24 @@ const label proModeHeatAdjointCorrectors =
     proModeAdjointStabilityPackActive ? label(20) : label(40);
 const bool proModeResetAdjointState = false;
 const bool proModeAdjointNoImproveCheck = proModeAdjointStabilityPackActive;
-const label proModeAdjointNoImproveMinCorrectors(3);
-const label proModeAdjointNoImprovePatience(2);
+const label proModeAdjointNoImproveMinCorrectors(7);
+const label proModeAdjointNoImprovePatience(5);
 const scalar proModeAdjointMaxMagnitude(1e8);
 const bool proModeAdjointUseNuEff = proModeAdjointStabilityPackActive;
 const bool proModeAdjointUseLegacyPressureRelax = proModeAdjointStabilityPackActive;
-const label proModeAdjointWarmupIterations(50);
+const label proModeAdjointWarmupIterations(80);
 const label proModeAdjointRampRollbackFreeWindow(8);
 const scalar proModePseudoInvTauFloorRatio(0.20);
 const scalar proModeUaPseudoInvTauBase(8.0);
-const scalar proModeUbPseudoInvTauBase(10.0);
+const scalar proModeUbPseudoInvTauBase
+(
+    proModeSAAdjointClosureSelected ? 30.0 : 20.0
+);
 const scalar proModeClosurePseudoInvTauScale(0.75);
 const scalar proModeUaEqnRelaxMin(0.15);
 const scalar proModeUaEqnRelaxMax(0.35);
-const scalar proModeUbEqnRelaxMin(0.15);
-const scalar proModeUbEqnRelaxMax(0.30);
+const scalar proModeUbEqnRelaxMin(0.05);
+const scalar proModeUbEqnRelaxMax(0.15);
 const scalar proModeClosureEqnRelaxMin(0.10);
 const scalar proModeClosureEqnRelaxMax(0.20);
 const scalar proModePrimalTransportDiffusionMinScale(2.0);
