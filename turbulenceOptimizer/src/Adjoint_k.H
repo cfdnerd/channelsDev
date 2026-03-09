@@ -10,6 +10,10 @@ if (customTurbulenceActive)
   const bool optimizationCycleUseCrossCoupledClosureAdjoints =
     optimizationCycleUseTransportedClosureAdjoints
     && closureAdjointFormulationActive == word("transportedCrossCoupledV3");
+  const bool optimizationCycleUseSAClosureAdjoint =
+    turbulenceProModeActive
+    && proModeClosureAdjointSolvesActive
+    && proModeSAAdjointClosureActive;
   auto applyDualConsistentKaBC =
   [&]()
   {
@@ -25,138 +29,414 @@ if (customTurbulenceActive)
     }
   };
 
-  const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
-  const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
-  const volScalarField& optimizationCycleOmegaStateRef =
-    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
-    ? omegaClosureState
-    : omega;
-  const volScalarField adjointCycleKThermalCoupling
-  (
-    dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
-  );
-  const volScalarField adjointCycleKMomentumCoupling
-  (
-    2.0*dNutDkBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
-  );
-  const volScalarField adjointCycleKThermalMagnitude(mag(adjointCycleKThermalCoupling));
-  const volScalarField adjointCycleKMomentumMagnitude(mag(adjointCycleKMomentumCoupling));
-  const scalar adjointCycleKThermalScaleValue =
-    Foam::max(gMax(adjointCycleKThermalMagnitude), SMALL);
-  const scalar adjointCycleKMomentumScaleValue =
-    Foam::max(gMax(adjointCycleKMomentumMagnitude), SMALL);
-  const dimensionedScalar adjointCycleKThermalScale
-  (
-    "adjointCycleKThermalScale",
-    adjointCycleKThermalCoupling.dimensions(),
-    adjointCycleKThermalScaleValue
-  );
-  const dimensionedScalar adjointCycleKMomentumScale
-  (
-    "adjointCycleKMomentumScale",
-    adjointCycleKMomentumCoupling.dimensions(),
-    adjointCycleKMomentumScaleValue
-  );
-  volScalarField adjointCycleKSourceProxy
-  (
-    adjointCycleKThermalCoupling/adjointCycleKThermalScale
-  + adjointCycleKMomentumCoupling/adjointCycleKMomentumScale
-  );
-  if (static_cast<bool>(optimizationCycleUseLogClosureState))
+  if (optimizationCycleUseSAClosureAdjoint)
   {
-    const volScalarField logKMagnitude(mag(logKClosureState));
-    const dimensionedScalar logKScale
-    (
-      "logKScale",
-      logKClosureState.dimensions(),
-      Foam::max(gMax(logKMagnitude), SMALL)
-    );
-    adjointCycleKSourceProxy += 0.05*logKClosureState/logKScale;
-  }
-  if (optimizationCycleUseTransportedClosureAdjoints)
-  {
-    applyDualConsistentKaBC();
+    const scalar saSigma = 2.0/3.0;
+    const scalar saCb1 = 0.1355;
+    const scalar saCb2 = 0.622;
+    const scalar saKappa = 0.41;
+    const scalar saCw2 = 0.3;
+    const scalar saCw3 = 2.0;
+    const scalar saCv1 = 7.1;
+    const scalar saCt3 = 1.2;
+    const scalar saCt4 = 0.5;
+    const scalar saCw1 = saCb1/(saKappa*saKappa) + (1.0 + saCb2)/saSigma;
+    const scalar saCv1Cubed = saCv1*saCv1*saCv1;
+    const scalar saCw3Pow6 = Foam::pow(saCw3, 6.0);
+    const scalar saInvKappa2 = 1.0/(saKappa*saKappa);
 
-    const dimensionedScalar optimizationCycleClosureInvTau
+    const volTensorField adjointCycleGradU(fvc::grad(U));
+    const volTensorField adjointCycleVorticityTensor(skew(adjointCycleGradU));
+    const volScalarField adjointCycleVorticityMagnitude
     (
-      "optimizationCycleClosureInvTau",
-      dimless/dimTime,
-      closureAdjointInvTauActive
+      Foam::sqrt(scalar(2.0))*mag(adjointCycleVorticityTensor)
     );
-    volScalarField optimizationCycleKReactionCoeff
-    (
-      betaStarCoeff
-     *optimizationCycleOmegaStateRef
-    + turbulenceDampingCoeff*alpha
-    );
-    if (!optimizationCycleUseResidualDraftClosureAdjoints)
-    {
-      optimizationCycleKReactionCoeff =
-        dimensionedScalar
-        (
-          "zeroOptimizationCycleKReactionCoeff",
-          optimizationCycleKReactionCoeff.dimensions(),
-          0.0
-        );
-    }
-    volScalarField optimizationCycleKCrossSource
+
+    volScalarField saNuTildaState
     (
       IOobject
       (
-        "optimizationCycleKCrossSource",
+        "saNuTildaState",
         runTime.timeName(),
         mesh,
         IOobject::NO_READ,
         IOobject::NO_WRITE
       ),
       mesh,
-      dimensionedScalar("zeroOptimizationCycleKCrossSource", dimless/dimTime, 0.0)
+      dimensionedScalar("zeroSaNuTildaState", nu.dimensions(), 0.0)
     );
-    if (optimizationCycleUseCrossCoupledClosureAdjoints)
-    {
-      const volScalarField omegaaMagnitude(mag(omegaa));
-      const dimensionedScalar omegaaScale
+    volScalarField dNutDNuTilda
+    (
+      IOobject
       (
-        "omegaaScale",
-        omegaa.dimensions(),
-        Foam::max(gMax(omegaaMagnitude), SMALL)
-      );
-      optimizationCycleKCrossSource =
-        optimizationCycleClosureInvTau
-       *closureAdjointCrossCouplingActive
-       *(omegaa/omegaaScale);
+        "dNutDNuTilda",
+        runTime.timeName(),
+        mesh,
+        IOobject::NO_READ,
+        IOobject::NO_WRITE
+      ),
+      mesh,
+      dimensionedScalar("zeroDNutDNuTilda", dimless, 0.0)
+    );
+    const scalarField& nutInternal = nut.internalField();
+    const scalarField& nuInternal = nu.internalField();
+    scalarField& saNuTildaInternal = saNuTildaState.internalFieldRef();
+    scalarField& dNutDNuTildaInternal = dNutDNuTilda.internalFieldRef();
+    forAll(saNuTildaInternal, celli)
+    {
+      const scalar nuCell = Foam::max(nuInternal[celli], SMALL);
+      const scalar nutCell = Foam::max(nutInternal[celli], scalar(0.0));
+      scalar nuTildaCell = Foam::max(nutCell, scalar(1e-6)*nuCell);
+      for (label saNewtonIter = 0; saNewtonIter < 6; ++saNewtonIter)
+      {
+        const scalar chi = nuTildaCell/nuCell;
+        const scalar chi2 = chi*chi;
+        const scalar chi3 = chi2*chi;
+        const scalar denom = Foam::max(chi3 + saCv1Cubed, SMALL);
+        const scalar fv1 = chi3/denom;
+        const scalar dfv1dChi =
+          3.0*chi2*saCv1Cubed/Foam::max(denom*denom, SMALL);
+        const scalar dfv1dNuTilda = dfv1dChi/nuCell;
+        const scalar residual = nuTildaCell*fv1 - nutCell;
+        const scalar jacobian = Foam::max(fv1 + nuTildaCell*dfv1dNuTilda, SMALL);
+        nuTildaCell = Foam::max(nuTildaCell - residual/jacobian, scalar(0.0));
+      }
+      const scalar chi = nuTildaCell/nuCell;
+      const scalar chi2 = chi*chi;
+      const scalar chi3 = chi2*chi;
+      const scalar denom = Foam::max(chi3 + saCv1Cubed, SMALL);
+      const scalar fv1 = chi3/denom;
+      const scalar dfv1dChi =
+        3.0*chi2*saCv1Cubed/Foam::max(denom*denom, SMALL);
+      const scalar dfv1dNuTilda = dfv1dChi/nuCell;
+      saNuTildaInternal[celli] = nuTildaCell;
+      dNutDNuTildaInternal[celli] =
+        Foam::max(fv1 + nuTildaCell*dfv1dNuTilda, scalar(0.0));
     }
-    const volScalarField kaTransportDiffusivity
-    (
-      turbulenceAdjointTransportDiffusionScale*(nu + alphaKField*nut)
-    );
-    fvScalarMatrix kaEqn
-    (
-        fvm::div(phi, ka)
-      - fvm::laplacian(kaTransportDiffusivity, ka)
-      + fvm::Sp(optimizationCycleClosureInvTau, ka)
-      + fvm::Sp(optimizationCycleKReactionCoeff, ka)
-     ==
-        optimizationCycleClosureInvTau*adjointCycleKSourceProxy
-      + optimizationCycleKCrossSource
-    );
+    saNuTildaState.correctBoundaryConditions();
+    dNutDNuTilda.correctBoundaryConditions();
 
-    kaEqn.relax();
-
-    const auto kaLinearSolvePerformance = kaEqn.solve();
-    recordLinearSolve
+    const volScalarField dAlphaEffDNuTilda(dNutDNuTilda/Prt);
+    const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
+    const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
+    const volScalarField adjointCycleSAThermalCoupling
     (
-      kaLinearSolveStats,
-      kaLinearSolvePerformance.initialResidual(),
-      kaLinearSolvePerformance.finalResidual(),
-      kaLinearSolvePerformance.nIterations()
+      dAlphaEffDNuTilda*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
     );
+    const volScalarField adjointCycleSAMomentumCoupling
+    (
+      2.0*dNutDNuTilda*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
+    );
+    const volScalarField adjointCycleSAThermalMagnitude(mag(adjointCycleSAThermalCoupling));
+    const volScalarField adjointCycleSAMomentumMagnitude(mag(adjointCycleSAMomentumCoupling));
+    const scalar adjointCycleSAThermalScaleValue =
+      Foam::max(gMax(adjointCycleSAThermalMagnitude), SMALL);
+    const scalar adjointCycleSAMomentumScaleValue =
+      Foam::max(gMax(adjointCycleSAMomentumMagnitude), SMALL);
+    const dimensionedScalar adjointCycleSAThermalScale
+    (
+      "adjointCycleSAThermalScale",
+      adjointCycleSAThermalCoupling.dimensions(),
+      adjointCycleSAThermalScaleValue
+    );
+    const dimensionedScalar adjointCycleSAMomentumScale
+    (
+      "adjointCycleSAMomentumScale",
+      adjointCycleSAMomentumCoupling.dimensions(),
+      adjointCycleSAMomentumScaleValue
+    );
+    volScalarField adjointCycleSASourceProxy
+    (
+      adjointCycleSAThermalCoupling/adjointCycleSAThermalScale
+    + adjointCycleSAMomentumCoupling/adjointCycleSAMomentumScale
+    );
+    if (static_cast<bool>(optimizationCycleUseLogClosureState))
+    {
+      const volScalarField optimizationCycleLogClosureMix
+      (
+        logKClosureState + logOmegaClosureState
+      );
+      const volScalarField optimizationCycleLogClosureMixMagnitude
+      (
+        mag(optimizationCycleLogClosureMix)
+      );
+      const dimensionedScalar optimizationCycleLogClosureScale
+      (
+        "optimizationCycleLogClosureScale",
+        optimizationCycleLogClosureMix.dimensions(),
+        Foam::max(gMax(optimizationCycleLogClosureMixMagnitude), SMALL)
+      );
+      adjointCycleSASourceProxy +=
+        0.05*optimizationCycleLogClosureMix/optimizationCycleLogClosureScale;
+    }
 
-    applyDualConsistentKaBC();
+    if (optimizationCycleUseTransportedClosureAdjoints)
+    {
+      applyDualConsistentKaBC();
+
+      const dimensionedScalar optimizationCycleClosureInvTau
+      (
+        "optimizationCycleClosureInvTau",
+        dimless/dimTime,
+        closureAdjointInvTauActive
+      );
+      volScalarField saTransportDiffusivity
+      (
+        IOobject
+        (
+          "saTransportDiffusivity",
+          runTime.timeName(),
+          mesh,
+          IOobject::NO_READ,
+          IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zeroSaTransportDiffusivity", nu.dimensions(), 0.0)
+      );
+      volScalarField saReactionCoeff
+      (
+        IOobject
+        (
+          "saReactionCoeff",
+          runTime.timeName(),
+          mesh,
+          IOobject::NO_READ,
+          IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zeroSaReactionCoeff", dimless/dimTime, 0.0)
+      );
+      scalarField& saTransportDiffusivityInternal =
+        saTransportDiffusivity.internalFieldRef();
+      scalarField& saReactionCoeffInternal = saReactionCoeff.internalFieldRef();
+      const scalarField& yWallInternal = yWall.internalField();
+      const scalarField& alphaInternal = alpha.internalField();
+      const scalarField& vorticityMagInternal =
+        adjointCycleVorticityMagnitude.internalField();
+      forAll(saReactionCoeffInternal, celli)
+      {
+        const scalar nuCell = Foam::max(nuInternal[celli], SMALL);
+        const scalar nuTildaCell = Foam::max(saNuTildaInternal[celli], scalar(0.0));
+        const scalar yCell = Foam::max(yWallInternal[celli], yMin.value());
+        const scalar chi = nuTildaCell/nuCell;
+        const scalar chi2 = chi*chi;
+        const scalar chi3 = chi2*chi;
+        const scalar denom = Foam::max(chi3 + saCv1Cubed, SMALL);
+        const scalar fv1 = chi3/denom;
+        const scalar fv2 = 1.0 - chi/Foam::max(1.0 + chi*fv1, SMALL);
+        const scalar ft2 = saCt3*Foam::exp(-saCt4*chi2);
+        const scalar omegaTilde =
+          Foam::max
+          (
+            vorticityMagInternal[celli]
+          + nuTildaCell*saInvKappa2*fv2/Foam::max(yCell*yCell, SMALL),
+            SMALL
+          );
+        const scalar r =
+          Foam::min
+          (
+            nuTildaCell
+           /Foam::max(omegaTilde*(saKappa*saKappa)*yCell*yCell, SMALL),
+            scalar(10.0)
+          );
+        const scalar r2 = r*r;
+        const scalar r6 = r2*r2*r2;
+        const scalar g = r + saCw2*(r6 - r);
+        const scalar g2 = g*g;
+        const scalar g6 = g2*g2*g2;
+        const scalar fw =
+          g
+         *Foam::pow
+          (
+            (1.0 + saCw3Pow6)/Foam::max(g6 + saCw3Pow6, SMALL),
+            1.0/6.0
+          );
+
+        saTransportDiffusivityInternal[celli] =
+          turbulenceAdjointTransportDiffusionScale
+         *Foam::max((nuCell + nuTildaCell)/saSigma, SMALL);
+        saReactionCoeffInternal[celli] =
+          saCb1*(1.0 - ft2)*omegaTilde
+        + saCw1*fw*nuTildaCell/Foam::max(yCell*yCell, SMALL)
+        + turbulenceDampingCoeff*alphaInternal[celli];
+      }
+      saTransportDiffusivity.correctBoundaryConditions();
+      saReactionCoeff.correctBoundaryConditions();
+      fvScalarMatrix kaEqn
+      (
+          fvm::div(phi, ka)
+        - fvm::laplacian(saTransportDiffusivity, ka)
+        + fvm::Sp(optimizationCycleClosureInvTau, ka)
+        + fvm::Sp(saReactionCoeff, ka)
+       ==
+          optimizationCycleClosureInvTau*adjointCycleSASourceProxy
+      );
+
+      kaEqn.relax();
+
+      const auto kaLinearSolvePerformance = kaEqn.solve();
+      recordLinearSolve
+      (
+        kaLinearSolveStats,
+        kaLinearSolvePerformance.initialResidual(),
+        kaLinearSolvePerformance.finalResidual(),
+        kaLinearSolvePerformance.nIterations()
+      );
+
+      applyDualConsistentKaBC();
+    }
+    else
+    {
+      ka = adjointCycleSASourceProxy;
+    }
   }
   else
   {
-    ka = adjointCycleKSourceProxy;
+    const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
+    const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
+    const volScalarField& optimizationCycleOmegaStateRef =
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
+      ? omegaClosureState
+      : omega;
+    const volScalarField adjointCycleKThermalCoupling
+    (
+      dAlphaEffDkBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
+    );
+    const volScalarField adjointCycleKMomentumCoupling
+    (
+      2.0*dNutDkBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
+    );
+    const volScalarField adjointCycleKThermalMagnitude(mag(adjointCycleKThermalCoupling));
+    const volScalarField adjointCycleKMomentumMagnitude(mag(adjointCycleKMomentumCoupling));
+    const scalar adjointCycleKThermalScaleValue =
+      Foam::max(gMax(adjointCycleKThermalMagnitude), SMALL);
+    const scalar adjointCycleKMomentumScaleValue =
+      Foam::max(gMax(adjointCycleKMomentumMagnitude), SMALL);
+    const dimensionedScalar adjointCycleKThermalScale
+    (
+      "adjointCycleKThermalScale",
+      adjointCycleKThermalCoupling.dimensions(),
+      adjointCycleKThermalScaleValue
+    );
+    const dimensionedScalar adjointCycleKMomentumScale
+    (
+      "adjointCycleKMomentumScale",
+      adjointCycleKMomentumCoupling.dimensions(),
+      adjointCycleKMomentumScaleValue
+    );
+    volScalarField adjointCycleKSourceProxy
+    (
+      adjointCycleKThermalCoupling/adjointCycleKThermalScale
+    + adjointCycleKMomentumCoupling/adjointCycleKMomentumScale
+    );
+
+    if (optimizationCycleUseTransportedClosureAdjoints)
+    {
+      applyDualConsistentKaBC();
+
+      if (static_cast<bool>(optimizationCycleUseLogClosureState))
+      {
+        const volScalarField logKMagnitude(mag(logKClosureState));
+        const dimensionedScalar logKScale
+        (
+          "logKScale",
+          logKClosureState.dimensions(),
+          Foam::max(gMax(logKMagnitude), SMALL)
+        );
+        adjointCycleKSourceProxy += 0.05*logKClosureState/logKScale;
+      }
+      const dimensionedScalar optimizationCycleClosureInvTau
+      (
+        "optimizationCycleClosureInvTau",
+        dimless/dimTime,
+        closureAdjointInvTauActive
+      );
+      volScalarField optimizationCycleKReactionCoeff
+      (
+        betaStarCoeff
+       *optimizationCycleOmegaStateRef
+      + turbulenceDampingCoeff*alpha
+      );
+      if (!optimizationCycleUseResidualDraftClosureAdjoints)
+      {
+        optimizationCycleKReactionCoeff =
+          dimensionedScalar
+          (
+            "zeroOptimizationCycleKReactionCoeff",
+            optimizationCycleKReactionCoeff.dimensions(),
+            0.0
+          );
+      }
+      volScalarField optimizationCycleKCrossSource
+      (
+        IOobject
+        (
+          "optimizationCycleKCrossSource",
+          runTime.timeName(),
+          mesh,
+          IOobject::NO_READ,
+          IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zeroOptimizationCycleKCrossSource", dimless/dimTime, 0.0)
+      );
+      if (optimizationCycleUseCrossCoupledClosureAdjoints)
+      {
+        const volScalarField omegaaMagnitude(mag(omegaa));
+        const dimensionedScalar omegaaScale
+        (
+          "omegaaScale",
+          omegaa.dimensions(),
+          Foam::max(gMax(omegaaMagnitude), SMALL)
+        );
+        optimizationCycleKCrossSource =
+          optimizationCycleClosureInvTau
+         *closureAdjointCrossCouplingActive
+         *(omegaa/omegaaScale);
+      }
+      const volScalarField kaTransportDiffusivity
+      (
+        turbulenceAdjointTransportDiffusionScale*(nu + alphaKField*nut)
+      );
+      fvScalarMatrix kaEqn
+      (
+          fvm::div(phi, ka)
+        - fvm::laplacian(kaTransportDiffusivity, ka)
+        + fvm::Sp(optimizationCycleClosureInvTau, ka)
+        + fvm::Sp(optimizationCycleKReactionCoeff, ka)
+       ==
+          optimizationCycleClosureInvTau*adjointCycleKSourceProxy
+        + optimizationCycleKCrossSource
+      );
+
+      kaEqn.relax();
+
+      const auto kaLinearSolvePerformance = kaEqn.solve();
+      recordLinearSolve
+      (
+        kaLinearSolveStats,
+        kaLinearSolvePerformance.initialResidual(),
+        kaLinearSolvePerformance.finalResidual(),
+        kaLinearSolvePerformance.nIterations()
+      );
+
+      applyDualConsistentKaBC();
+    }
+    else
+    {
+      if (static_cast<bool>(optimizationCycleUseLogClosureState))
+      {
+        const volScalarField logKMagnitude(mag(logKClosureState));
+        const dimensionedScalar logKScale
+        (
+          "logKScale",
+          logKClosureState.dimensions(),
+          Foam::max(gMax(logKMagnitude), SMALL)
+        );
+        adjointCycleKSourceProxy += 0.05*logKClosureState/logKScale;
+      }
+      ka = adjointCycleKSourceProxy;
+    }
   }
 
   const volScalarField kaMagnitudeCheck(mag(ka));

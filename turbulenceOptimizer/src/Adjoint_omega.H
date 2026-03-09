@@ -10,6 +10,10 @@ if (customTurbulenceActive)
   const bool optimizationCycleUseCrossCoupledClosureAdjoints =
     optimizationCycleUseTransportedClosureAdjoints
     && closureAdjointFormulationActive == word("transportedCrossCoupledV3");
+  const bool optimizationCycleUseSAClosureAdjoint =
+    turbulenceProModeActive
+    && proModeClosureAdjointSolvesActive
+    && proModeSAAdjointClosureActive;
   auto applyDualConsistentOmegaaBC =
   [&]()
   {
@@ -24,140 +28,158 @@ if (customTurbulenceActive)
       }
     }
   };
-
-  const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
-  const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
-  const volScalarField& optimizationCycleOmegaStateRef =
-    static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
-    ? omegaClosureState
-    : omega;
-  const volScalarField adjointCycleOmegaThermalCoupling
-  (
-    dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
-  );
-  const volScalarField adjointCycleOmegaMomentumCoupling
-  (
-    2.0*dNutDOmegaBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
-  );
-  const volScalarField adjointCycleOmegaThermalMagnitude(mag(adjointCycleOmegaThermalCoupling));
-  const volScalarField adjointCycleOmegaMomentumMagnitude(mag(adjointCycleOmegaMomentumCoupling));
-  const scalar adjointCycleOmegaThermalScaleValue =
-    Foam::max(gMax(adjointCycleOmegaThermalMagnitude), SMALL);
-  const scalar adjointCycleOmegaMomentumScaleValue =
-    Foam::max(gMax(adjointCycleOmegaMomentumMagnitude), SMALL);
-  const dimensionedScalar adjointCycleOmegaThermalScale
-  (
-    "adjointCycleOmegaThermalScale",
-    adjointCycleOmegaThermalCoupling.dimensions(),
-    adjointCycleOmegaThermalScaleValue
-  );
-  const dimensionedScalar adjointCycleOmegaMomentumScale
-  (
-    "adjointCycleOmegaMomentumScale",
-    adjointCycleOmegaMomentumCoupling.dimensions(),
-    adjointCycleOmegaMomentumScaleValue
-  );
-  volScalarField adjointCycleOmegaSourceProxy
-  (
-    adjointCycleOmegaThermalCoupling/adjointCycleOmegaThermalScale
-  + adjointCycleOmegaMomentumCoupling/adjointCycleOmegaMomentumScale
-  );
-  if (static_cast<bool>(optimizationCycleUseLogClosureState))
+  auto applyZeroOmegaaBC =
+  [&]()
   {
-    const volScalarField logOmegaMagnitude(mag(logOmegaClosureState));
-    const dimensionedScalar logOmegaScale
-    (
-      "logOmegaScale",
-      logOmegaClosureState.dimensions(),
-      Foam::max(gMax(logOmegaMagnitude), SMALL)
-    );
-    adjointCycleOmegaSourceProxy += 0.05*logOmegaClosureState/logOmegaScale;
-  }
-  if (optimizationCycleUseTransportedClosureAdjoints)
+    forAll(omegaa.boundaryFieldRef(), patchi)
+    {
+      omegaa.boundaryFieldRef()[patchi] == scalar(0.0);
+    }
+  };
+
+  if (optimizationCycleUseSAClosureAdjoint)
   {
-    applyDualConsistentOmegaaBC();
-
-    const dimensionedScalar optimizationCycleClosureInvTau
-    (
-      "optimizationCycleClosureInvTau",
-      dimless/dimTime,
-      closureAdjointInvTauActive
-    );
-    volScalarField optimizationCycleOmegaReactionCoeff
-    (
-      scalar(2.0)
-     *betaField
-     *optimizationCycleOmegaStateRef
-    + turbulenceDampingCoeff*alpha
-    );
-    if (!optimizationCycleUseResidualDraftClosureAdjoints)
-    {
-      optimizationCycleOmegaReactionCoeff =
-        dimensionedScalar
-        (
-          "zeroOptimizationCycleOmegaReactionCoeff",
-          optimizationCycleOmegaReactionCoeff.dimensions(),
-          0.0
-        );
-    }
-    volScalarField optimizationCycleOmegaCrossSource
-    (
-      IOobject
-      (
-        "optimizationCycleOmegaCrossSource",
-        runTime.timeName(),
-        mesh,
-        IOobject::NO_READ,
-        IOobject::NO_WRITE
-      ),
-      mesh,
-      dimensionedScalar("zeroOptimizationCycleOmegaCrossSource", dimless/dimTime, 0.0)
-    );
-    if (optimizationCycleUseCrossCoupledClosureAdjoints)
-    {
-      const volScalarField kaMagnitude(mag(ka));
-      const dimensionedScalar kaScale
-      (
-        "kaScale",
-        ka.dimensions(),
-        Foam::max(gMax(kaMagnitude), SMALL)
-      );
-      optimizationCycleOmegaCrossSource =
-        optimizationCycleClosureInvTau
-       *closureAdjointCrossCouplingActive
-       *(ka/kaScale);
-    }
-    const volScalarField omegaaTransportDiffusivity
-    (
-      turbulenceAdjointTransportDiffusionScale*(nu + alphaOmegaField*nut)
-    );
-    fvScalarMatrix omegaaEqn
-    (
-        fvm::div(phi, omegaa)
-      - fvm::laplacian(omegaaTransportDiffusivity, omegaa)
-      + fvm::Sp(optimizationCycleClosureInvTau, omegaa)
-      + fvm::Sp(optimizationCycleOmegaReactionCoeff, omegaa)
-     ==
-        optimizationCycleClosureInvTau*adjointCycleOmegaSourceProxy
-      + optimizationCycleOmegaCrossSource
-    );
-
-    omegaaEqn.relax();
-
-    const auto omegaaLinearSolvePerformance = omegaaEqn.solve();
-    recordLinearSolve
-    (
-      omegaaLinearSolveStats,
-      omegaaLinearSolvePerformance.initialResidual(),
-      omegaaLinearSolvePerformance.finalResidual(),
-      omegaaLinearSolvePerformance.nIterations()
-    );
-
-    applyDualConsistentOmegaaBC();
+    omegaa = dimensionedScalar("zeroOmegaaAdjoint", omegaa.dimensions(), 0.0);
+    applyZeroOmegaaBC();
+    omegaa.correctBoundaryConditions();
+    applyZeroOmegaaBC();
   }
   else
   {
-    omegaa = adjointCycleOmegaSourceProxy;
+    const volSymmTensorField adjointCycleSymmGradU(symm(fvc::grad(U)));
+    const volSymmTensorField adjointCycleSymmGradUa(symm(fvc::grad(Ua)));
+    const volScalarField& optimizationCycleOmegaStateRef =
+      static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
+      ? omegaClosureState
+      : omega;
+    const volScalarField adjointCycleOmegaThermalCoupling
+    (
+      dAlphaEffDOmegaBlock*(fvc::grad(T) & fvc::grad(optimizationCycleThermalAdjointField))
+    );
+    const volScalarField adjointCycleOmegaMomentumCoupling
+    (
+      2.0*dNutDOmegaBlock*(adjointCycleSymmGradU && adjointCycleSymmGradUa)
+    );
+    const volScalarField adjointCycleOmegaThermalMagnitude(mag(adjointCycleOmegaThermalCoupling));
+    const volScalarField adjointCycleOmegaMomentumMagnitude(mag(adjointCycleOmegaMomentumCoupling));
+    const scalar adjointCycleOmegaThermalScaleValue =
+      Foam::max(gMax(adjointCycleOmegaThermalMagnitude), SMALL);
+    const scalar adjointCycleOmegaMomentumScaleValue =
+      Foam::max(gMax(adjointCycleOmegaMomentumMagnitude), SMALL);
+    const dimensionedScalar adjointCycleOmegaThermalScale
+    (
+      "adjointCycleOmegaThermalScale",
+      adjointCycleOmegaThermalCoupling.dimensions(),
+      adjointCycleOmegaThermalScaleValue
+    );
+    const dimensionedScalar adjointCycleOmegaMomentumScale
+    (
+      "adjointCycleOmegaMomentumScale",
+      adjointCycleOmegaMomentumCoupling.dimensions(),
+      adjointCycleOmegaMomentumScaleValue
+    );
+    volScalarField adjointCycleOmegaSourceProxy
+    (
+      adjointCycleOmegaThermalCoupling/adjointCycleOmegaThermalScale
+    + adjointCycleOmegaMomentumCoupling/adjointCycleOmegaMomentumScale
+    );
+    if (static_cast<bool>(optimizationCycleUseLogClosureState))
+    {
+      const volScalarField logOmegaMagnitude(mag(logOmegaClosureState));
+      const dimensionedScalar logOmegaScale
+      (
+        "logOmegaScale",
+        logOmegaClosureState.dimensions(),
+        Foam::max(gMax(logOmegaMagnitude), SMALL)
+      );
+      adjointCycleOmegaSourceProxy += 0.05*logOmegaClosureState/logOmegaScale;
+    }
+    if (optimizationCycleUseTransportedClosureAdjoints)
+    {
+      applyDualConsistentOmegaaBC();
+
+      const dimensionedScalar optimizationCycleClosureInvTau
+      (
+        "optimizationCycleClosureInvTau",
+        dimless/dimTime,
+        closureAdjointInvTauActive
+      );
+      volScalarField optimizationCycleOmegaReactionCoeff
+      (
+        scalar(2.0)
+       *betaField
+       *optimizationCycleOmegaStateRef
+      + turbulenceDampingCoeff*alpha
+      );
+      if (!optimizationCycleUseResidualDraftClosureAdjoints)
+      {
+        optimizationCycleOmegaReactionCoeff =
+          dimensionedScalar
+          (
+            "zeroOptimizationCycleOmegaReactionCoeff",
+            optimizationCycleOmegaReactionCoeff.dimensions(),
+            0.0
+          );
+      }
+      volScalarField optimizationCycleOmegaCrossSource
+      (
+        IOobject
+        (
+          "optimizationCycleOmegaCrossSource",
+          runTime.timeName(),
+          mesh,
+          IOobject::NO_READ,
+          IOobject::NO_WRITE
+        ),
+        mesh,
+        dimensionedScalar("zeroOptimizationCycleOmegaCrossSource", dimless/dimTime, 0.0)
+      );
+      if (optimizationCycleUseCrossCoupledClosureAdjoints)
+      {
+        const volScalarField kaMagnitude(mag(ka));
+        const dimensionedScalar kaScale
+        (
+          "kaScale",
+          ka.dimensions(),
+          Foam::max(gMax(kaMagnitude), SMALL)
+        );
+        optimizationCycleOmegaCrossSource =
+          optimizationCycleClosureInvTau
+         *closureAdjointCrossCouplingActive
+         *(ka/kaScale);
+      }
+      const volScalarField omegaaTransportDiffusivity
+      (
+        turbulenceAdjointTransportDiffusionScale*(nu + alphaOmegaField*nut)
+      );
+      fvScalarMatrix omegaaEqn
+      (
+          fvm::div(phi, omegaa)
+        - fvm::laplacian(omegaaTransportDiffusivity, omegaa)
+        + fvm::Sp(optimizationCycleClosureInvTau, omegaa)
+        + fvm::Sp(optimizationCycleOmegaReactionCoeff, omegaa)
+       ==
+          optimizationCycleClosureInvTau*adjointCycleOmegaSourceProxy
+        + optimizationCycleOmegaCrossSource
+      );
+
+      omegaaEqn.relax();
+
+      const auto omegaaLinearSolvePerformance = omegaaEqn.solve();
+      recordLinearSolve
+      (
+        omegaaLinearSolveStats,
+        omegaaLinearSolvePerformance.initialResidual(),
+        omegaaLinearSolvePerformance.finalResidual(),
+        omegaaLinearSolvePerformance.nIterations()
+      );
+
+      applyDualConsistentOmegaaBC();
+    }
+    else
+    {
+      omegaa = adjointCycleOmegaSourceProxy;
+    }
   }
 
   const volScalarField omegaaMagnitudeCheck(mag(omegaa));
@@ -170,5 +192,12 @@ if (customTurbulenceActive)
       << exit(FatalError);
   }
   omegaa.correctBoundaryConditions();
-  applyDualConsistentOmegaaBC();
+  if (optimizationCycleUseSAClosureAdjoint)
+  {
+    applyZeroOmegaaBC();
+  }
+  else
+  {
+    applyDualConsistentOmegaaBC();
+  }
 }

@@ -24,6 +24,10 @@ Switch proModeAdjointStabilityPack
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("proModeAdjointStabilityPack", true)
 );
+word proModeAdjointClosureModel
+(
+    customTurbulenceProperties.lookupOrDefault<word>("proModeAdjointClosureModel", "sst")
+);
 const bool turbulenceProModeActive =
     customTurbulenceActive
  && static_cast<bool>(turbulenceProMode);
@@ -33,6 +37,12 @@ const bool proModeClosureAdjointSolvesActive =
 const bool proModeAdjointStabilityPackActive =
     turbulenceProModeActive
  && static_cast<bool>(proModeAdjointStabilityPack);
+const bool proModeSAAdjointClosureSelected =
+    turbulenceProModeActive
+ && proModeAdjointClosureModel == word("sa");
+const bool proModeSAAdjointClosureActive =
+    proModeClosureAdjointSolvesActive
+ && proModeSAAdjointClosureSelected;
 // Pro-mode stability pack (hardcoded): activated by one dict toggle.
 const label proModeFlowAdjointCorrectors =
     proModeAdjointStabilityPackActive ? label(20) : label(40);
@@ -438,6 +448,18 @@ if
         << proModeClosureAdjointFormulation
         << exit(FatalError);
 }
+if
+(
+    proModeAdjointClosureModel != "sst"
+ && proModeAdjointClosureModel != "sa"
+)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.proModeAdjointClosureModel must be "
+        << "sst or sa. Found "
+        << proModeAdjointClosureModel
+        << exit(FatalError);
+}
 if (porousTurbulenceProductionExponent < 1.0)
 {
     FatalErrorInFunction
@@ -702,7 +724,9 @@ else if (customTurbulenceActive && turbulenceProModeActive)
 {
     Info<< "Custom kOmegaSST turbulence Pro mode is enabled. "
         << "Primal turbulence fields (k/omega) are solved to resolve U/p/T, "
-        << "and closure adjoints (ka/omegaa) are solved/reconstructed for the "
+        << "and closure adjoints ("
+        << (proModeSAAdjointClosureSelected ? "ka (SA-family)" : "ka/omegaa")
+        << ") are solved/reconstructed for the "
         << "adjoint state, while optimizer updates use laminar-style "
         << "cost/sensitivity/filter/update logic without turbulent sensitivity terms."
         << endl;
@@ -712,6 +736,8 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << ", crossCoupling=" << closureAdjointCrossCouplingActive
         << ", formulation=" << closureAdjointFormulationActive
         << ", dualBC=" << (closureAdjointDualConsistentBCActive ? "true" : "false")
+        << ", model="
+        << (proModeSAAdjointClosureSelected ? "sa(ka-only, nuTilda-family)" : "sst(ka+omegaa)")
         << "). "
         << "Pro closure-adjoint solves="
         << (proModeClosureAdjointSolvesActive ? "enabled" : "disabled")

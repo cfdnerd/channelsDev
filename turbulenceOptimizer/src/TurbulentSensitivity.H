@@ -234,9 +234,13 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
   (
     optimizationCycleKConstraintNormalized + optimizationCycleOmegaConstraintNormalized
   );
+  const bool optimizationCycleUseSAClosureAdjoint =
+    turbulenceProModeActive
+    && proModeClosureAdjointSolvesActive
+    && proModeSAAdjointClosureActive;
   const volScalarField optimizationCycleTransportedClosureMix
   (
-    ka + omegaa
+    optimizationCycleUseSAClosureAdjoint ? ka : (ka + omegaa)
   );
   const volScalarField optimizationCycleLogClosureMix
   (
