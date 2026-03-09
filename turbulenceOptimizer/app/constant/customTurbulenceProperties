@@ -21,7 +21,7 @@ FoamFile
 enable                          true;       // Enable custom turbulence model.
 model                           kOmegaSST;  // Supported model.
 turbulenceProMode               true;       // Pro mode: keep k/omega (and closure adjoint) solves, but run laminar-style optimizer updates.
-optimizationCycleGradientClosure false;     // Set true only for full turbulence-coupled optimization mode (must match enableTurbulentOptimization); keep false for Pro mode.
+optimizationCycleGradientClosure false;     // Set true only for full turbulence-coupled optimization mode (must match option below); keep false for Pro mode.
 enableTurbulentOptimization     false;      // Set true only with optimizationCycleGradientClosure=true; keep false for Pro mode.
 
 // ------------------------------------------------------------------------- //

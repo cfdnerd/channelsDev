@@ -30,6 +30,6 @@ fluid_area          yes;
 solid_area          no;
 test_area           no;
 Pnorm               300;
-objFunction         3;
+objFunction         1;
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //  
