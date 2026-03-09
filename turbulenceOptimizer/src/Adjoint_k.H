@@ -14,6 +14,61 @@ if (customTurbulenceActive)
     turbulenceProModeActive
     && proModeClosureAdjointSolvesActive
     && proModeSAAdjointClosureActive;
+  const bool proModeClosureAdjointMode =
+      turbulenceProModeActive
+   && proModeAdjointStabilityPackActive
+   && proModeClosureAdjointSolvesActive;
+  const scalar proModeWarmupProgressClosure =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        Foam::max
+        (
+          scalar(0.0),
+          scalar(opt - 1)
+         /Foam::max(scalar(proModeAdjointWarmupIterations - 1), scalar(1.0))
+        )
+      )
+    : scalar(1.0);
+  const scalar proModeRollbackFreeProgressClosure =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        scalar(proModeAdjointRollbackFreeStreak)
+       /Foam::max(scalar(proModeAdjointRampRollbackFreeWindow), scalar(1.0))
+      )
+    : scalar(1.0);
+  const scalar proModeClosureRamp =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        scalar(0.5)*(proModeWarmupProgressClosure + proModeRollbackFreeProgressClosure)
+      )
+    : scalar(1.0);
+  const scalar proModeClosureEqnRelaxFactor =
+      proModeClosureAdjointMode
+    ? proModeClosureEqnRelaxMin
+    + (proModeClosureEqnRelaxMax - proModeClosureEqnRelaxMin)*proModeClosureRamp
+    : scalar(1.0);
+  const scalar proModeClosurePseudoDecay =
+      proModeClosureAdjointMode
+    ? Foam::max
+      (
+        proModePseudoInvTauFloorRatio,
+        scalar(1.0)
+      - (scalar(1.0) - proModePseudoInvTauFloorRatio)*proModeWarmupProgressClosure
+      )
+    : scalar(1.0);
+  const scalar kaPseudoInvTauScale =
+      proModeClosureAdjointMode
+    ? proModeClosurePseudoInvTauScale*proModeClosurePseudoDecay
+    : scalar(0.75);
+  const bool useProModeRobustClosureLinearSolvers =
+      proModeClosureAdjointMode
+   && proModeRobustLinearSolverActive;
   auto applyDualConsistentKaBC =
   [&]()
   {
@@ -185,7 +240,7 @@ if (customTurbulenceActive)
       (
         "kaPseudoInvTau",
         dimless/dimTime,
-        0.75*closureAdjointInvTauActive
+        kaPseudoInvTauScale*closureAdjointInvTauActive
       );
       volScalarField saTransportDiffusivity
       (
@@ -260,7 +315,7 @@ if (customTurbulenceActive)
           );
 
         saTransportDiffusivityInternal[celli] =
-          turbulenceAdjointTransportDiffusionScale
+          turbulenceAdjointTransportDiffusionScaleActive
          *Foam::max((nuCell + nuTildaCell)/saSigma, SMALL);
         saReactionCoeffInternal[celli] =
           saCb1*(1.0 - ft2)*omegaTilde
@@ -312,9 +367,19 @@ if (customTurbulenceActive)
         + kaPseudoInvTau*kaOldState
       );
 
-      kaEqn.relax();
+      if (proModeClosureAdjointMode)
+      {
+        kaEqn.relax(proModeClosureEqnRelaxFactor);
+      }
+      else
+      {
+        kaEqn.relax();
+      }
 
-      const auto kaLinearSolvePerformance = kaEqn.solve();
+      const auto kaLinearSolvePerformance =
+        useProModeRobustClosureLinearSolvers
+      ? kaEqn.solve(proModeRobustNonsymmetricSolverControls)
+      : kaEqn.solve();
       recordLinearSolve
       (
         kaLinearSolveStats,
@@ -396,7 +461,7 @@ if (customTurbulenceActive)
       (
         "kaPseudoInvTau",
         dimless/dimTime,
-        0.75*closureAdjointInvTauActive
+        kaPseudoInvTauScale*closureAdjointInvTauActive
       );
       volScalarField optimizationCycleKReactionCoeff
       (
@@ -429,17 +494,21 @@ if (customTurbulenceActive)
       );
       if (optimizationCycleUseCrossCoupledClosureAdjoints)
       {
-        const volScalarField omegaaMagnitude(mag(omegaa));
+        const volScalarField& omegaaCrossReference =
+          (proModeClosureAdjointMode && proModeLaggedClosureInitialized)
+        ? proModeLaggedOmegaa
+        : omegaa;
+        const volScalarField omegaaMagnitude(mag(omegaaCrossReference));
         const dimensionedScalar omegaaScale
         (
           "omegaaScale",
-          omegaa.dimensions(),
+          omegaaCrossReference.dimensions(),
           Foam::max(gMax(omegaaMagnitude), SMALL)
         );
         optimizationCycleKCrossSource =
           optimizationCycleClosureInvTau
          *closureAdjointCrossCouplingActive
-         *(omegaa/omegaaScale);
+         *(omegaaCrossReference/omegaaScale);
       }
       const volScalarField kaPatankarRef
       (
@@ -474,7 +543,7 @@ if (customTurbulenceActive)
       );
       const volScalarField kaTransportDiffusivity
       (
-        turbulenceAdjointTransportDiffusionScale*(nu + alphaKField*nut)
+        turbulenceAdjointTransportDiffusionScaleActive*(nu + alphaKField*nut)
       );
       fvScalarMatrix kaEqn
       (
@@ -489,9 +558,19 @@ if (customTurbulenceActive)
         + kaPseudoInvTau*kaOldState
       );
 
-      kaEqn.relax();
+      if (proModeClosureAdjointMode)
+      {
+        kaEqn.relax(proModeClosureEqnRelaxFactor);
+      }
+      else
+      {
+        kaEqn.relax();
+      }
 
-      const auto kaLinearSolvePerformance = kaEqn.solve();
+      const auto kaLinearSolvePerformance =
+        useProModeRobustClosureLinearSolvers
+      ? kaEqn.solve(proModeRobustNonsymmetricSolverControls)
+      : kaEqn.solve();
       recordLinearSolve
       (
         kaLinearSolveStats,

@@ -70,7 +70,7 @@ if (customTurbulenceActive)
     static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
   const volScalarField kTransportDiffusivity
   (
-    turbulencePrimalTransportDiffusionScale*(nu + alphaKField*nut)
+    turbulencePrimalTransportDiffusionScaleActive*(nu + alphaKField*nut)
   );
   // Patankar-style source split: keep explicit source non-negative and treat
   // any negative part implicitly as a sink coefficient.

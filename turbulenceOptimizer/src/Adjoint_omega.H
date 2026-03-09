@@ -14,6 +14,61 @@ if (customTurbulenceActive)
     turbulenceProModeActive
     && proModeClosureAdjointSolvesActive
     && proModeSAAdjointClosureActive;
+  const bool proModeClosureAdjointMode =
+      turbulenceProModeActive
+   && proModeAdjointStabilityPackActive
+   && proModeClosureAdjointSolvesActive;
+  const scalar proModeWarmupProgressClosure =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        Foam::max
+        (
+          scalar(0.0),
+          scalar(opt - 1)
+         /Foam::max(scalar(proModeAdjointWarmupIterations - 1), scalar(1.0))
+        )
+      )
+    : scalar(1.0);
+  const scalar proModeRollbackFreeProgressClosure =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        scalar(proModeAdjointRollbackFreeStreak)
+       /Foam::max(scalar(proModeAdjointRampRollbackFreeWindow), scalar(1.0))
+      )
+    : scalar(1.0);
+  const scalar proModeClosureRamp =
+      proModeClosureAdjointMode
+    ? Foam::min
+      (
+        scalar(1.0),
+        scalar(0.5)*(proModeWarmupProgressClosure + proModeRollbackFreeProgressClosure)
+      )
+    : scalar(1.0);
+  const scalar proModeClosureEqnRelaxFactor =
+      proModeClosureAdjointMode
+    ? proModeClosureEqnRelaxMin
+    + (proModeClosureEqnRelaxMax - proModeClosureEqnRelaxMin)*proModeClosureRamp
+    : scalar(1.0);
+  const scalar proModeClosurePseudoDecay =
+      proModeClosureAdjointMode
+    ? Foam::max
+      (
+        proModePseudoInvTauFloorRatio,
+        scalar(1.0)
+      - (scalar(1.0) - proModePseudoInvTauFloorRatio)*proModeWarmupProgressClosure
+      )
+    : scalar(1.0);
+  const scalar omegaaPseudoInvTauScale =
+      proModeClosureAdjointMode
+    ? proModeClosurePseudoInvTauScale*proModeClosurePseudoDecay
+    : scalar(0.75);
+  const bool useProModeRobustClosureLinearSolvers =
+      proModeClosureAdjointMode
+   && proModeRobustLinearSolverActive;
   auto applyDualConsistentOmegaaBC =
   [&]()
   {
@@ -104,6 +159,13 @@ if (customTurbulenceActive)
         dimless/dimTime,
         closureAdjointInvTauActive
       );
+      const dimensionedScalar omegaaPseudoInvTau
+      (
+        "omegaaPseudoInvTau",
+        dimless/dimTime,
+        omegaaPseudoInvTauScale*closureAdjointInvTauActive
+      );
+      const volScalarField omegaaOldState(omegaa);
       volScalarField optimizationCycleOmegaReactionCoeff
       (
         scalar(2.0)
@@ -136,21 +198,25 @@ if (customTurbulenceActive)
       );
       if (optimizationCycleUseCrossCoupledClosureAdjoints)
       {
-        const volScalarField kaMagnitude(mag(ka));
+        const volScalarField& kaCrossReference =
+          (proModeClosureAdjointMode && proModeLaggedClosureInitialized)
+        ? proModeLaggedKa
+        : ka;
+        const volScalarField kaMagnitude(mag(kaCrossReference));
         const dimensionedScalar kaScale
         (
           "kaScale",
-          ka.dimensions(),
+          kaCrossReference.dimensions(),
           Foam::max(gMax(kaMagnitude), SMALL)
         );
         optimizationCycleOmegaCrossSource =
           optimizationCycleClosureInvTau
          *closureAdjointCrossCouplingActive
-         *(ka/kaScale);
+         *(kaCrossReference/kaScale);
       }
       const volScalarField omegaaTransportDiffusivity
       (
-        turbulenceAdjointTransportDiffusionScale*(nu + alphaOmegaField*nut)
+        turbulenceAdjointTransportDiffusionScaleActive*(nu + alphaOmegaField*nut)
       );
       fvScalarMatrix omegaaEqn
       (
@@ -158,14 +224,26 @@ if (customTurbulenceActive)
         - fvm::laplacian(omegaaTransportDiffusivity, omegaa)
         + fvm::Sp(optimizationCycleClosureInvTau, omegaa)
         + fvm::Sp(optimizationCycleOmegaReactionCoeff, omegaa)
+        + fvm::Sp(omegaaPseudoInvTau, omegaa)
        ==
           optimizationCycleClosureInvTau*adjointCycleOmegaSourceProxy
         + optimizationCycleOmegaCrossSource
+        + omegaaPseudoInvTau*omegaaOldState
       );
 
-      omegaaEqn.relax();
+      if (proModeClosureAdjointMode)
+      {
+        omegaaEqn.relax(proModeClosureEqnRelaxFactor);
+      }
+      else
+      {
+        omegaaEqn.relax();
+      }
 
-      const auto omegaaLinearSolvePerformance = omegaaEqn.solve();
+      const auto omegaaLinearSolvePerformance =
+        useProModeRobustClosureLinearSolvers
+      ? omegaaEqn.solve(proModeRobustNonsymmetricSolverControls)
+      : omegaaEqn.solve();
       recordLinearSolve
       (
         omegaaLinearSolveStats,
@@ -199,5 +277,13 @@ if (customTurbulenceActive)
   else
   {
     applyDualConsistentOmegaaBC();
+  }
+  if (proModeClosureAdjointMode)
+  {
+    proModeLaggedKa = ka;
+    proModeLaggedOmegaa = omegaa;
+    proModeLaggedKa.correctBoundaryConditions();
+    proModeLaggedOmegaa.correctBoundaryConditions();
+    proModeLaggedClosureInitialized = true;
   }
 }

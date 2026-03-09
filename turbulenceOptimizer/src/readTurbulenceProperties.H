@@ -51,27 +51,59 @@ const label proModeFlowAdjointCorrectors =
     proModeAdjointStabilityPackActive ? label(20) : label(40);
 const label proModeHeatAdjointCorrectors =
     proModeAdjointStabilityPackActive ? label(20) : label(40);
-const bool proModeResetAdjointState = proModeAdjointStabilityPackActive;
+const bool proModeResetAdjointState = false;
 const bool proModeAdjointNoImproveCheck = proModeAdjointStabilityPackActive;
 const label proModeAdjointNoImproveMinCorrectors(3);
 const label proModeAdjointNoImprovePatience(2);
 const scalar proModeAdjointMaxMagnitude(1e8);
 const bool proModeAdjointUseNuEff = proModeAdjointStabilityPackActive;
 const bool proModeAdjointUseLegacyPressureRelax = proModeAdjointStabilityPackActive;
+const label proModeAdjointWarmupIterations(50);
+const label proModeAdjointRampRollbackFreeWindow(8);
+const scalar proModePseudoInvTauFloorRatio(0.20);
+const scalar proModeUaPseudoInvTauBase(8.0);
+const scalar proModeUbPseudoInvTauBase(10.0);
+const scalar proModeClosurePseudoInvTauScale(0.75);
+const scalar proModeUaEqnRelaxMin(0.15);
+const scalar proModeUaEqnRelaxMax(0.35);
+const scalar proModeUbEqnRelaxMin(0.15);
+const scalar proModeUbEqnRelaxMax(0.30);
+const scalar proModeClosureEqnRelaxMin(0.10);
+const scalar proModeClosureEqnRelaxMax(0.20);
+const scalar proModePrimalTransportDiffusionMinScale(2.0);
+const scalar proModeAdjointTransportDiffusionMinScale(3.0);
 const bool proModeTransportedClosureAdjoints = true;
 const word proModeClosureAdjointFormulation("transportedResidualDraft");
 const bool proModeClosureAdjointDualConsistentBC(true);
 const scalar proModeClosureAdjointInvTau(3.0);
 const scalar proModeClosureCrossCoupling(0.15);
-const bool proModeRobustScalarSolverActive = proModeAdjointStabilityPackActive;
+const bool proModeRobustLinearSolverActive = proModeAdjointStabilityPackActive;
+const bool proModeRobustScalarSolverActive = proModeRobustLinearSolverActive;
 dictionary proModeRobustScalarSolverControls;
-if (proModeRobustScalarSolverActive)
+dictionary proModeRobustNonsymmetricSolverControls;
+dictionary proModeRobustSymmetricSolverControls;
+if (proModeRobustLinearSolverActive)
 {
-    proModeRobustScalarSolverControls.add("solver", word("PBiCGStab"));
-    proModeRobustScalarSolverControls.add("preconditioner", word("DILU"));
+    // Generic scalar fallback robust for both symmetric/non-symmetric scalar systems.
+    proModeRobustScalarSolverControls.add("solver", word("smoothSolver"));
+    proModeRobustScalarSolverControls.add("smoother", word("symGaussSeidel"));
     proModeRobustScalarSolverControls.add("tolerance", 1e-10);
     proModeRobustScalarSolverControls.add("relTol", 0.0);
     proModeRobustScalarSolverControls.add("maxIter", 20000);
+
+    // Non-symmetric systems: transport-dominated adjoint equations (Ua/Ub/ka/omegaa).
+    proModeRobustNonsymmetricSolverControls.add("solver", word("PBiCGStab"));
+    proModeRobustNonsymmetricSolverControls.add("preconditioner", word("DILU"));
+    proModeRobustNonsymmetricSolverControls.add("tolerance", 1e-10);
+    proModeRobustNonsymmetricSolverControls.add("relTol", 0.0);
+    proModeRobustNonsymmetricSolverControls.add("maxIter", 20000);
+
+    // Symmetric systems: pressure-correction adjoint Poisson solves (pa/pb).
+    proModeRobustSymmetricSolverControls.add("solver", word("PCG"));
+    proModeRobustSymmetricSolverControls.add("preconditioner", word("DIC"));
+    proModeRobustSymmetricSolverControls.add("tolerance", 1e-10);
+    proModeRobustSymmetricSolverControls.add("relTol", 0.0);
+    proModeRobustSymmetricSolverControls.add("maxIter", 20000);
 }
 Switch adjointCycleThermalAdjointOnly
 (
@@ -162,6 +194,14 @@ scalar turbulenceAdjointTransportDiffusionScale
         1.0
     )
 );
+const scalar turbulencePrimalTransportDiffusionScaleActive =
+    (turbulenceProModeActive && proModeAdjointStabilityPackActive)
+  ? Foam::max(turbulencePrimalTransportDiffusionScale, proModePrimalTransportDiffusionMinScale)
+  : turbulencePrimalTransportDiffusionScale;
+const scalar turbulenceAdjointTransportDiffusionScaleActive =
+    (turbulenceProModeActive && proModeAdjointStabilityPackActive)
+  ? Foam::max(turbulenceAdjointTransportDiffusionScale, proModeAdjointTransportDiffusionMinScale)
+  : turbulenceAdjointTransportDiffusionScale;
 if (kMin.value() <= SMALL)
 {
     FatalErrorInFunction
@@ -760,6 +800,13 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << " viscosity=" << (proModeAdjointUseNuEff ? "nuEff" : "nu")
         << " legacyPressureRelax="
         << (proModeAdjointUseLegacyPressureRelax ? "true" : "false")
+        << " warmupIters=" << proModeAdjointWarmupIterations
+        << " relax(Ua)=" << proModeUaEqnRelaxMin << "->" << proModeUaEqnRelaxMax
+        << " relax(Ub)=" << proModeUbEqnRelaxMin << "->" << proModeUbEqnRelaxMax
+        << " relax(closure)=" << proModeClosureEqnRelaxMin << "->" << proModeClosureEqnRelaxMax
+        << " pseudoFloor=" << proModePseudoInvTauFloorRatio
+        << " robustNS=PBiCGStab/DILU"
+        << " robustSym=PCG/DIC"
         << "."
         << endl;
 }
@@ -777,9 +824,9 @@ else if (customTurbulenceActive)
 if (customTurbulenceActive)
 {
     Info<< "Turbulence transport diffusion scales: primal(k/omega)="
-        << turbulencePrimalTransportDiffusionScale
+        << turbulencePrimalTransportDiffusionScaleActive
         << ", closureAdjoint(ka/omegaa)="
-        << turbulenceAdjointTransportDiffusionScale
+        << turbulenceAdjointTransportDiffusionScaleActive
         << endl;
 }
 

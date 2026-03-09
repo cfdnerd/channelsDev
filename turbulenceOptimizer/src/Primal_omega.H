@@ -79,7 +79,7 @@ if (customTurbulenceActive)
     static_cast<bool>(optKOmegaPositivityPreservingLinearizationEnable);
   const volScalarField omegaTransportDiffusivity
   (
-    turbulencePrimalTransportDiffusionScale*(nu + alphaOmegaField*nut)
+    turbulencePrimalTransportDiffusionScaleActive*(nu + alphaOmegaField*nut)
   );
 
   // Positivity-preserving source treatment:

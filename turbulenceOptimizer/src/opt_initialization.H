@@ -483,6 +483,48 @@ word adjointCycleAdjointStopReason("not-run");
 bool optimizationCycleHeatAdjointRolledBack(false);
 label optimizationCycleHeatAdjointRollbackCorrector(0);
 word optimizationCycleHeatAdjointStopReason("not-run");
+label proModeAdjointRollbackFreeStreak(0);
+const label proModeRollbackDiagnosticWindow(10);
+label proModeFlowRollbackTotal(0);
+label proModeHeatRollbackTotal(0);
+label proModeFlowMagnitudeGuardTotal(0);
+label proModeHeatMagnitudeGuardTotal(0);
+label proModeFlowNoImproveTotal(0);
+label proModeHeatNoImproveTotal(0);
+label proModeFlowGrowthTotal(0);
+label proModeFlowRollbackWindowCount(0);
+label proModeHeatRollbackWindowCount(0);
+label proModeFlowMagnitudeGuardWindowCount(0);
+label proModeHeatMagnitudeGuardWindowCount(0);
+label proModeFlowNoImproveWindowCount(0);
+label proModeHeatNoImproveWindowCount(0);
+label proModeFlowGrowthWindowCount(0);
+bool proModeForceAdjointResetNextIter(false);
+volScalarField proModeLaggedKa
+(
+  IOobject
+  (
+    "proModeLaggedKa",
+    runTime.timeName(),
+    mesh,
+    IOobject::NO_READ,
+    IOobject::NO_WRITE
+  ),
+  ka
+);
+volScalarField proModeLaggedOmegaa
+(
+  IOobject
+  (
+    "proModeLaggedOmegaa",
+    runTime.timeName(),
+    mesh,
+    IOobject::NO_READ,
+    IOobject::NO_WRITE
+  ),
+  omegaa
+);
+bool proModeLaggedClosureInitialized(false);
 double len=std::pow(area/N, 1.0/3);
 b.value()=1.0/(filterR*len/3.464)/(filterR*len/3.464);
 //***********************************//MMA

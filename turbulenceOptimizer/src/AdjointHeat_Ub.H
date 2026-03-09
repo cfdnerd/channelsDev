@@ -36,7 +36,9 @@ const label optimizationCycleHeatNoImproveMinCorrectors =
 const bool resetHeatAdjointState =
     optimizationCycleObjectiveAdjointMode
  ? static_cast<bool>(optimizationCycleResetAdjointState)
- : (proModeHeatAdjointMode ? static_cast<bool>(proModeResetAdjointState) : false);
+ : (proModeHeatAdjointMode
+    ? (static_cast<bool>(proModeResetAdjointState) || proModeForceAdjointResetNextIter)
+    : false);
 const bool useNuEffInUbEquation =
     optimizationCycleObjectiveAdjointMode
  || (proModeHeatAdjointMode && static_cast<bool>(proModeAdjointUseNuEff));
@@ -44,9 +46,52 @@ const bool useLegacyPbRelax =
     optimizationCycleObjectiveAdjointMode
   ? static_cast<bool>(adjointCycleUseLegacyPressureRelax)
   : (proModeHeatAdjointMode ? static_cast<bool>(proModeAdjointUseLegacyPressureRelax) : static_cast<bool>(adjointCycleUseLegacyPressureRelax));
+const scalar proModeWarmupProgressUb =
+    proModeHeatAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      Foam::max
+      (
+        scalar(0.0),
+        scalar(opt - 1)
+       /Foam::max(scalar(proModeAdjointWarmupIterations - 1), scalar(1.0))
+      )
+    )
+  : scalar(1.0);
+const scalar proModeRollbackFreeProgressUb =
+    proModeHeatAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      scalar(proModeAdjointRollbackFreeStreak)
+     /Foam::max(scalar(proModeAdjointRampRollbackFreeWindow), scalar(1.0))
+    )
+  : scalar(1.0);
+const scalar proModeUbRamp =
+    proModeHeatAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      scalar(0.5)*(proModeWarmupProgressUb + proModeRollbackFreeProgressUb)
+    )
+  : scalar(1.0);
+const scalar ubEqnRelaxFactor =
+    proModeHeatAdjointMode
+  ? proModeUbEqnRelaxMin + (proModeUbEqnRelaxMax - proModeUbEqnRelaxMin)*proModeUbRamp
+  : scalar(1.0);
+const scalar ubPseudoDecay =
+    proModeHeatAdjointMode
+  ? Foam::max
+    (
+      proModePseudoInvTauFloorRatio,
+      scalar(1.0)
+    - (scalar(1.0) - proModePseudoInvTauFloorRatio)*proModeWarmupProgressUb
+    )
+  : scalar(1.0);
 const scalar ubPseudoInvTauValue =
     proModeHeatAdjointMode
-  ? 10.0
+  ? proModeUbPseudoInvTauBase*ubPseudoDecay
   : (optimizationCycleObjectiveAdjointMode ? 5.0 : 0.0);
 const dimensionedScalar ubPseudoInvTau
 (
@@ -58,6 +103,9 @@ const scalar ubSourceSplitStrength =
     optimizationLikeHeatAdjointMode
   ? 0.35
   : 0.0;
+const bool useProModeRobustHeatLinearSolvers =
+    proModeHeatAdjointMode
+ && proModeRobustLinearSolverActive;
 
 vectorField optimizationCycleBestUbInternal;
 scalarField optimizationCycleBestPbInternal;
@@ -105,6 +153,7 @@ if (optimizationLikeHeatAdjointMode)
       << " minPass=" << optimizationCycleHeatNoImproveMinCorrectors
       << " patience=" << optimizationCycleHeatNoImprovePatience
       << " pseudoInvTau=" << ubPseudoInvTauValue
+      << " UbRelax=" << ubEqnRelaxFactor
       << " sourceSplit=" << ubSourceSplitStrength
       << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
@@ -187,11 +236,23 @@ if (optimizationLikeHeatAdjointMode)
     + ubSourceDampingCoeff*UbOldState;
 }
 
-UbEqn.relax();
+if (proModeHeatAdjointMode)
+{
+  UbEqn.relax(ubEqnRelaxFactor);
+}
+else
+{
+  UbEqn.relax();
+}
 
 fvOptions.constrain(UbEqn);
 
-const auto UbLinearSolvePerformance = solve(UbEqn == -fvc::grad(pb));
+tmp<fvVectorMatrix> tUbSolveEqn(UbEqn == -fvc::grad(pb));
+fvVectorMatrix& UbSolveEqn = tUbSolveEqn.ref();
+const auto UbLinearSolvePerformance =
+  useProModeRobustHeatLinearSolvers
+? UbSolveEqn.solve(proModeRobustNonsymmetricSolverControls)
+: UbSolveEqn.solve();
 recordLinearSolve
 (
     UbLinearSolveStats,
@@ -231,7 +292,10 @@ while (simple.correctNonOrthogonal())
     );
 
     pbEqn.setReference(pbRefCell, pbRefValue);
-    const auto pbLinearSolvePerformance = pbEqn.solve();
+    const auto pbLinearSolvePerformance =
+      useProModeRobustHeatLinearSolvers
+    ? pbEqn.solve(proModeRobustSymmetricSolverControls)
+    : pbEqn.solve();
     recordLinearSolve
     (
         pbLinearSolveStats,

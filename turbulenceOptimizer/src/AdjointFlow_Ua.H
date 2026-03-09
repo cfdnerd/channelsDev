@@ -13,7 +13,7 @@ const bool adjointRollbackGuardsEnabled =
 const bool resetAdjointState =
     (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
  || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState))
- || (proModeFlowAdjointMode && static_cast<bool>(proModeResetAdjointState));
+ || (proModeFlowAdjointMode && (static_cast<bool>(proModeResetAdjointState) || proModeForceAdjointResetNextIter));
 const bool stagnationCheckEnabled =
     adjointRollbackGuardsEnabled
  && (
@@ -53,9 +53,52 @@ const label adjointFlowCorrectors =
   : (proModeFlowAdjointMode
     ? proModeFlowAdjointCorrectors
     : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40));
+const scalar proModeWarmupProgressUa =
+    proModeFlowAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      Foam::max
+      (
+        scalar(0.0),
+        scalar(opt - 1)
+       /Foam::max(scalar(proModeAdjointWarmupIterations - 1), scalar(1.0))
+      )
+    )
+  : scalar(1.0);
+const scalar proModeRollbackFreeProgressUa =
+    proModeFlowAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      scalar(proModeAdjointRollbackFreeStreak)
+     /Foam::max(scalar(proModeAdjointRampRollbackFreeWindow), scalar(1.0))
+    )
+  : scalar(1.0);
+const scalar proModeUaRamp =
+    proModeFlowAdjointMode
+  ? Foam::min
+    (
+      scalar(1.0),
+      scalar(0.5)*(proModeWarmupProgressUa + proModeRollbackFreeProgressUa)
+    )
+  : scalar(1.0);
+const scalar uaEqnRelaxFactor =
+    proModeFlowAdjointMode
+  ? proModeUaEqnRelaxMin + (proModeUaEqnRelaxMax - proModeUaEqnRelaxMin)*proModeUaRamp
+  : scalar(1.0);
+const scalar uaPseudoDecay =
+    proModeFlowAdjointMode
+  ? Foam::max
+    (
+      proModePseudoInvTauFloorRatio,
+      scalar(1.0)
+    - (scalar(1.0) - proModePseudoInvTauFloorRatio)*proModeWarmupProgressUa
+    )
+  : scalar(1.0);
 const scalar uaPseudoInvTauValue =
     proModeFlowAdjointMode
-  ? 8.0
+  ? proModeUaPseudoInvTauBase*uaPseudoDecay
   : (optimizationCycleFlowAdjointMode ? 4.0 : (adjointCycleFlowAdjointMode ? 2.0 : 0.0));
 const dimensionedScalar uaPseudoInvTau
 (
@@ -67,6 +110,9 @@ const scalar uaSourceSplitStrength =
     boundedFlowAdjointMode
   ? 0.25
   : 0.0;
+const bool useProModeRobustFlowLinearSolvers =
+    proModeFlowAdjointMode
+ && proModeRobustLinearSolverActive;
 adjointCycleAdjointUNonlinearChange = 0.0;
 adjointCycleAdjointPNonlinearChange = 0.0;
 adjointCycleAdjointFlowConverged = !boundedFlowAdjointMode;
@@ -107,6 +153,10 @@ if (boundedFlowAdjointMode)
     phia = dimensionedScalar("zeroAdjointCyclePhia", phia.dimensions(), 0.0);
     Ua.correctBoundaryConditions();
     pa.correctBoundaryConditions();
+    if (proModeFlowAdjointMode && proModeForceAdjointResetNextIter)
+    {
+      proModeForceAdjointResetNextIter = false;
+    }
   }
 
   if (Pstream::master())
@@ -134,6 +184,7 @@ if (boundedFlowAdjointMode)
         << (stagnationCheckEnabled ? "true" : "false")
         << " |Ua|maxLimit=" << flowAdjointMagnitudeLimit
         << " pseudoInvTau=" << uaPseudoInvTauValue
+        << " UaRelax=" << uaEqnRelaxFactor
         << " sourceSplit=" << uaSourceSplitStrength
         << " growth=" << adjointCycleDivergenceGrowthFactor
         << " minPass="
@@ -247,11 +298,23 @@ for (i = 0; i < adjointFlowCorrectors; i++)
         + uaSourceDampingCoeff*UaOldState;
   }
 
-  UaEqn.relax();
+  if (proModeFlowAdjointMode)
+  {
+      UaEqn.relax(uaEqnRelaxFactor);
+  }
+  else
+  {
+      UaEqn.relax();
+  }
 
   fvOptions.constrain(UaEqn);
 
-  const auto UaLinearSolvePerformance = solve(UaEqn == -fvc::grad(pa));
+  tmp<fvVectorMatrix> tUaSolveEqn(UaEqn == -fvc::grad(pa));
+  fvVectorMatrix& UaSolveEqn = tUaSolveEqn.ref();
+  const auto UaLinearSolvePerformance =
+      useProModeRobustFlowLinearSolvers
+    ? UaSolveEqn.solve(proModeRobustNonsymmetricSolverControls)
+    : UaSolveEqn.solve();
   recordLinearSolve
   (
       UaLinearSolveStats,
@@ -291,7 +354,10 @@ for (i = 0; i < adjointFlowCorrectors; i++)
       );
 
       paEqn.setReference(paRefCell, paRefValue);
-      const auto paLinearSolvePerformance = paEqn.solve();
+      const auto paLinearSolvePerformance =
+          useProModeRobustFlowLinearSolvers
+        ? paEqn.solve(proModeRobustSymmetricSolverControls)
+        : paEqn.solve();
       recordLinearSolve
       (
           paLinearSolveStats,
