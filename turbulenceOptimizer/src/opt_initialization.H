@@ -19,7 +19,7 @@ if (Pstream::master())
   std::ofstream historyFile(optimizationHistoryFile, std::ios::out);
   historyFile
     << "# MTO_ThermalFluid optimization history\n"
-    << "# Cols: Iter PDActLog PDCon PD0Sug V MeanT MaxT\n"
+    << "# Cols: Iter PDActLog PDCon PD0Sug V MeanT MaxT HealthScore HealthBand RollbackPen ConstraintPen LinearPen ClipPen ConsistencyPen TrustPen\n"
     << "# PDActLog=PDCon*PowerDiss0, PDCon=PowerDiss used by MMA\n"
     << "# PD0Sug=PowerDiss0*(PDCon/PowerDissMax) when PDCon>PowerDissRelax; else PowerDiss0\n"
     << std::left
@@ -30,6 +30,14 @@ if (Pstream::master())
     << std::setw(16) << "V"
     << std::setw(16) << "MeanT"
     << std::setw(16) << "MaxT"
+    << std::setw(14) << "HealthScore"
+    << std::setw(14) << "HealthBand"
+    << std::setw(14) << "RollPen"
+    << std::setw(14) << "ConPen"
+    << std::setw(14) << "LinPen"
+    << std::setw(14) << "ClipPen"
+    << std::setw(14) << "ConsPen"
+    << std::setw(14) << "TrustPen"
     << '\n';
 
   std::ofstream debugLogFile(debugOptimizerLogFile, std::ios::out);
@@ -449,6 +457,9 @@ label adjointCycleAdjointDivergedCorrector(0);
 bool adjointCycleAdjointRolledBack(false);
 label adjointCycleAdjointRollbackCorrector(0);
 word adjointCycleAdjointStopReason("not-run");
+bool optimizationCycleHeatAdjointRolledBack(false);
+label optimizationCycleHeatAdjointRollbackCorrector(0);
+word optimizationCycleHeatAdjointStopReason("not-run");
 double len=std::pow(area/N, 1.0/3);
 b.value()=1.0/(filterR*len/3.464)/(filterR*len/3.464);
 //***********************************//MMA

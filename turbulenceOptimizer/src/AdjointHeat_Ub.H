@@ -67,6 +67,9 @@ label optimizationCycleNoImproveStreak = 0;
 label optimizationCycleBestCorrector = 0;
 label optimizationCycleAdjointCorrectorsUsed = 0;
 word optimizationCycleHeatStopReason(optimizationLikeHeatAdjointMode ? "max-correctors" : "legacy");
+optimizationCycleHeatAdjointRolledBack = false;
+optimizationCycleHeatAdjointRollbackCorrector = 0;
+optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
 
 if (optimizationLikeHeatAdjointMode)
 {
@@ -397,6 +400,7 @@ if (optimizationLikeHeatAdjointMode)
   {
     optimizationCycleHeatStopReason = "max-correctors";
   }
+  optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
 
   if (Pstream::master())
   {
@@ -463,6 +467,9 @@ if (optimizationLikeHeatAdjointMode)
     {
       optimizationCycleHeatStopReason = "no-improve-rollback";
     }
+    optimizationCycleHeatAdjointRolledBack = true;
+    optimizationCycleHeatAdjointRollbackCorrector = optimizationCycleBestCorrector;
+    optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
     break;
   }
 }
@@ -470,4 +477,9 @@ if (optimizationLikeHeatAdjointMode)
 Ub.storePrevIter();
 pb.storePrevIter();
 phib.storePrevIter();
+if (!optimizationCycleHeatAdjointRolledBack)
+{
+  optimizationCycleHeatAdjointRollbackCorrector = 0;
+}
+optimizationCycleHeatAdjointStopReason = optimizationCycleHeatStopReason;
 }

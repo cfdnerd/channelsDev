@@ -691,6 +691,132 @@ if (Pstream::master())
     (solverSeverity >= 2 || turbulenceClipSeverity >= 2)
     ? "WARN"
     : ((solverSeverity == 1 || turbulenceClipSeverity == 1) ? "OBS" : "OK");
+  const std::string flowAdjStopReason(adjointCycleAdjointStopReason.c_str());
+  const std::string heatAdjStopReason(optimizationCycleHeatAdjointStopReason.c_str());
+  const bool flowMagnitudeGuardHit =
+    flowAdjStopReason.find("magnitude-guard") != std::string::npos;
+  const bool heatMagnitudeGuardHit =
+    heatAdjStopReason.find("magnitude-guard") != std::string::npos;
+  scalar rollbackPenalty = 0.0;
+  if (adjointCycleAdjointRolledBack)
+  {
+    rollbackPenalty += 20.0;
+  }
+  if (optimizationCycleHeatAdjointRolledBack)
+  {
+    rollbackPenalty += 25.0;
+  }
+  if (adjointCycleAdjointFlowDiverged)
+  {
+    rollbackPenalty += 15.0;
+  }
+  if (flowMagnitudeGuardHit)
+  {
+    rollbackPenalty += 10.0;
+  }
+  if (heatMagnitudeGuardHit)
+  {
+    rollbackPenalty += 10.0;
+  }
+  rollbackPenalty = Foam::min(rollbackPenalty, scalar(45.0));
+  const scalar constraintScale = Foam::max(optConstraintTol, scalar(1e-8));
+  const scalar constraintStress =
+    std::log10
+    (
+      scalar(1.0)
+    + Foam::max(guardConstraintViolation, scalar(0.0))/constraintScale
+    );
+  const scalar constraintPenalty =
+    Foam::min(scalar(25.0), scalar(5.0)*constraintStress);
+  const scalar residualScale =
+    Foam::max(linearSolveWarnResidual, scalar(1e-14));
+  const scalar residualStress =
+    std::log10
+    (
+      scalar(1.0)
+    + Foam::max(maxLinearFinalResidual, scalar(0.0))/residualScale
+    );
+  scalar linearPenalty =
+    Foam::min(scalar(15.0), scalar(6.0)*residualStress);
+  if (!residualGrowthWithinLimit)
+  {
+    linearPenalty = Foam::min(linearPenalty + scalar(5.0), scalar(20.0));
+  }
+  const scalar clipPenalty =
+    customTurbulenceActive
+    ? Foam::min(scalar(15.0), scalar(80.0)*Foam::max(maxClipFraction, scalar(0.0)))
+    : scalar(0.0);
+  const scalar consistencyPenalty =
+    (opt > 10)
+    ? Foam::min
+      (
+        scalar(10.0),
+        scalar(4.0)*Foam::max(gradientConsistencyRatio - scalar(1.0), scalar(0.0))
+      )
+    : scalar(0.0);
+  scalar trustPenalty(0.0);
+  if (trustRatioDefined)
+  {
+    const scalar trustDeviation =
+      Foam::mag(trustRatio - scalar(1.0))/Foam::max(Foam::mag(trustRatio), scalar(1.0));
+    trustPenalty = Foam::min(scalar(10.0), scalar(10.0)*trustDeviation);
+  }
+  const scalar healthPenaltyTotal =
+      rollbackPenalty
+    + constraintPenalty
+    + linearPenalty
+    + clipPenalty
+    + consistencyPenalty
+    + trustPenalty;
+  const scalar optimizerHealthScore =
+    Foam::max(scalar(0.0), scalar(100.0) - healthPenaltyTotal);
+  const char* optimizerHealthBand =
+    optimizerHealthScore >= 85.0 ? "good"
+    : (optimizerHealthScore >= 70.0 ? "watch"
+      : (optimizerHealthScore >= 50.0 ? "poor" : "critical"));
+  std::ofstream historyFile(optimizationHistoryFile, std::ios::app);
+  if (opt > 1 && ((opt - 1) % 25 == 0))
+  {
+    historyFile
+      << std::left
+      << std::setw(8) << "Iter"
+      << std::setw(16) << "PDActLog"
+      << std::setw(16) << "PDCon"
+      << std::setw(16) << "PD0Sug"
+      << std::setw(16) << "V"
+      << std::setw(16) << "MeanT"
+      << std::setw(16) << "MaxT"
+      << std::setw(14) << "HealthScore"
+      << std::setw(14) << "HealthBand"
+      << std::setw(14) << "RollPen"
+      << std::setw(14) << "ConPen"
+      << std::setw(14) << "LinPen"
+      << std::setw(14) << "ClipPen"
+      << std::setw(14) << "ConsPen"
+      << std::setw(14) << "TrustPen"
+      << '\n';
+  }
+  historyFile
+    << std::right
+    << std::setw(8) << opt
+    << std::scientific << std::setprecision(8)
+    << std::setw(16) << PDActLog
+    << std::setw(16) << PowerDiss
+    << std::setw(16) << PD0Sug
+    << std::setw(16) << V
+    << std::setw(16) << MeanT
+    << std::setw(16) << maxT
+    << std::fixed << std::setprecision(2)
+    << std::setw(14) << optimizerHealthScore
+    << std::setw(14) << optimizerHealthBand
+    << std::scientific << std::setprecision(6)
+    << std::setw(14) << rollbackPenalty
+    << std::setw(14) << constraintPenalty
+    << std::setw(14) << linearPenalty
+    << std::setw(14) << clipPenalty
+    << std::setw(14) << consistencyPenalty
+    << std::setw(14) << trustPenalty
+    << '\n';
   if (triggerFirstFailureSnapshot)
   {
     std::ofstream firstFailureSnapshotStream(firstFailureSnapshotFile, std::ios::app);
@@ -772,6 +898,14 @@ if (Pstream::master())
   writeSectionHeader("Overview");
   writeRow("Run", "Iter="+fmtCount(opt), "Clock[s]="+fmtScalar(clockTime), "ObjMode="+std::string(objectiveLabel.c_str()), "ObjVal="+fmtScalar(objectiveValue));
   writeRow("Health", std::string("Design=")+designHealth, std::string("Constr=")+constraintHealth, std::string("Sens=")+sensitivityHealth, std::string("Solver=")+solverHealth);
+  writeRow
+  (
+    "Health score",
+    "score="+fmtScalar(optimizerHealthScore),
+    "band="+std::string(optimizerHealthBand),
+    "rollback="+fmtScalar(rollbackPenalty),
+    "other="+fmtScalar(healthPenaltyTotal - rollbackPenalty)
+  );
   writeRow
   (
     "Convergence",
@@ -954,6 +1088,14 @@ if (Pstream::master())
       << ",\"sensitivity\":\"" << sensitivityHealth << "\""
       << ",\"solver\":\"" << solverHealth << "\""
       << ",\"turbulenceClip\":\"" << turbulenceClipHealth << "\""
+      << ",\"score\":" << optimizerHealthScore
+      << ",\"band\":\"" << optimizerHealthBand << "\""
+      << ",\"rollbackPenalty\":" << rollbackPenalty
+      << ",\"constraintPenalty\":" << constraintPenalty
+      << ",\"linearPenalty\":" << linearPenalty
+      << ",\"clipPenalty\":" << clipPenalty
+      << ",\"consistencyPenalty\":" << consistencyPenalty
+      << ",\"trustPenalty\":" << trustPenalty
     << "}"
     << ",\"convergence\":{"
       << "\"objectiveRelativeDelta\":" << objectiveRelativeDelta
