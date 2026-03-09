@@ -1,34 +1,38 @@
 const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
 const bool optimizationCycleFlowAdjointMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
-const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationCycleFlowAdjointMode;
+const bool turbulenceProFlowAdjointMode =
+    customTurbulenceActive && turbulenceProModeActive;
+const bool optimizationLikeFlowAdjointMode =
+    optimizationCycleFlowAdjointMode || turbulenceProFlowAdjointMode;
+const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationLikeFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const bool resetAdjointState =
     (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleResetAdjointState))
- || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState));
+ || (optimizationLikeFlowAdjointMode && static_cast<bool>(optimizationCycleResetAdjointState));
 const bool stagnationCheckEnabled =
     adjointRollbackGuardsEnabled
  && (
       (adjointCycleFlowAdjointMode && static_cast<bool>(adjointCycleStagnationCheck))
-   || (optimizationCycleFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck))
+   || (optimizationLikeFlowAdjointMode && static_cast<bool>(optimizationCycleNoImproveCheck))
     );
 const label noImprovePatience =
-    optimizationCycleFlowAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
+    optimizationLikeFlowAdjointMode ? optimizationCycleNoImprovePatience : adjointCycleStagnationPatience;
 const label noImproveMinCorrectors =
-    optimizationCycleFlowAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
+    optimizationLikeFlowAdjointMode ? optimizationCycleNoImproveMinCorrectors : label(1);
 const bool divergenceCheckEnabled =
     adjointRollbackGuardsEnabled
  && adjointCycleFlowAdjointMode
  && adjointCycleDivergenceCheck;
 const scalar flowAdjointMagnitudeLimit =
-    optimizationCycleFlowAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
+    optimizationLikeFlowAdjointMode ? optimizationCycleAdjointMaxMagnitude : adjointCycleAdjointMaxMagnitude;
 const bool useNuEffInUaEquation =
     optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleUseNuEff);
 const bool includeTaSourceInUaEquation =
     optimizationCycleFlowAdjointMode || (adjointCycleFlowAdjointMode && adjointCycleIncludeThermalMomentumSource);
 const label adjointFlowCorrectors =
-    optimizationCycleFlowAdjointMode
+    optimizationLikeFlowAdjointMode
   ? optimizationCycleFlowAdjointCorrectors
   : (adjointCycleFlowAdjointMode ? adjointCycleAdjointCorrectors : 40);
 adjointCycleAdjointUNonlinearChange = 0.0;
@@ -79,7 +83,11 @@ if (boundedFlowAdjointMode)
       const char* adjointCycleTraceTag =
           optimizationCycleFlowAdjointMode
         ? "[Optimization-Cycle Flow Adjoint Corrector Trace]"
-        : "[Adjoint-Cycle Flow Adjoint Corrector Trace]";
+        : (
+              turbulenceProFlowAdjointMode
+            ? "[Pro-Mode Flow Adjoint Corrector Trace]"
+            : "[Adjoint-Cycle Flow Adjoint Corrector Trace]"
+          );
       debugAdjointCycleLogFileStream
         << "\n" << adjointCycleTraceTag << "\n"
         << "  Iteration           : " << opt << "\n"
@@ -126,6 +134,16 @@ if (boundedFlowAdjointMode)
   adjointCycleBestUaInternal = Ua.internalField();
   adjointCycleBestPaInternal = pa.internalField();
   adjointCycleBestPhiaInternal = phia.internalField();
+}
+
+if (turbulenceProModeActive)
+{
+  // Prevent Pro-mode warm-start amplification across optimization iterations.
+  Ua = dimensionedVector("zeroProUa", Ua.dimensions(), vector::zero);
+  pa = dimensionedScalar("zeroProPa", pa.dimensions(), 0.0);
+  phia = dimensionedScalar("zeroProPhia", phia.dimensions(), 0.0);
+  Ua.correctBoundaryConditions();
+  pa.correctBoundaryConditions();
 }
 
 label adjointCycleNoImproveStreak = 0;
@@ -256,6 +274,22 @@ for (i = 0; i < adjointFlowCorrectors; i++)
   : HbyAa - rAtUa()*fvc::grad(pa);
   Ua.correctBoundaryConditions();
   fvOptions.correct(Ua);
+
+  if (turbulenceProModeActive)
+  {
+      const scalar uaAbsMax = gMax(mag(Ua));
+      if (!(uaAbsMax < optimizationCycleAdjointMaxMagnitude))
+      {
+          const scalar proAdjointScale =
+            optimizationCycleAdjointMaxMagnitude/Foam::max(uaAbsMax, SMALL);
+          Ua.primitiveFieldRef() *= proAdjointScale;
+          pa.primitiveFieldRef() *= proAdjointScale;
+          phia.primitiveFieldRef() *= proAdjointScale;
+          Ua.correctBoundaryConditions();
+          pa.correctBoundaryConditions();
+          fvOptions.correct(Ua);
+      }
+  }
 
   if (boundedFlowAdjointMode)
   {

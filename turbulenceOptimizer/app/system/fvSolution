@@ -17,7 +17,16 @@ FoamFile
 
 solvers
 {
-    "(p|pa|pb|pc)"
+    "(pa|pb)"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-10;
+        relTol          0;
+        maxIter         5000;
+    }
+
+    "(p|pc)"
     {
         solver          GAMG;
         tolerance       1e-10;
