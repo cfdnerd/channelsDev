@@ -34,34 +34,36 @@ const bool useDedicatedThermalEnvelopeAdjoints =
     mmaUseThermalEnvelopeConstraints
  && m > mmaThermalTminConstraintIndex
  && static_cast<bool>(optDedicatedThermalEnvelopeAdjointsEnable);
-volScalarField gsenshThermalTmax
+volScalarField gsensThermalTmax
 (
   IOobject
   (
-    "gsenshThermalTmax",
+    "gsensThermalTmax",
     runTime.timeName(),
     mesh,
     IOobject::NO_READ,
     IOobject::NO_WRITE
   ),
   mesh,
-  dimensionedScalar("zeroGsenshThermalTmax", fsenshMeanT.dimensions(), 0.0)
+  dimensionedScalar("zeroGsensThermalTmax", fsenshMeanT.dimensions(), 0.0),
+  zeroGradientFvPatchScalarField::typeName
 );
-volScalarField gsenshThermalTmin
+volScalarField gsensThermalTmin
 (
   IOobject
   (
-    "gsenshThermalTmin",
+    "gsensThermalTmin",
     runTime.timeName(),
     mesh,
     IOobject::NO_READ,
     IOobject::NO_WRITE
   ),
   mesh,
-  dimensionedScalar("zeroGsenshThermalTmin", fsenshMeanT.dimensions(), 0.0)
+  dimensionedScalar("zeroGsensThermalTmin", fsenshMeanT.dimensions(), 0.0),
+  zeroGradientFvPatchScalarField::typeName
 );
-volScalarField gsensThermalTmax(gsenshThermalTmax);
-volScalarField gsensThermalTmin(gsenshThermalTmin);
+volScalarField gsenshThermalTmax(gsensThermalTmax);
+volScalarField gsenshThermalTmin(gsensThermalTmin);
 
 fsenshMeanT = dAlphaDxh*(U&Ub)
            + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(objectiveThermalAdjoint));
