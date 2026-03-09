@@ -1,6 +1,7 @@
 const bool adjointCycleFlowAdjointMode = customTurbulenceActive && adjointCycleFullAdjointVerification;
 const bool optimizationCycleFlowAdjointMode =
-    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+    customTurbulenceActive
+ && (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive);
 const bool boundedFlowAdjointMode = adjointCycleFlowAdjointMode || optimizationCycleFlowAdjointMode;
 const bool adjointRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);

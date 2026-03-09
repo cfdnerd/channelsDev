@@ -12,6 +12,13 @@ IOdictionary customTurbulenceProperties
 );
 
 Switch customTurbulenceActive(customTurbulenceProperties.lookup("enable"));
+Switch turbulenceProMode
+(
+    customTurbulenceProperties.lookupOrDefault<Switch>("turbulenceProMode", false)
+);
+const bool turbulenceProModeActive =
+    customTurbulenceActive
+ && static_cast<bool>(turbulenceProMode);
 Switch adjointCycleThermalAdjointOnly
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleThermalAdjointOnly", false)
@@ -30,8 +37,12 @@ Switch enableTurbulentOptimization
 );
 const bool optimizationCycleTurbulentOptimizationMode =
     customTurbulenceActive
+ && !turbulenceProModeActive
  && optimizationCycleGradientClosure
  && enableTurbulentOptimization;
+const bool turbulenceAdjointClosureMode =
+    optimizationCycleTurbulentOptimizationMode
+ || turbulenceProModeActive;
 word inletTurbulenceMode
 (
     customTurbulenceProperties.lookupOrDefault<word>("inletTurbulenceMode", "intensityLengthScale")
@@ -402,12 +413,16 @@ if
     (adjointCycleThermalAdjointOnly && adjointCycleFullAdjointVerification)
  || (adjointCycleThermalAdjointOnly && optimizationCycleTurbulentOptimizationMode)
  || (adjointCycleFullAdjointVerification && optimizationCycleTurbulentOptimizationMode)
+ || (adjointCycleThermalAdjointOnly && turbulenceProModeActive)
+ || (adjointCycleFullAdjointVerification && turbulenceProModeActive)
+ || (optimizationCycleTurbulentOptimizationMode && turbulenceProModeActive)
 )
 {
     FatalErrorInFunction
         << "customTurbulenceProperties.adjointCycleThermalAdjointOnly, "
         << "customTurbulenceProperties.adjointCycleFullAdjointVerification, and "
-        << "the Optimization-Cycle turbulent optimization mode are "
+        << "the Optimization-Cycle turbulent optimization mode, and "
+        << "customTurbulenceProperties.turbulenceProMode are "
         << "mutually exclusive run modes."
         << exit(FatalError);
 }
@@ -419,6 +434,14 @@ if (customTurbulenceActive && optimizationCycleGradientClosure != enableTurbulen
         << "customTurbulenceProperties.optimizationCycleGradientClosure and "
         << "customTurbulenceProperties.enableTurbulentOptimization to true "
         << "to enable it, or set both to false to keep it disabled."
+        << exit(FatalError);
+}
+if (customTurbulenceActive && turbulenceProModeActive && (optimizationCycleGradientClosure || enableTurbulentOptimization))
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.turbulenceProMode=true requires "
+        << "optimizationCycleGradientClosure=false and enableTurbulentOptimization=false. "
+        << "Disable the strict Optimization-Cycle gate keys when running Pro mode."
         << exit(FatalError);
 }
 if (customTurbulenceActive && adjointCycleThermalAdjointOnly)
@@ -492,14 +515,36 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << " (ta=explicit Ta, tb=legacy turbulent Tb)."
         << endl;
 }
+else if (customTurbulenceActive && turbulenceProModeActive)
+{
+    Info<< "Custom kOmegaSST turbulence Pro mode is enabled. "
+        << "Primal turbulence fields (k/omega) are solved to resolve U/p/T, "
+        << "and closure adjoints (ka/omegaa) are solved/reconstructed for the "
+        << "adjoint state, while optimizer updates use laminar-style "
+        << "cost/sensitivity/filter/update logic without turbulent sensitivity terms."
+        << endl;
+    Info<< "Pro mode closure adjoints="
+        << (optimizationCycleTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
+        << " (invTau=" << optimizationCycleClosureAdjointInvTau
+        << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
+        << ", formulation=" << optimizationCycleClosureAdjointFormulation
+        << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
+        << "). "
+        << "Adjoint correctors per loop: flow="
+        << optimizationCycleFlowAdjointCorrectors
+        << ", heat=" << optimizationCycleHeatAdjointCorrectors
+        << "."
+        << endl;
+}
 else if (customTurbulenceActive)
 {
     FatalErrorInFunction
         << "Custom kOmegaSST is currently implemented only through the Stage-B "
         << "primal and staged verification paths, plus the strict Optimization-Cycle "
-        << "mode. Select exactly one of adjointCycleThermalAdjointOnly, "
+        << "mode and turbulence Pro mode. Select exactly one of adjointCycleThermalAdjointOnly, "
         << "adjointCycleFullAdjointVerification, or set "
-        << "both optimizationCycleGradientClosure and enableTurbulentOptimization to true."
+        << "both optimizationCycleGradientClosure and enableTurbulentOptimization to true, "
+        << "or set turbulenceProMode=true (with both gate keys false)."
         << exit(FatalError);
 }
 

@@ -11,8 +11,14 @@ const scalar thermalRefValue = thermalObjectiveTref.value();
 const scalar thermalTmaxLimitValue = thermalTmaxLimit.value();
 const scalar thermalTminLimitValue = thermalTminLimit.value();
 
-if ((objFunction == 3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
- || static_cast<bool>(optThermalEnvelopeConstraintEnable))
+if
+(
+    !turbulenceProModeActive
+ && (
+      (objFunction == 3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
+   || static_cast<bool>(optThermalEnvelopeConstraintEnable)
+    )
+)
 {
   scalar localExcessSum = 0.0;
   scalar localThetaMaxPeak = -GREAT;

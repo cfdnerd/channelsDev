@@ -20,6 +20,7 @@ FoamFile
 // ------------------------------------------------------------------------- //
 enable                          true;       // Enable custom turbulence model.
 model                           kOmegaSST;  // Supported model.
+turbulenceProMode               false;      // Laminar-style optimizer updates with turbulence-resolved primal/adjoint solves (requires both gate keys below = false).
 optimizationCycleGradientClosure true;      // Optimization gate key A.
 enableTurbulentOptimization     true;       // Optimization gate key B.
 

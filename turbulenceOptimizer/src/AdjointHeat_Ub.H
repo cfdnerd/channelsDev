@@ -1,5 +1,6 @@
 const bool optimizationCycleObjectiveAdjointMode =
-    customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
+    customTurbulenceActive
+ && (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive);
 const bool optimizationCycleHeatRollbackGuardsEnabled =
     static_cast<bool>(optAdjointRollbackGuardsEnable);
 const volScalarField& thermalAdjointSourceField =

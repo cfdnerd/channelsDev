@@ -1,7 +1,7 @@
 if (customTurbulenceActive)
 {
   const bool optimizationCycleUseTransportedClosureAdjoints =
-    optimizationCycleTurbulentOptimizationMode
+    turbulenceAdjointClosureMode
     && static_cast<bool>(optimizationCycleTransportedClosureAdjoints)
     && static_cast<bool>(optDualConsistentStateMapEnforce);
   const bool optimizationCycleUseResidualDraftClosureAdjoints =

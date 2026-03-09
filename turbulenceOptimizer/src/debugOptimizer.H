@@ -884,19 +884,23 @@ if (Pstream::master())
 
   writeSectionHeader("Solver Diagnostics");
   const label effectivePrimalCorrectors = momentumCorrectors;
-  const label effectiveAdjPowerCorrectors =
+  const bool optimizationStyleAdjointMode =
       optimizationCycleTurbulentOptimizationMode
+   || turbulenceProModeActive;
+  const label effectiveAdjPowerCorrectors =
+      optimizationStyleAdjointMode
     ? optimizationCycleFlowAdjointCorrectors
     : (adjointCycleFullAdjointVerification ? adjointCycleAdjointCorrectors : 40);
   const label effectiveAdjHeatCorrectors =
-      optimizationCycleTurbulentOptimizationMode
+      optimizationStyleAdjointMode
     ? optimizationCycleHeatAdjointCorrectors
     : 40;
   const char* optimizationModeLabel =
       optimizationCycleTurbulentOptimizationMode
     ? "optimizationCycle"
+    : (turbulenceProModeActive ? "turbulencePro"
     : (adjointCycleFullAdjointVerification ? "adjointCycle-full"
-      : (adjointCycleThermalAdjointOnly ? "adjointCycle-thermal" : "baseline"));
+      : (adjointCycleThermalAdjointOnly ? "adjointCycle-thermal" : "baseline")));
   writeRow
   (
       "config",

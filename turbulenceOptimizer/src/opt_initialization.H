@@ -57,7 +57,7 @@ if (Pstream::master())
   }
 }
 
-if (optimizationCycleTurbulentOptimizationMode)
+if (optimizationCycleTurbulentOptimizationMode || turbulenceProModeActive)
 {
   if
   (
@@ -68,7 +68,7 @@ if (optimizationCycleTurbulentOptimizationMode)
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "customTurbulenceProperties.optimizationCycleTransportedClosureAdjoints=true "
-      << "for Optimization-Cycle runs."
+      << "for Optimization-Cycle or turbulenceProMode runs."
       << exit(FatalError);
   }
   if
@@ -94,7 +94,7 @@ if (optimizationCycleTurbulentOptimizationMode)
     FatalErrorInFunction
       << "Formulation-first execution gate requires "
       << "customTurbulenceProperties.optimizationCycleClosureAdjointDualConsistentBC=true "
-      << "for Optimization-Cycle runs."
+      << "for Optimization-Cycle or turbulenceProMode runs."
       << exit(FatalError);
   }
   const dictionary& solverControls = mesh.solutionDict().subDict("solvers");
@@ -455,6 +455,8 @@ b.value()=1.0/(filterR*len/3.464)/(filterR*len/3.464);
 const label mmaPowerConstraintIndex = 0;
 const label mmaVolumeConstraintIndex = 1;
 const bool mmaUseThermalEnvelopeConstraints =
+  !turbulenceProModeActive
+  &&
   static_cast<bool>(optThermalEnvelopeConstraintEnable)
   && static_cast<bool>(optThermalEnvelopeMMAConstraintEnable);
 const label mmaThermalTmaxConstraintIndex = 2;
