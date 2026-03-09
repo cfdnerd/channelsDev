@@ -383,6 +383,11 @@
     alphat = nut/Prt;
     nuEff = nu + nut;
     alphaEff = DT + alphat;
+    if (wallTreatmentModeWallFunctionCompatible)
+    {
+      nut.correctBoundaryConditions();
+      alphat.correctBoundaryConditions();
+    }
   }
   else
   {

@@ -39,7 +39,7 @@ if(DDHS)//design dependent heat source
 }
 gsenshPowerDiss = dAlphaDxh*(U&Ua);
 
-if (optimizationCycleTurbulentSensitivityMode && optimizationCycleUseTaThermalAdjoint)
+if (optimizationCycleTurbulentSensitivityMode)
 {
  #include "TurbulentSensitivity.H"
 }

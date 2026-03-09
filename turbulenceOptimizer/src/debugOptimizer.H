@@ -43,6 +43,61 @@ label kFloorFluidCountLocal = 0;
 label omegaFloorSolidCountLocal = 0;
 label omegaFloorGrayCountLocal = 0;
 label omegaFloorFluidCountLocal = 0;
+const bool yPlusDiagnosticsActive =
+    customTurbulenceActive
+ && wallTreatmentModeWallFunctionCompatible
+ && static_cast<bool>(optWallFunctionYPlusDiagnosticsEnable);
+const scalar yPlusBandMinActive = optWallFunctionYPlusMin;
+const scalar yPlusBandMaxActive = optWallFunctionYPlusMax;
+const scalar yPlusNuRef = Foam::max(nu.value(), SMALL);
+const scalar yPlusCmuQuarter = Foam::pow(betaStarCoeff.value(), 0.25);
+const label yPlusPatchCount = mesh.boundary().size();
+List<scalar> yPlusPatchMinLocal(yPlusPatchCount, GREAT);
+List<scalar> yPlusPatchMaxLocal(yPlusPatchCount, -GREAT);
+List<scalar> yPlusPatchSumLocal(yPlusPatchCount, 0.0);
+List<label> yPlusPatchFaceCountLocal(yPlusPatchCount, 0);
+List<label> yPlusPatchInBandCountLocal(yPlusPatchCount, 0);
+
+if (yPlusDiagnosticsActive)
+{
+  forAll(mesh.boundary(), patchi)
+  {
+    if (mesh.boundary()[patchi].type() != "wall")
+    {
+      continue;
+    }
+
+    const labelUList& faceCells = mesh.boundary()[patchi].faceCells();
+    const scalarField& deltaCoeffs = mesh.boundary()[patchi].deltaCoeffs();
+
+    forAll(faceCells, facei)
+    {
+      const label celli = faceCells[facei];
+      const scalar yFace =
+        Foam::max
+        (
+          1.0/Foam::max(Foam::mag(deltaCoeffs[facei]), SMALL),
+          yMin.value()
+        );
+      const scalar kCell =
+        static_cast<bool>(optimizationCycleClosureConsistencyUseBoundedState)
+        ? kClosureState[celli]
+        : k[celli];
+      const scalar uTau =
+        yPlusCmuQuarter*Foam::sqrt(Foam::max(kCell, kMin.value()));
+      const scalar yPlusFace = uTau*yFace/yPlusNuRef;
+
+      yPlusPatchMinLocal[patchi] = Foam::min(yPlusPatchMinLocal[patchi], yPlusFace);
+      yPlusPatchMaxLocal[patchi] = Foam::max(yPlusPatchMaxLocal[patchi], yPlusFace);
+      yPlusPatchSumLocal[patchi] += yPlusFace;
+      yPlusPatchFaceCountLocal[patchi]++;
+      if (yPlusFace >= yPlusBandMinActive && yPlusFace <= yPlusBandMaxActive)
+      {
+        yPlusPatchInBandCountLocal[patchi]++;
+      }
+    }
+  }
+}
 
 for(i=0;i<n;i++)
 {
@@ -298,6 +353,21 @@ reduce(gsensVolLocalMax, maxOp<scalar>());
 reduce(gsensVolL2Local, sumOp<scalar>());
 reduce(gsensVolNonFiniteCountLocal, sumOp<label>());
 reduce(objectivePnormSumLocal, sumOp<scalar>());
+if (yPlusDiagnosticsActive)
+{
+  forAll(mesh.boundary(), patchi)
+  {
+    if (mesh.boundary()[patchi].type() != "wall")
+    {
+      continue;
+    }
+    reduce(yPlusPatchMinLocal[patchi], minOp<scalar>());
+    reduce(yPlusPatchMaxLocal[patchi], maxOp<scalar>());
+    reduce(yPlusPatchSumLocal[patchi], sumOp<scalar>());
+    reduce(yPlusPatchFaceCountLocal[patchi], sumOp<label>());
+    reduce(yPlusPatchInBandCountLocal[patchi], sumOp<label>());
+  }
+}
 
 const scalar xMean = xVolumeSumLocal/area;
 const scalar xhMean = xhVolumeSumLocal/area;
@@ -328,6 +398,46 @@ const scalar omegaFloorFluidFraction = static_cast<scalar>(omegaFloorFluidCountL
 const scalar fsensL2 = std::sqrt(fsensL2Local);
 const scalar gsensPowerL2 = std::sqrt(gsensPowerL2Local);
 const scalar gsensVolL2 = std::sqrt(gsensVolL2Local);
+scalar yPlusGlobalMin = GREAT;
+scalar yPlusGlobalMax = -GREAT;
+scalar yPlusGlobalSum = 0.0;
+label yPlusGlobalFaceCount = 0;
+label yPlusGlobalInBandCount = 0;
+if (yPlusDiagnosticsActive)
+{
+  forAll(mesh.boundary(), patchi)
+  {
+    if (mesh.boundary()[patchi].type() != "wall")
+    {
+      continue;
+    }
+    if (yPlusPatchFaceCountLocal[patchi] > 0)
+    {
+      yPlusGlobalMin = Foam::min(yPlusGlobalMin, yPlusPatchMinLocal[patchi]);
+      yPlusGlobalMax = Foam::max(yPlusGlobalMax, yPlusPatchMaxLocal[patchi]);
+      yPlusGlobalSum += yPlusPatchSumLocal[patchi];
+      yPlusGlobalFaceCount += yPlusPatchFaceCountLocal[patchi];
+      yPlusGlobalInBandCount += yPlusPatchInBandCountLocal[patchi];
+    }
+  }
+}
+const scalar yPlusGlobalFaceCountSafe =
+  Foam::max(static_cast<scalar>(yPlusGlobalFaceCount), scalar(1.0));
+const scalar yPlusGlobalMean = yPlusGlobalSum/yPlusGlobalFaceCountSafe;
+const scalar yPlusInBandFraction =
+  static_cast<scalar>(yPlusGlobalInBandCount)/yPlusGlobalFaceCountSafe;
+const bool yPlusMostlyOutside =
+    yPlusDiagnosticsActive
+ && yPlusGlobalFaceCount > 0
+ && yPlusInBandFraction < optWallFunctionYPlusInBandWarnFraction;
+if (Pstream::master() && yPlusMostlyOutside)
+{
+  Info<< "WARNING: wall-function yPlus in-band fraction is low ("
+      << yPlusInBandFraction << " < "
+      << optWallFunctionYPlusInBandWarnFraction
+      << "). Consider mesh refinement or wall-treatment retuning."
+      << endl;
+}
 
 scalar objectiveValue = MeanT;
 word objectiveLabel("MeanT");
@@ -1123,6 +1233,62 @@ if (Pstream::master())
   writeRow("omega field", "omegaMin="+fmtScalar(omegaGlobalMin), "omegaMax="+fmtScalar(omegaGlobalMax));
   writeRow
   (
+    "wall model",
+    "mode="+std::string(wallTreatmentMode.c_str()),
+    "y+diag="+std::string(yPlusDiagnosticsActive ? "on" : "off"),
+    "band=["+fmtScalar(yPlusBandMinActive)+","+fmtScalar(yPlusBandMaxActive)+"]",
+    "warnFrac="+fmtScalar(optWallFunctionYPlusInBandWarnFraction)
+  );
+  if (yPlusDiagnosticsActive && yPlusGlobalFaceCount > 0)
+  {
+    writeRow
+    (
+      "y+ global",
+      "min="+fmtScalar(yPlusGlobalMin),
+      "mean="+fmtScalar(yPlusGlobalMean),
+      "max="+fmtScalar(yPlusGlobalMax),
+      "inBand="+fmtScalar(yPlusInBandFraction)
+    );
+    forAll(mesh.boundary(), patchi)
+    {
+      if
+      (
+          mesh.boundary()[patchi].type() != "wall"
+       || yPlusPatchFaceCountLocal[patchi] < 1
+      )
+      {
+        continue;
+      }
+      const scalar patchFaceCountSafe =
+        Foam::max(static_cast<scalar>(yPlusPatchFaceCountLocal[patchi]), scalar(1.0));
+      const scalar patchYPlusMean = yPlusPatchSumLocal[patchi]/patchFaceCountSafe;
+      const scalar patchYPlusInBandFraction =
+        static_cast<scalar>(yPlusPatchInBandCountLocal[patchi])/patchFaceCountSafe;
+      const std::string yPlusPatchLabel =
+        std::string("y+:") + mesh.boundary()[patchi].name();
+      writeRow
+      (
+        yPlusPatchLabel.c_str(),
+        "min="+fmtScalar(yPlusPatchMinLocal[patchi]),
+        "mean="+fmtScalar(patchYPlusMean),
+        "max="+fmtScalar(yPlusPatchMaxLocal[patchi]),
+        "inBand="+fmtScalar(patchYPlusInBandFraction)
+      );
+    }
+    if (yPlusMostlyOutside)
+    {
+      writeRow
+      (
+        "y+ warning",
+        "status=WARN",
+        "inBand="+fmtScalar(yPlusInBandFraction),
+        "threshold="+fmtScalar(optWallFunctionYPlusInBandWarnFraction),
+        "action=refine/retune"
+      );
+    }
+  }
+  writeRow
+  (
     "porous turb",
     "aware="+std::string(porousAwareTurbulenceTransport ? "yes" : "no"),
     "prodExp="+fmtScalar(porousTurbulenceProductionExponent)
@@ -1355,6 +1521,24 @@ if (Pstream::master())
       << ",\"omegaMin\":" << omegaGlobalMin
       << ",\"omegaMax\":" << omegaGlobalMax
       << ",\"nutMax\":" << nutGlobalMax
+      << ",\"wallTreatmentMode\":\"" << wallTreatmentMode << "\""
+      << ",\"wallFunctionYPlusDiagnosticsEnabled\":"
+      << (yPlusDiagnosticsActive ? 1 : 0)
+      << ",\"wallFunctionYPlusBandMin\":" << yPlusBandMinActive
+      << ",\"wallFunctionYPlusBandMax\":" << yPlusBandMaxActive
+      << ",\"wallFunctionYPlusWarnFraction\":"
+      << optWallFunctionYPlusInBandWarnFraction
+      << ",\"wallFunctionYPlusFaceCount\":" << yPlusGlobalFaceCount
+      << ",\"wallFunctionYPlusMin\":"
+      << (yPlusGlobalFaceCount > 0 ? yPlusGlobalMin : scalar(0.0))
+      << ",\"wallFunctionYPlusMean\":"
+      << (yPlusGlobalFaceCount > 0 ? yPlusGlobalMean : scalar(0.0))
+      << ",\"wallFunctionYPlusMax\":"
+      << (yPlusGlobalFaceCount > 0 ? yPlusGlobalMax : scalar(0.0))
+      << ",\"wallFunctionYPlusInBandFraction\":"
+      << (yPlusGlobalFaceCount > 0 ? yPlusInBandFraction : scalar(0.0))
+      << ",\"wallFunctionYPlusMostlyOutside\":"
+      << (yPlusMostlyOutside ? 1 : 0)
       << ",\"porousAwareTurbulenceTransport\":"
       << (porousAwareTurbulenceTransport ? 1 : 0)
       << ",\"porousTurbulenceProductionExponent\":"

@@ -226,14 +226,6 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
       )/optimizationCycleOmegaScale
     )*optimizationCycleOmegaConstraintProxy
   );
-  const volScalarField optimizationCycleObjectiveNormalizedMix
-  (
-    optimizationCycleKObjectiveNormalized + optimizationCycleOmegaObjectiveNormalized
-  );
-  const volScalarField optimizationCycleConstraintNormalizedMix
-  (
-    optimizationCycleKConstraintNormalized + optimizationCycleOmegaConstraintNormalized
-  );
   const bool optimizationCycleUseSAClosureAdjoint =
     turbulenceProModeActive
     && proModeClosureAdjointSolvesActive
@@ -289,11 +281,16 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
   (
     optimizationCycleTransportedClosureMix/optimizationCycleTransportedClosureScale
   );
+  if (!optimizationCycleUseTransportedClosureAdjoints)
+  {
+    FatalErrorInFunction
+      << "Frozen closure-sensitivity proxy formulation is removed. "
+      << "Require transported closure adjoints in turbulent sensitivity."
+      << exit(FatalError);
+  }
   volScalarField optimizationCycleObjectiveClosureMix
   (
-    optimizationCycleUseTransportedClosureAdjoints
-    ? optimizationCycleTransportedClosureNormalized
-    : optimizationCycleObjectiveNormalizedMix
+    optimizationCycleTransportedClosureNormalized
   );
   if
   (
@@ -306,9 +303,7 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
   }
   const volScalarField optimizationCycleConstraintClosureMix
   (
-    optimizationCycleUseTransportedClosureAdjoints
-    ? optimizationCycleTransportedClosureNormalized
-    : optimizationCycleConstraintNormalizedMix
+    optimizationCycleTransportedClosureNormalized
   );
   const volScalarField optimizationCycleObjectiveClosureContribution
   (
@@ -372,9 +367,7 @@ if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
       << "  Obj omega-proxy |max|   : " << optimizationCycleOmegaObjectiveProxyMax << "\n"
       << "  Con k-proxy |max|       : " << optimizationCycleKConstraintProxyMax << "\n"
       << "  Con omega-proxy |max|   : " << optimizationCycleOmegaConstraintProxyMax << "\n"
-      << "  Closure mix mode        : "
-      << (optimizationCycleUseTransportedClosureAdjoints ? "transported" : "proxy")
-      << "\n"
+      << "  Closure mix mode        : transported\n"
       << "  Transported mix |max|   : " << optimizationCycleTransportedClosureMixMax << "\n";
   }
 }

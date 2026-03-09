@@ -225,6 +225,22 @@ scalar optAdaptiveMoveLimitNegativeTrustDamping
 (
   convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitNegativeTrustDamping", 0.50)
 );
+Switch optWallFunctionYPlusDiagnosticsEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optWallFunctionYPlusDiagnosticsEnable", true)
+);
+scalar optWallFunctionYPlusMin
+(
+  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusMin", 30.0)
+);
+scalar optWallFunctionYPlusMax
+(
+  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusMax", 300.0)
+);
+scalar optWallFunctionYPlusInBandWarnFraction
+(
+  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusInBandWarnFraction", 0.50)
+);
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
   FatalErrorInFunction
@@ -306,6 +322,25 @@ if (optAdaptiveMoveLimitMin <= 0.0 || optAdaptiveMoveLimitMax <= 0.0)
     << "optAdaptiveMoveLimitMin and optAdaptiveMoveLimitMax must be > 0. Found "
     << "min=" << optAdaptiveMoveLimitMin
     << ", max=" << optAdaptiveMoveLimitMax
+    << exit(FatalError);
+}
+if (optWallFunctionYPlusMin <= 0.0 || optWallFunctionYPlusMax <= optWallFunctionYPlusMin)
+{
+  FatalErrorInFunction
+    << "Wall-function yPlus band must satisfy 0 < optWallFunctionYPlusMin < optWallFunctionYPlusMax. "
+    << "Found min=" << optWallFunctionYPlusMin
+    << ", max=" << optWallFunctionYPlusMax
+    << exit(FatalError);
+}
+if
+(
+    optWallFunctionYPlusInBandWarnFraction < 0.0
+ || optWallFunctionYPlusInBandWarnFraction > 1.0
+)
+{
+  FatalErrorInFunction
+    << "optWallFunctionYPlusInBandWarnFraction must be in [0, 1]. Found "
+    << optWallFunctionYPlusInBandWarnFraction
     << exit(FatalError);
 }
 if (optAdaptiveMoveLimitMax < optAdaptiveMoveLimitMin)

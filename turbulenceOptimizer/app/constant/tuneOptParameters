@@ -57,6 +57,12 @@ convergenceControl
     optAdaptiveMoveLimitGrowFactor     1.15;
     optAdaptiveMoveLimitNegativeTrustDamping  0.50;
 
+    // Wall-function diagnostics (high-Re coarse-mesh suitability checks).
+    optWallFunctionYPlusDiagnosticsEnable true;
+    optWallFunctionYPlusMin      30.0;
+    optWallFunctionYPlusMax      300.0;
+    optWallFunctionYPlusInBandWarnFraction 0.50; // Warn if in-band fraction falls below this.
+
     // --------------------------------------------------------------------- //
     // Thermal Envelope Constraints
     // --------------------------------------------------------------------- //

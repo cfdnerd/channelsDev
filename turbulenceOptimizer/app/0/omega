@@ -33,7 +33,7 @@ boundaryField
 
     Wall
     {
-        type            fixedValue;
+        type            omegaWallFunction;
         value           uniform 1e5;
     }
 

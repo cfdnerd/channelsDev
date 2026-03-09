@@ -28,6 +28,14 @@ word proModeAdjointClosureModel
 (
     customTurbulenceProperties.lookupOrDefault<word>("proModeAdjointClosureModel", "sst")
 );
+word wallTreatmentMode
+(
+    customTurbulenceProperties.lookupOrDefault<word>("wallTreatmentMode", "legacyFixedKOmega")
+);
+const bool wallTreatmentModeLegacyFixedKOmega =
+    wallTreatmentMode == word("legacyFixedKOmega");
+const bool wallTreatmentModeWallFunctionCompatible =
+    wallTreatmentMode == word("wallFunctionCompatible");
 const bool turbulenceProModeActive =
     customTurbulenceActive
  && static_cast<bool>(turbulenceProMode);
@@ -357,11 +365,11 @@ label optimizationCycleHeatAdjointCorrectors
 );
 Switch optimizationCycleTransportedClosureAdjoints
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleTransportedClosureAdjoints", false)
+    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleTransportedClosureAdjoints", true)
 );
 word optimizationCycleClosureAdjointFormulation
 (
-    customTurbulenceProperties.lookupOrDefault<word>("optimizationCycleClosureAdjointFormulation", "proxyNormalized")
+    customTurbulenceProperties.lookupOrDefault<word>("optimizationCycleClosureAdjointFormulation", "transportedResidualDraft")
 );
 Switch optimizationCycleClosureAdjointDualConsistentBC
 (
@@ -465,30 +473,64 @@ if (customTurbulenceModelName != "kOmegaSST")
 }
 if
 (
-    optimizationCycleClosureAdjointFormulation != "proxyNormalized"
+    customTurbulenceActive
+ && wallTreatmentMode != "legacyFixedKOmega"
+ && wallTreatmentMode != "wallFunctionCompatible"
+)
+{
+    FatalErrorInFunction
+        << "customTurbulenceProperties.wallTreatmentMode must be "
+        << "legacyFixedKOmega or wallFunctionCompatible. Found "
+        << wallTreatmentMode
+        << exit(FatalError);
+}
+if
+(
+    customTurbulenceActive
  && optimizationCycleClosureAdjointFormulation != "transportedResidualDraft"
  && optimizationCycleClosureAdjointFormulation != "transportedCrossCoupledV3"
 )
 {
     FatalErrorInFunction
         << "customTurbulenceProperties.optimizationCycleClosureAdjointFormulation must "
-        << "be proxyNormalized, transportedResidualDraft, or "
+        << "be transportedResidualDraft or "
         << "transportedCrossCoupledV3. Found "
         << optimizationCycleClosureAdjointFormulation
         << exit(FatalError);
 }
 if
 (
-    proModeClosureAdjointFormulation != "proxyNormalized"
+    customTurbulenceActive
  && proModeClosureAdjointFormulation != "transportedResidualDraft"
  && proModeClosureAdjointFormulation != "transportedCrossCoupledV3"
 )
 {
     FatalErrorInFunction
         << "customTurbulenceProperties.proModeClosureAdjointFormulation must "
-        << "be proxyNormalized, transportedResidualDraft, or "
+        << "be transportedResidualDraft or "
         << "transportedCrossCoupledV3. Found "
         << proModeClosureAdjointFormulation
+        << exit(FatalError);
+}
+if (customTurbulenceActive && !optimizationCycleTransportedClosureAdjoints)
+{
+    FatalErrorInFunction
+        << "Frozen turbulence closure is removed. "
+        << "Set customTurbulenceProperties.optimizationCycleTransportedClosureAdjoints=true."
+        << exit(FatalError);
+}
+if (customTurbulenceActive && turbulenceProModeActive && !proModeClosureAdjointSolvesActive)
+{
+    FatalErrorInFunction
+        << "Frozen turbulence closure reconstruction is removed. "
+        << "In turbulenceProMode, customTurbulenceProperties.proModeClosureAdjointSolves must be true."
+        << exit(FatalError);
+}
+if (customTurbulenceActive && !closureAdjointTransportedActive)
+{
+    FatalErrorInFunction
+        << "Frozen turbulence closure paths are removed. "
+        << "Active run must use transported closure adjoints."
         << exit(FatalError);
 }
 if
@@ -735,8 +777,7 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", heat=" << optimizationCycleHeatAdjointCorrectors << ". "
         << "Adjoint magnitude guard: |Uadj|max <= "
         << optimizationCycleAdjointMaxMagnitude << ". "
-        << "Closure adjoints="
-        << (optimizationCycleTransportedClosureAdjoints ? "transported-PDE" : "proxy-reconstruction")
+        << "Closure adjoints=transported-PDE"
         << " (invTau=" << optimizationCycleClosureAdjointInvTau
         << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
         << ", formulation=" << optimizationCycleClosureAdjointFormulation
@@ -773,8 +814,7 @@ else if (customTurbulenceActive && turbulenceProModeActive)
         << "adjoint state, while optimizer updates use laminar-style "
         << "cost/sensitivity/filter/update logic without turbulent sensitivity terms."
         << endl;
-    Info<< "Pro mode closure adjoints="
-        << (closureAdjointTransportedActive ? "transported-PDE" : "proxy-reconstruction")
+    Info<< "Pro mode closure adjoints=transported-PDE"
         << " (invTau=" << closureAdjointInvTauActive
         << ", crossCoupling=" << closureAdjointCrossCouplingActive
         << ", formulation=" << closureAdjointFormulationActive
@@ -827,6 +867,7 @@ if (customTurbulenceActive)
         << turbulencePrimalTransportDiffusionScaleActive
         << ", closureAdjoint(ka/omegaa)="
         << turbulenceAdjointTransportDiffusionScaleActive
+        << ", wallTreatmentMode=" << wallTreatmentMode
         << endl;
 }
 
@@ -1021,6 +1062,64 @@ volScalarField nut
     mesh,
     dimensionedScalar("zeroNut", dimensionSet(0,2,-1,0,0,0,0), 0.0)
 );
+
+if (customTurbulenceActive)
+{
+    auto isWallFunctionPatchType =
+    [&](const fvPatchScalarField& patchField) -> bool
+    {
+        const std::string patchType(patchField.type());
+        return patchType.find("WallFunction") != std::string::npos;
+    };
+
+    forAll(mesh.boundary(), patchi)
+    {
+        if (mesh.boundary()[patchi].type() != "wall")
+        {
+            continue;
+        }
+
+        const fvPatchScalarField& kPatch = k.boundaryField()[patchi];
+        const fvPatchScalarField& omegaPatch = omega.boundaryField()[patchi];
+        const fvPatchScalarField& nutPatch = nut.boundaryField()[patchi];
+
+        const bool kWallFunctionPatch = isWallFunctionPatchType(kPatch);
+        const bool omegaWallFunctionPatch = isWallFunctionPatchType(omegaPatch);
+        const bool nutWallFunctionPatch = isWallFunctionPatchType(nutPatch);
+
+        if
+        (
+            wallTreatmentModeWallFunctionCompatible
+         && (!kWallFunctionPatch || !omegaWallFunctionPatch || !nutWallFunctionPatch)
+        )
+        {
+            FatalErrorInFunction
+                << "wallTreatmentMode=wallFunctionCompatible requires wall-function BCs "
+                << "for k, omega, and nut on each wall patch. Patch="
+                << mesh.boundary()[patchi].name()
+                << " has kType=" << kPatch.type()
+                << ", omegaType=" << omegaPatch.type()
+                << ", nutType=" << nutPatch.type()
+                << ". Use kqRWallFunction, omegaWallFunction, and nutkWallFunction (or equivalents)."
+                << exit(FatalError);
+        }
+
+        if
+        (
+            wallTreatmentModeLegacyFixedKOmega
+         && (kWallFunctionPatch || omegaWallFunctionPatch)
+        )
+        {
+            WarningInFunction
+                << "wallTreatmentMode=legacyFixedKOmega overrides wall k/omega values every iteration. "
+                << "Detected wall-function BCs on patch="
+                << mesh.boundary()[patchi].name()
+                << " (kType=" << kPatch.type()
+                << ", omegaType=" << omegaPatch.type() << ")."
+                << endl;
+        }
+    }
+}
 
 volScalarField alphat
 (
