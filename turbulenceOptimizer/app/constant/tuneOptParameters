@@ -47,6 +47,9 @@ convergenceControl
     optProjectionSmoothingEnable true;
     optProjectionBetaScale    0.3;
 
+    // Toggle explicit volume weighting in filtered sensitivities (non-uniform mesh robustness).
+    optSensitivityVolumeWeightingEnable true;
+
     // Trust-ratio-based adaptive MMA move-limit controls.
     optAdaptiveMoveLimitEnable true;
     optAdaptiveMoveLimitMin            0.03;
@@ -62,6 +65,13 @@ convergenceControl
     optWallFunctionYPlusMin      30.0;
     optWallFunctionYPlusMax      300.0;
     optWallFunctionYPlusInBandWarnFraction 0.50; // Warn if in-band fraction falls below this.
+
+    // Converged-stop gate for turbulent SA/SST runs: do not accept "converged"
+    // when design is still mostly gray and trust penalty is saturated.
+    optConvergedGrayTrustGateEnable true;
+    optConvergedGrayTrustGateMinIterations 50;
+    optConvergedGrayFractionThreshold 0.50;
+    optConvergedTrustPenaltySaturationThreshold 9.90;
 
     // --------------------------------------------------------------------- //
     // Thermal Envelope Constraints

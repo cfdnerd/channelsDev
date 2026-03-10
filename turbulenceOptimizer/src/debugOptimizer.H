@@ -631,12 +631,58 @@ const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
 const scalar predictedObjectiveReduction = -predictedObjectiveDelta;
 const scalar actualObjectiveReduction =
   hasPreviousObjectiveValue ? previousObjectiveValue - objectiveValue : 0.0;
+const scalar trustPredReductionAbsFloor = scalar(1e-8);
+const scalar trustPredReductionRelFloor = scalar(1e-4);
+const scalar trustRatioClampAbs = scalar(5.0);
+const scalar trustObjectiveRefAbs =
+  hasPreviousObjectiveValue
+  ? Foam::mag(previousObjectiveValue)
+  : Foam::mag(objectiveValue);
+const scalar trustPredReductionFloor =
+  Foam::max
+  (
+    trustPredReductionAbsFloor,
+    trustPredReductionRelFloor*Foam::max(trustObjectiveRefAbs, scalar(1.0))
+  );
 const bool trustRatioDefined =
-  hasPreviousObjectiveValue && predictedObjectiveReduction > SMALL;
-const scalar trustRatio =
+  hasPreviousObjectiveValue && predictedObjectiveReduction > trustPredReductionFloor;
+const scalar trustRatioRaw =
   trustRatioDefined
-  ? actualObjectiveReduction/Foam::max(predictedObjectiveReduction, SMALL)
+  ? actualObjectiveReduction/Foam::max(predictedObjectiveReduction, trustPredReductionFloor)
   : 1.0;
+const scalar trustRatio =
+  Foam::max
+  (
+    Foam::min(trustRatioRaw, trustRatioClampAbs),
+   -trustRatioClampAbs
+  );
+const scalar trustDeviationForStop =
+  trustRatioDefined
+  ? Foam::mag(trustRatio - scalar(1.0))/Foam::max(Foam::mag(trustRatio), scalar(1.0))
+  : scalar(0.0);
+const scalar trustPenaltyForStop =
+  trustRatioDefined
+  ? Foam::min(scalar(10.0), scalar(10.0)*trustDeviationForStop)
+  : scalar(0.0);
+const bool saOrSstRunActive =
+    customTurbulenceActive
+ && (
+      optimizationCycleTurbulentOptimizationMode
+   || (
+        turbulenceProModeActive
+     && (
+          proModeAdjointClosureModel == word("sa")
+       || proModeAdjointClosureModel == word("sst")
+        )
+      )
+    );
+const bool convergedGrayTrustGateBlocked =
+    static_cast<bool>(optConvergedGrayTrustGateEnable)
+ && saOrSstRunActive
+ && opt >= optConvergedGrayTrustGateMinIterations
+ && grayVolumeFraction >= optConvergedGrayFractionThreshold
+ && trustPenaltyForStop >= optConvergedTrustPenaltySaturationThreshold
+ && trustRatioDefined;
 const scalar objectiveAbsValue = Foam::mag(objectiveValue);
 const scalar thermalFieldAbsMaxObserved =
   Foam::max(Foam::mag(TLocalMin), Foam::mag(TLocalMax));
@@ -674,6 +720,8 @@ const scalar gradientConsistencyRatio =
 
 const bool convergenceCandidate =
   opt >= optMinIterations
+  &&
+  !convergedGrayTrustGateBlocked
   &&
   solverSeverity < 2
   &&
@@ -723,7 +771,10 @@ else if (!healthChecksPassed)
 else
 {
   stopOptimization = optimizerConvergedStreak >= optStallWindow;
-  optimizerStopReason = stopOptimization ? word("converged") : word("running");
+  optimizerStopReason =
+    stopOptimization
+    ? word("converged")
+    : (convergedGrayTrustGateBlocked ? word("convergedGateGrayTrust") : word("running"));
 }
 
 if (optDiagnosticMode && !residualGrowthWithinLimit)
@@ -935,13 +986,7 @@ if (Pstream::master())
         scalar(4.0)*Foam::max(gradientConsistencyRatio - scalar(1.0), scalar(0.0))
       )
     : scalar(0.0);
-  scalar trustPenalty(0.0);
-  if (trustRatioDefined)
-  {
-    const scalar trustDeviation =
-      Foam::mag(trustRatio - scalar(1.0))/Foam::max(Foam::mag(trustRatio), scalar(1.0));
-    trustPenalty = Foam::min(scalar(10.0), scalar(10.0)*trustDeviation);
-  }
+  const scalar trustPenalty = trustPenaltyForStop;
   const scalar healthPenaltyTotal =
       rollbackPenalty
     + constraintPenalty
@@ -1028,6 +1073,8 @@ if (Pstream::master())
       << " residualGrowthRatio=" << linearResidualGrowthRatio
       << " trustRatioDefined=" << (trustRatioDefined ? 1 : 0)
       << " trustRatio=" << trustRatio
+      << " trustRatioRaw=" << trustRatioRaw
+      << " trustPredFloor=" << trustPredReductionFloor
       << " predictedObjectiveReduction=" << predictedObjectiveReduction
       << " actualObjectiveReduction=" << actualObjectiveReduction
       << " gradientConsistencyRatio=" << gradientConsistencyRatio
@@ -1166,6 +1213,14 @@ if (Pstream::master())
       + " hard=" + std::string(clipHardSafetyStop ? "yes" : "no")
   );
   writeRow("Stop", "candidate="+std::string(convergenceCandidate ? "yes" : "no"), "stop="+std::string(stopOptimization ? "yes" : "no"), "reason="+std::string(optimizerStopReason.c_str()));
+  writeRow
+  (
+    "conv gate",
+    "active="+std::string(saOrSstRunActive ? "yes" : "no"),
+    "blocked="+std::string(convergedGrayTrustGateBlocked ? "yes" : "no"),
+    "gray="+fmtScalar(grayVolumeFraction)+"/"+fmtScalar(optConvergedGrayFractionThreshold),
+    "trustPen="+fmtScalar(trustPenaltyForStop)+"/"+fmtScalar(optConvergedTrustPenaltySaturationThreshold)
+  );
   writeRow("Outcome", "state="+std::string(stopOutcome), "success="+std::string(stopSuccessful ? "yes" : "no"), "failure="+std::string(stopFailure ? "yes" : "no"));
 
   writeSectionHeader("Design Diagnostics");
@@ -1417,6 +1472,11 @@ if (Pstream::master())
       << ",\"linearResidualGrowthRatio\":" << linearResidualGrowthRatio
       << ",\"trustRatioDefined\":" << (trustRatioDefined ? 1 : 0)
       << ",\"trustRatio\":" << trustRatio
+      << ",\"trustPenalty\":" << trustPenaltyForStop
+      << ",\"grayTrustGateActive\":" << (saOrSstRunActive ? 1 : 0)
+      << ",\"grayTrustGateBlocked\":" << (convergedGrayTrustGateBlocked ? 1 : 0)
+      << ",\"grayTrustGateGrayThreshold\":" << optConvergedGrayFractionThreshold
+      << ",\"grayTrustGateTrustPenaltyThreshold\":" << optConvergedTrustPenaltySaturationThreshold
       << ",\"continuationScheduleIteration\":" << continuationScheduleIterationActive
       << ",\"closureDerivativeFDEnabled\":" << (static_cast<bool>(optClosureDerivativeFDEnable) ? 1 : 0)
       << ",\"closureDerivativeFDRelStep\":" << optClosureDerivativeFDRelStep

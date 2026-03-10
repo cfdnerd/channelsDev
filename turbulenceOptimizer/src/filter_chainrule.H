@@ -117,13 +117,7 @@ recordLinearSolve
   gsensVolFilterLinearSolvePerformance.nIterations()
 );
 
-if (turbulenceProModeActive)
-{
-  fsensMeanT.primitiveFieldRef()=fsensMeanT.primitiveFieldRef()*mesh.V()/gMax(mesh.V());
-  gsensPowerDiss.primitiveFieldRef()=gsensPowerDiss.primitiveFieldRef()*mesh.V()/gMax(mesh.V());
-  gsensVol.primitiveFieldRef()=gsensVol.primitiveFieldRef()*mesh.V()/gMax(mesh.V());
-}
-else
+if (static_cast<bool>(optSensitivityVolumeWeightingEnable))
 {
   const scalar maxCellVolume = Foam::max(gMax(mesh.V()), SMALL);
   fsensMeanT.primitiveFieldRef()=fsensMeanT.primitiveFieldRef()*mesh.V()/maxCellVolume;

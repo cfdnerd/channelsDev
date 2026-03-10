@@ -193,6 +193,10 @@ scalar optProjectionBetaScale
 (
   convergenceControl.lookupOrDefault<scalar>("optProjectionBetaScale", 1.0)
 );
+Switch optSensitivityVolumeWeightingEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optSensitivityVolumeWeightingEnable", true)
+);
 Switch optAdaptiveMoveLimitEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optAdaptiveMoveLimitEnable", true)
@@ -240,6 +244,26 @@ scalar optWallFunctionYPlusMax
 scalar optWallFunctionYPlusInBandWarnFraction
 (
   convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusInBandWarnFraction", 0.50)
+);
+Switch optConvergedGrayTrustGateEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optConvergedGrayTrustGateEnable", true)
+);
+label optConvergedGrayTrustGateMinIterations
+(
+  convergenceControl.lookupOrDefault<label>
+  (
+    "optConvergedGrayTrustGateMinIterations",
+    optMinIterations
+  )
+);
+scalar optConvergedGrayFractionThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>("optConvergedGrayFractionThreshold", 0.50)
+);
+scalar optConvergedTrustPenaltySaturationThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>("optConvergedTrustPenaltySaturationThreshold", 9.90)
 );
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
@@ -341,6 +365,35 @@ if
   FatalErrorInFunction
     << "optWallFunctionYPlusInBandWarnFraction must be in [0, 1]. Found "
     << optWallFunctionYPlusInBandWarnFraction
+    << exit(FatalError);
+}
+if (optConvergedGrayTrustGateMinIterations < 1)
+{
+  FatalErrorInFunction
+    << "optConvergedGrayTrustGateMinIterations must be >= 1. Found "
+    << optConvergedGrayTrustGateMinIterations
+    << exit(FatalError);
+}
+if
+(
+    optConvergedGrayFractionThreshold < 0.0
+ || optConvergedGrayFractionThreshold > 1.0
+)
+{
+  FatalErrorInFunction
+    << "optConvergedGrayFractionThreshold must be in [0, 1]. Found "
+    << optConvergedGrayFractionThreshold
+    << exit(FatalError);
+}
+if
+(
+    optConvergedTrustPenaltySaturationThreshold < 0.0
+ || optConvergedTrustPenaltySaturationThreshold > 10.0
+)
+{
+  FatalErrorInFunction
+    << "optConvergedTrustPenaltySaturationThreshold must be in [0, 10]. Found "
+    << optConvergedTrustPenaltySaturationThreshold
     << exit(FatalError);
 }
 if (optAdaptiveMoveLimitMax < optAdaptiveMoveLimitMin)
