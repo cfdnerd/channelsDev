@@ -137,7 +137,7 @@ relaxationFactors
     {
         U               0.7;
         "(Ua|Ub|Uc)"    0.45;
-        T               0.7;
+        T               0.4;
         k               0.30;
         omega           0.15;
         ka              0.20;
