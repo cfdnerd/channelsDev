@@ -53,7 +53,7 @@ else
     if (static_cast<bool>(optProjectionSmoothingEnable))
     {
       const scalar projectionBeta =
-        Foam::max(optProjectionBetaScale*Foam::max(del, scalar(1.0)), scalar(1e-6));
+        Foam::max(projectionBetaScaleActive*Foam::max(del, scalar(1.0)), scalar(1e-6));
       const scalar projectionDenominator =
         Foam::tanh(projectionBeta*eta5)
       + Foam::tanh(projectionBeta*(1.0 - eta5));

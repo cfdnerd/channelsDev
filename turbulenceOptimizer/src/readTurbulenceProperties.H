@@ -56,17 +56,17 @@ const bool proModeSAAdjointClosureActive =
  && proModeSAAdjointClosureSelected;
 // Pro-mode stability pack (hardcoded): activated by one dict toggle.
 const label proModeFlowAdjointCorrectors =
-    proModeAdjointStabilityPackActive ? label(20) : label(40);
+    proModeAdjointStabilityPackActive ? label(24) : label(40);
 const label proModeHeatAdjointCorrectors =
-    proModeAdjointStabilityPackActive ? label(20) : label(40);
+    proModeAdjointStabilityPackActive ? label(24) : label(40);
 const bool proModeResetAdjointState = false;
 const bool proModeAdjointNoImproveCheck = proModeAdjointStabilityPackActive;
-const label proModeAdjointNoImproveMinCorrectors(7);
-const label proModeAdjointNoImprovePatience(5);
+const label proModeAdjointNoImproveMinCorrectors(10);
+const label proModeAdjointNoImprovePatience(8);
 const scalar proModeAdjointMaxMagnitude(1e8);
 const bool proModeAdjointUseNuEff = proModeAdjointStabilityPackActive;
 const bool proModeAdjointUseLegacyPressureRelax = proModeAdjointStabilityPackActive;
-const label proModeAdjointWarmupIterations(80);
+const label proModeAdjointWarmupIterations(120);
 const label proModeAdjointRampRollbackFreeWindow(8);
 const scalar proModePseudoInvTauFloorRatio(0.20);
 const scalar proModeUaPseudoInvTauBase

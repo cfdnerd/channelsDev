@@ -12,13 +12,13 @@ recordLinearSolve
 //***********************************//Heaviside_filter
 if (turbulenceProModeActive)
 {
-  del=Foam::min(0.2*opt,100);
+  del=Foam::min(projectionDelStepActive*opt,100.0);
 }
 else
 {
   const scalar targetDel =
-    Foam::min(scalar(0.2)*continuationScheduleIterationActive, scalar(100));
-  const scalar continuationDelStep = 0.2;
+    Foam::min(projectionDelStepActive*continuationScheduleIterationActive, scalar(100));
+  const scalar continuationDelStep = projectionDelStepActive;
   del = Foam::min(del + continuationDelStep, targetDel);
 }
 eta0=0.0001;
@@ -58,7 +58,7 @@ if (turbulenceProModeActive)
 else
 {
   const scalar projectionBeta =
-    Foam::max(optProjectionBetaScale*Foam::max(del, scalar(1.0)), scalar(1e-6));
+    Foam::max(projectionBetaScaleActive*Foam::max(del, scalar(1.0)), scalar(1e-6));
   const scalar projectionDenominator =
     Foam::tanh(projectionBeta*eta5)
   + Foam::tanh(projectionBeta*(1.0 - eta5));

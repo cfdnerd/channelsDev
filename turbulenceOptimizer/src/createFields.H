@@ -193,6 +193,38 @@ scalar optProjectionBetaScale
 (
   convergenceControl.lookupOrDefault<scalar>("optProjectionBetaScale", 1.0)
 );
+scalar optProjectionBetaScaleStart
+(
+  convergenceControl.lookupOrDefault<scalar>("optProjectionBetaScaleStart", optProjectionBetaScale)
+);
+scalar optProjectionBetaScaleEnd
+(
+  convergenceControl.lookupOrDefault<scalar>("optProjectionBetaScaleEnd", optProjectionBetaScaleStart)
+);
+label optProjectionBetaRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optProjectionBetaRampStartIteration", 1)
+);
+label optProjectionBetaRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optProjectionBetaRampEndIteration", 160)
+);
+scalar optProjectionDelStepStart
+(
+  convergenceControl.lookupOrDefault<scalar>("optProjectionDelStepStart", 0.20)
+);
+scalar optProjectionDelStepEnd
+(
+  convergenceControl.lookupOrDefault<scalar>("optProjectionDelStepEnd", optProjectionDelStepStart)
+);
+label optProjectionDelStepRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optProjectionDelStepRampStartIteration", 1)
+);
+label optProjectionDelStepRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optProjectionDelStepRampEndIteration", 160)
+);
 Switch optSensitivityVolumeWeightingEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optSensitivityVolumeWeightingEnable", true)
@@ -261,6 +293,14 @@ Switch optStabilityContinuationGovernorTrustUndefinedBlocks
 (
   convergenceControl.lookupOrDefault<Switch>("optStabilityContinuationGovernorTrustUndefinedBlocks", true)
 );
+scalar optTrustPredReductionAbsFloor
+(
+  convergenceControl.lookupOrDefault<scalar>("optTrustPredReductionAbsFloor", 1e-12)
+);
+scalar optTrustPredReductionRelFloor
+(
+  convergenceControl.lookupOrDefault<scalar>("optTrustPredReductionRelFloor", 1e-6)
+);
 Switch optTurbulenceSuppressionRampEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optTurbulenceSuppressionRampEnable", true)
@@ -280,6 +320,126 @@ scalar optTurbulenceSuppressionRampMinScale
 scalar optClosureNutRegularizationScale
 (
   convergenceControl.lookupOrDefault<scalar>("optClosureNutRegularizationScale", 1e-3)
+);
+Switch optFilterStrengthRampEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optFilterStrengthRampEnable", true)
+);
+label optFilterStrengthRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optFilterStrengthRampStartIteration", 80)
+);
+label optFilterStrengthRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optFilterStrengthRampEndIteration", 180)
+);
+scalar optFilterRadiusScaleMin
+(
+  convergenceControl.lookupOrDefault<scalar>("optFilterRadiusScaleMin", 0.65)
+);
+Switch optMaterialInterpolationExponentEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optMaterialInterpolationExponentEnable", true)
+);
+scalar optMaterialInterpolationExponentStart
+(
+  convergenceControl.lookupOrDefault<scalar>("optMaterialInterpolationExponentStart", 1.0)
+);
+scalar optMaterialInterpolationExponentEnd
+(
+  convergenceControl.lookupOrDefault<scalar>("optMaterialInterpolationExponentEnd", optMaterialInterpolationExponentStart)
+);
+label optMaterialInterpolationExponentRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optMaterialInterpolationExponentRampStartIteration", 40)
+);
+label optMaterialInterpolationExponentRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optMaterialInterpolationExponentRampEndIteration", 170)
+);
+Switch optGrayPenaltyEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optGrayPenaltyEnable", true)
+);
+scalar optGrayPenaltyWeightStart
+(
+  convergenceControl.lookupOrDefault<scalar>("optGrayPenaltyWeightStart", 0.0)
+);
+scalar optGrayPenaltyWeightEnd
+(
+  convergenceControl.lookupOrDefault<scalar>("optGrayPenaltyWeightEnd", optGrayPenaltyWeightStart)
+);
+label optGrayPenaltyRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optGrayPenaltyRampStartIteration", 30)
+);
+label optGrayPenaltyRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optGrayPenaltyRampEndIteration", 170)
+);
+Switch optMMAStagnationRecoveryEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optMMAStagnationRecoveryEnable", true)
+);
+scalar optMMAStagnationStepThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>("optMMAStagnationStepThreshold", 1e-5)
+);
+label optMMAStagnationWindow
+(
+  convergenceControl.lookupOrDefault<label>("optMMAStagnationWindow", 12)
+);
+scalar optMMAStagnationMoveLimitBoost
+(
+  convergenceControl.lookupOrDefault<scalar>("optMMAStagnationMoveLimitBoost", 1.5)
+);
+scalar optMMAStagnationMoveLimitCap
+(
+  convergenceControl.lookupOrDefault<scalar>("optMMAStagnationMoveLimitCap", 0.20)
+);
+Switch optMMAStagnationAsymptoteResetEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optMMAStagnationAsymptoteResetEnable", true)
+);
+Switch optGradientSanityCheckEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optGradientSanityCheckEnable", true)
+);
+label optGradientSanityCheckInterval
+(
+  convergenceControl.lookupOrDefault<label>("optGradientSanityCheckInterval", 20)
+);
+scalar optGradientSanityRatioThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>("optGradientSanityRatioThreshold", 1.20)
+);
+Switch optGradientSanityRescaleEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optGradientSanityRescaleEnable", true)
+);
+scalar optGradientSanityRescaleMin
+(
+  convergenceControl.lookupOrDefault<scalar>("optGradientSanityRescaleMin", 0.25)
+);
+Switch optAdjointAitkenEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optAdjointAitkenEnable", true)
+);
+label optAdjointAitkenStartCorrector
+(
+  convergenceControl.lookupOrDefault<label>("optAdjointAitkenStartCorrector", 2)
+);
+scalar optAdjointAitkenOmegaMin
+(
+  convergenceControl.lookupOrDefault<scalar>("optAdjointAitkenOmegaMin", 0.10)
+);
+scalar optAdjointAitkenOmegaMax
+(
+  convergenceControl.lookupOrDefault<scalar>("optAdjointAitkenOmegaMax", 0.85)
+);
+scalar optAdjointAitkenEpsilon
+(
+  convergenceControl.lookupOrDefault<scalar>("optAdjointAitkenEpsilon", 1e-16)
 );
 Switch optWallFunctionYPlusDiagnosticsEnable
 (
@@ -396,6 +556,38 @@ if (optProjectionBetaScale <= 0.0)
     << optProjectionBetaScale
     << exit(FatalError);
 }
+if (optProjectionBetaScaleStart <= 0.0 || optProjectionBetaScaleEnd <= 0.0)
+{
+  FatalErrorInFunction
+    << "optProjectionBetaScaleStart and optProjectionBetaScaleEnd must be > 0. Found "
+    << "start=" << optProjectionBetaScaleStart
+    << ", end=" << optProjectionBetaScaleEnd
+    << exit(FatalError);
+}
+if (optProjectionBetaRampStartIteration < 1 || optProjectionBetaRampEndIteration < optProjectionBetaRampStartIteration)
+{
+  FatalErrorInFunction
+    << "Projection beta ramp iterations must satisfy 1 <= start <= end. Found "
+    << "start=" << optProjectionBetaRampStartIteration
+    << ", end=" << optProjectionBetaRampEndIteration
+    << exit(FatalError);
+}
+if (optProjectionDelStepStart <= 0.0 || optProjectionDelStepEnd <= 0.0)
+{
+  FatalErrorInFunction
+    << "optProjectionDelStepStart and optProjectionDelStepEnd must be > 0. Found "
+    << "start=" << optProjectionDelStepStart
+    << ", end=" << optProjectionDelStepEnd
+    << exit(FatalError);
+}
+if (optProjectionDelStepRampStartIteration < 1 || optProjectionDelStepRampEndIteration < optProjectionDelStepRampStartIteration)
+{
+  FatalErrorInFunction
+    << "Projection del-step ramp iterations must satisfy 1 <= start <= end. Found "
+    << "start=" << optProjectionDelStepRampStartIteration
+    << ", end=" << optProjectionDelStepRampEndIteration
+    << exit(FatalError);
+}
 if (optAdaptiveMoveLimitMin <= 0.0 || optAdaptiveMoveLimitMax <= 0.0)
 {
   FatalErrorInFunction
@@ -507,6 +699,14 @@ if (optStabilityContinuationGovernorLinearPenaltyThreshold < 0.0)
     << optStabilityContinuationGovernorLinearPenaltyThreshold
     << exit(FatalError);
 }
+if (optTrustPredReductionAbsFloor <= 0.0 || optTrustPredReductionRelFloor <= 0.0)
+{
+  FatalErrorInFunction
+    << "optTrustPredReductionAbsFloor and optTrustPredReductionRelFloor must be > 0. Found "
+    << "abs=" << optTrustPredReductionAbsFloor
+    << ", rel=" << optTrustPredReductionRelFloor
+    << exit(FatalError);
+}
 if (optStabilityContinuationGovernorSlowFactor <= 0.0 || optStabilityContinuationGovernorSlowFactor > 1.0)
 {
   FatalErrorInFunction
@@ -548,6 +748,120 @@ if (optClosureNutRegularizationScale <= 0.0)
   FatalErrorInFunction
     << "optClosureNutRegularizationScale must be > 0. Found "
     << optClosureNutRegularizationScale
+    << exit(FatalError);
+}
+if
+(
+    optFilterStrengthRampStartIteration < 1
+ || optFilterStrengthRampEndIteration < optFilterStrengthRampStartIteration
+)
+{
+  FatalErrorInFunction
+    << "Filter-strength ramp iterations must satisfy 1 <= start <= end. Found "
+    << "start=" << optFilterStrengthRampStartIteration
+    << ", end=" << optFilterStrengthRampEndIteration
+    << exit(FatalError);
+}
+if (optFilterRadiusScaleMin <= 0.0 || optFilterRadiusScaleMin > 1.0)
+{
+  FatalErrorInFunction
+    << "optFilterRadiusScaleMin must satisfy 0 < value <= 1. Found "
+    << optFilterRadiusScaleMin
+    << exit(FatalError);
+}
+if (optMaterialInterpolationExponentStart <= 0.0 || optMaterialInterpolationExponentEnd <= 0.0)
+{
+  FatalErrorInFunction
+    << "Material interpolation exponents must be > 0. Found "
+    << "start=" << optMaterialInterpolationExponentStart
+    << ", end=" << optMaterialInterpolationExponentEnd
+    << exit(FatalError);
+}
+if
+(
+    optMaterialInterpolationExponentRampStartIteration < 1
+ || optMaterialInterpolationExponentRampEndIteration < optMaterialInterpolationExponentRampStartIteration
+)
+{
+  FatalErrorInFunction
+    << "Material interpolation exponent ramp iterations must satisfy 1 <= start <= end. Found "
+    << "start=" << optMaterialInterpolationExponentRampStartIteration
+    << ", end=" << optMaterialInterpolationExponentRampEndIteration
+    << exit(FatalError);
+}
+if (optGrayPenaltyWeightStart < 0.0 || optGrayPenaltyWeightEnd < 0.0)
+{
+  FatalErrorInFunction
+    << "Gray-penalty weights must be >= 0. Found "
+    << "start=" << optGrayPenaltyWeightStart
+    << ", end=" << optGrayPenaltyWeightEnd
+    << exit(FatalError);
+}
+if
+(
+    optGrayPenaltyRampStartIteration < 1
+ || optGrayPenaltyRampEndIteration < optGrayPenaltyRampStartIteration
+)
+{
+  FatalErrorInFunction
+    << "Gray-penalty ramp iterations must satisfy 1 <= start <= end. Found "
+    << "start=" << optGrayPenaltyRampStartIteration
+    << ", end=" << optGrayPenaltyRampEndIteration
+    << exit(FatalError);
+}
+if (optMMAStagnationStepThreshold <= 0.0 || optMMAStagnationWindow < 1)
+{
+  FatalErrorInFunction
+    << "MMA stagnation controls require threshold > 0 and window >= 1. Found "
+    << "threshold=" << optMMAStagnationStepThreshold
+    << ", window=" << optMMAStagnationWindow
+    << exit(FatalError);
+}
+if (optMMAStagnationMoveLimitBoost < 1.0)
+{
+  FatalErrorInFunction
+    << "optMMAStagnationMoveLimitBoost must be >= 1. Found "
+    << optMMAStagnationMoveLimitBoost
+    << exit(FatalError);
+}
+if (optMMAStagnationMoveLimitCap <= 0.0 || optMMAStagnationMoveLimitCap > 1.0)
+{
+  FatalErrorInFunction
+    << "optMMAStagnationMoveLimitCap must satisfy 0 < value <= 1. Found "
+    << optMMAStagnationMoveLimitCap
+    << exit(FatalError);
+}
+if (optGradientSanityCheckInterval < 1 || optGradientSanityRatioThreshold <= 0.0)
+{
+  FatalErrorInFunction
+    << "Gradient sanity controls require interval >= 1 and ratio threshold > 0. Found "
+    << "interval=" << optGradientSanityCheckInterval
+    << ", threshold=" << optGradientSanityRatioThreshold
+    << exit(FatalError);
+}
+if (optGradientSanityRescaleMin <= 0.0 || optGradientSanityRescaleMin > 1.0)
+{
+  FatalErrorInFunction
+    << "optGradientSanityRescaleMin must satisfy 0 < value <= 1. Found "
+    << optGradientSanityRescaleMin
+    << exit(FatalError);
+}
+if
+(
+    optAdjointAitkenStartCorrector < 1
+ || optAdjointAitkenOmegaMin <= 0.0
+ || optAdjointAitkenOmegaMax <= 0.0
+ || optAdjointAitkenOmegaMax < optAdjointAitkenOmegaMin
+ || optAdjointAitkenOmegaMax > 1.0
+ || optAdjointAitkenEpsilon <= 0.0
+)
+{
+  FatalErrorInFunction
+    << "Adjoint Aitken controls invalid. Need startCorrector>=1, 0<omegaMin<=omegaMax<=1, epsilon>0. Found "
+    << "start=" << optAdjointAitkenStartCorrector
+    << ", omegaMin=" << optAdjointAitkenOmegaMin
+    << ", omegaMax=" << optAdjointAitkenOmegaMax
+    << ", epsilon=" << optAdjointAitkenEpsilon
     << exit(FatalError);
 }
 

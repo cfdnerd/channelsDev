@@ -17,100 +17,53 @@ FoamFile
 
 convergenceControl
 {
-    // --------------------------------------------------------------------- //
-    // Run Profile
-    // --------------------------------------------------------------------- //
-    optRunMode production; // production | diagnostic
-    optFirstFailureSnapshotEnable       true; // write first failure snapshot
-    optAdjointRollbackGuardsEnable      false; // Ua/Ub rollback guards (forced on in Pro mode when proModeAdjointStabilityPack=true)
+    // Keep only unresolved-issue controls for the next run.
 
-    // --------------------------------------------------------------------- //
-    // Thermal Adjoint Selector
-    // --------------------------------------------------------------------- //
-    optThermalAdjointMode ta; // ta | tb
+    // Smooth projection (tanh) + sharper continuation to reduce gray stagnation.
+    optProjectionBetaScaleStart 0.4;
+    optProjectionBetaScaleEnd   2.8;
+    optProjectionBetaRampStartIteration 20;
+    optProjectionBetaRampEndIteration   120;
+    optProjectionDelStepStart 0.22;
+    optProjectionDelStepEnd   0.50;
+    optProjectionDelStepRampStartIteration 25;
+    optProjectionDelStepRampEndIteration   120;
 
-    // --------------------------------------------------------------------- //
-    // MMA Step Controls
-    // --------------------------------------------------------------------- //
-    optPowerConstraintWeight      1;
-    optVolumeConstraintWeight     1;
+    // Trust-definition collapse fix.
+    optStabilityContinuationGovernorTrustUndefinedBlocks false;
+    optTrustPredReductionAbsFloor 1e-16;
+    optTrustPredReductionRelFloor 1e-12;
 
-    // --------------------------------------------------------------------- //
-    // Formulation Controls
-    // --------------------------------------------------------------------- //
-    // Turbulence-closure denominator regularization controls.
-    optClosureLogRegularizationEnable true;
-    optClosureSmoothDenominatorEnable true;
-    optKOmegaPositivityPreservingLinearizationEnable true;
-    optClosureNutRegularizationScale 1e-3; // local nut regularization floor scale (multiplies nu).
+    // Late-stage filter/projection/binarization continuation.
+    optFilterStrengthRampStartIteration 60;
+    optFilterStrengthRampEndIteration   150;
+    optFilterRadiusScaleMin 0.45; // shrink late filter radius more aggressively.
 
-    // Smooth projection (tanh) controls for Heaviside continuation.
-    optProjectionSmoothingEnable true;
-    optProjectionBetaScale    0.3;
+    optMaterialInterpolationExponentEnd   3.5;
+    optMaterialInterpolationExponentRampStartIteration 20;
+    optMaterialInterpolationExponentRampEndIteration   130;
 
-    // Toggle explicit volume weighting in filtered sensitivities (non-uniform mesh robustness).
-    optSensitivityVolumeWeightingEnable true;
+    // Grayness penalty: integral(xh*(1-xh)) to drive 0/1 design.
+    optGrayPenaltyWeightStart 0.02;
+    optGrayPenaltyWeightEnd   0.70;
+    optGrayPenaltyRampStartIteration 20;
+    optGrayPenaltyRampEndIteration   140;
 
-    // Trust-ratio-based adaptive MMA move-limit controls.
-    optAdaptiveMoveLimitEnable true;
-    optAdaptiveMoveLimitMin            0.03;
-    optAdaptiveMoveLimitMax            0.15;
-    optAdaptiveMoveLimitTrustRatioShrink        0.25;
-    optAdaptiveMoveLimitTrustRatioGrow          0.75;
-    optAdaptiveMoveLimitShrinkFactor   0.70;
-    optAdaptiveMoveLimitGrowFactor     1.15;
-    optAdaptiveMoveLimitNegativeTrustDamping  0.50;
+    // MMA stagnation recovery for tiny x-step windows.
+    optMMAStagnationStepThreshold 2e-5;
+    optMMAStagnationWindow 6;
+    optMMAStagnationMoveLimitBoost 2.0;
+    optMMAStagnationMoveLimitCap   0.30;
 
-    // Health-driven continuation governor for unstable SST/SA regimes.
-    optStabilityContinuationGovernorEnable true;
-    optStabilityContinuationGovernorConstraintPenaltyThreshold 8.0;
-    optStabilityContinuationGovernorLinearPenaltyThreshold 5.0;
-    optStabilityContinuationGovernorSlowFactor 0.35;
-    optStabilityContinuationGovernorMoveLimitScale 0.70;
-    optStabilityContinuationGovernorTrustUndefinedBlocks true;
+    // Keep Aitken acceleration for adjoint no-improve behavior.
+    optAdjointAitkenOmegaMin 0.20;
+    optAdjointAitkenOmegaMax 0.95;
 
-    // Ramp porous turbulence suppression to avoid early over-damping.
-    optTurbulenceSuppressionRampEnable true;
-    optTurbulenceSuppressionRampStartIteration 1;
-    optTurbulenceSuppressionRampEndIteration 120;
-    optTurbulenceSuppressionRampMinScale 0.25;
+    // Wall-function diagnostics disabled for low-Re wall-treatment run.
+    optWallFunctionYPlusDiagnosticsEnable false;
 
-    // Wall-function diagnostics (high-Re coarse-mesh suitability checks).
-    optWallFunctionYPlusDiagnosticsEnable true;
-    optWallFunctionYPlusMin      30.0;
-    optWallFunctionYPlusMax      300.0;
-    optWallFunctionYPlusInBandWarnFraction 0.50; // Warn if in-band fraction falls below this.
-
-    // Converged-stop gate for turbulent SA/SST runs: do not accept "converged"
-    // when design is still mostly gray and trust penalty is saturated.
-    optConvergedGrayTrustGateEnable true;
-    optConvergedGrayTrustGateMinIterations 50;
-    optConvergedGrayFractionThreshold 0.50;
-    optConvergedTrustPenaltySaturationThreshold 9.90;
-    optConvergedGrayTrustGateUndefinedTrustBlocks true; // also block when trust ratio is undefined (predicted reduction collapsed)
-
-    // --------------------------------------------------------------------- //
-    // Thermal Envelope Constraints
-    // --------------------------------------------------------------------- //
-    optThermalEnvelopeConstraintsEnable false; // disable while tuning objFunction=3 to avoid envelope/obj coupling
-    optThermalTmaxLimit           15.0; // upper envelope limit for Tmax KS constraint
-    optThermalTminLimit           0.0; // lower envelope limit for Tmin KS constraint
-    optThermalKSBeta              24.0; // KS aggregation sharpness for envelope constraints
-
-    // --------------------------------------------------------------------- //
-    // Thermal Excess Objective (ObjFunction 3: SmoothExcessT)
-    // --------------------------------------------------------------------- //
-    optThermalBoundedObjectiveEnable false; // required for SmoothExcessT when objFunction=3
-    optThermalExcessTref          2.8; // focus objective on upper thermal tail (hotspot range)
-    optThermalExcessSoftplusScale 0.75; // moderate smoothing: sharper than 1.0, safer than very small values
-
-    // Convergence Stop
-    // --------------------------------------------------------------------- //
-    optMinIterations              50;
-    optStallWindow                5;
-    optObjectiveTol               1e-3;
-    optConstraintTol              1e-3;
-    optStepTol                    5e-3;
+    // Prevent trust-undefined latch in converged gray-trust gate.
+    optConvergedGrayTrustGateUndefinedTrustBlocks false;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -140,6 +140,9 @@ scalarField optimizationCycleBestPhibInternal;
 scalar optimizationCycleBestCombinedMetric = GREAT;
 scalar optimizationCycleBestUbMax = GREAT;
 scalar optimizationCycleBestPbRange = GREAT;
+vectorField optimizationCycleUbDeltaPrevious;
+bool optimizationCycleUbHasDeltaPrevious = false;
+scalar optimizationCycleUbAitkenOmega = 1.0;
 label optimizationCycleNoImproveStreak = 0;
 label optimizationCycleBestCorrector = 0;
 label optimizationCycleAdjointCorrectorsUsed = 0;
@@ -186,6 +189,7 @@ if (optimizationLikeHeatAdjointMode)
       << " UbRelax=" << ubEqnRelaxFactor
       << " sourceSplit=" << ubSourceSplitStrength
       << " sourceRamp=" << ubThermalSourceRamp
+      << " aitken=" << (static_cast<bool>(optAdjointAitkenEnable) ? "true" : "false")
       << " |Ub|maxLimit=" << optimizationCycleHeatAdjointMagnitudeLimit
       << "\n";
   }
@@ -361,6 +365,66 @@ Ub =
 : HbyAb - rAtUb()*fvc::grad(pb);
 Ub.correctBoundaryConditions();
 fvOptions.correct(Ub);
+if
+(
+    optimizationLikeHeatAdjointMode
+ && static_cast<bool>(optAdjointAitkenEnable)
+ && (i + 1) >= optAdjointAitkenStartCorrector
+)
+{
+  const vectorField optimizationCycleUbCurrentRaw(Ub.internalField());
+  vectorField optimizationCycleUbDelta
+  (
+    optimizationCycleUbCurrentRaw - optimizationCycleUbPrevious
+  );
+  if (optimizationCycleUbHasDeltaPrevious)
+  {
+    scalar optimizationCycleAitkenNumerator = 0.0;
+    scalar optimizationCycleAitkenDenominator = 0.0;
+    forAll(optimizationCycleUbDelta, celli)
+    {
+      const vector optimizationCycleUbDeltaDiff =
+        optimizationCycleUbDelta[celli] - optimizationCycleUbDeltaPrevious[celli];
+      optimizationCycleAitkenNumerator +=
+        (optimizationCycleUbDeltaPrevious[celli] & optimizationCycleUbDeltaDiff);
+      optimizationCycleAitkenDenominator +=
+        (optimizationCycleUbDeltaDiff & optimizationCycleUbDeltaDiff);
+    }
+    reduce(optimizationCycleAitkenNumerator, sumOp<scalar>());
+    reduce(optimizationCycleAitkenDenominator, sumOp<scalar>());
+    if (optimizationCycleAitkenDenominator > optAdjointAitkenEpsilon)
+    {
+      scalar optimizationCycleAitkenOmegaNew =
+        -optimizationCycleUbAitkenOmega
+        *optimizationCycleAitkenNumerator
+        /Foam::max(optimizationCycleAitkenDenominator, optAdjointAitkenEpsilon);
+      optimizationCycleAitkenOmegaNew =
+        Foam::max
+        (
+          Foam::min(optimizationCycleAitkenOmegaNew, optAdjointAitkenOmegaMax),
+          optAdjointAitkenOmegaMin
+        );
+      vectorField& optimizationCycleUbInternal = Ub.primitiveFieldRef();
+      forAll(optimizationCycleUbInternal, celli)
+      {
+        optimizationCycleUbInternal[celli] =
+          optimizationCycleUbPrevious[celli]
+        + optimizationCycleAitkenOmegaNew*optimizationCycleUbDelta[celli];
+      }
+      Ub.correctBoundaryConditions();
+      fvOptions.correct(Ub);
+      optimizationCycleUbAitkenOmega = optimizationCycleAitkenOmegaNew;
+      optimizationCycleUbDelta = Ub.internalField() - optimizationCycleUbPrevious;
+    }
+  }
+  optimizationCycleUbDeltaPrevious = optimizationCycleUbDelta;
+  optimizationCycleUbHasDeltaPrevious = true;
+}
+else if (optimizationLikeHeatAdjointMode)
+{
+  optimizationCycleUbHasDeltaPrevious = false;
+  optimizationCycleUbAitkenOmega = 1.0;
+}
 
 if (optimizationLikeHeatAdjointMode)
 {

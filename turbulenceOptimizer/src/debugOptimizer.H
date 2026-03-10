@@ -458,6 +458,11 @@ if (objFunction == 3 && static_cast<bool>(optThermalBoundedObjectiveEnable))
   objectiveLabel = "SmoothExcessT";
   objectiveValue = thermalExcessObjective;
 }
+if (static_cast<bool>(optGrayPenaltyEnable) && grayPenaltyWeightActive > SMALL)
+{
+  objectiveLabel += "+GrayPen";
+  objectiveValue += grayPenaltyObjective;
+}
 const scalar objectiveDelta = hasPreviousObjectiveValue ? objectiveValue - previousObjectiveValue : 0;
 const scalar powerConstraintWeightSafe = Foam::max(optPowerConstraintWeight, SMALL);
 const scalar powerConstraintMargin = gx[mmaPowerConstraintIndex]/powerConstraintWeightSafe;
@@ -619,8 +624,10 @@ const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
 const scalar predictedObjectiveReduction = -predictedObjectiveDelta;
 const scalar actualObjectiveReduction =
   hasPreviousObjectiveValue ? previousObjectiveValue - objectiveValue : 0.0;
-const scalar trustPredReductionAbsFloor = scalar(1e-8);
-const scalar trustPredReductionRelFloor = scalar(1e-4);
+const scalar trustPredReductionAbsFloor =
+  Foam::max(optTrustPredReductionAbsFloor, scalar(1e-16));
+const scalar trustPredReductionRelFloor =
+  Foam::max(optTrustPredReductionRelFloor, scalar(1e-12));
 const scalar trustRatioClampAbs = scalar(5.0);
 const scalar trustObjectiveRefAbs =
   hasPreviousObjectiveValue
@@ -841,6 +848,53 @@ previousConstraintPenaltyForGovernor = constraintPenalty;
 previousLinearPenaltyForGovernor = linearPenalty;
 previousTrustRatioDefinedForGovernor = trustRatioDefined;
 hasPreviousGovernorMetrics = true;
+if (static_cast<bool>(optMMAStagnationRecoveryEnable))
+{
+  if (maxAbsXChangeLocal <= optMMAStagnationStepThreshold)
+  {
+    optimizerTinyStepStreak++;
+  }
+  else
+  {
+    optimizerTinyStepStreak = 0;
+  }
+}
+else
+{
+  optimizerTinyStepStreak = 0;
+}
+const bool gradientSanityCheckDue =
+    static_cast<bool>(optGradientSanityCheckEnable)
+ && (opt % Foam::max(optGradientSanityCheckInterval, label(1)) == 0);
+if (gradientSanityCheckDue)
+{
+  if
+  (
+      static_cast<bool>(optGradientSanityRescaleEnable)
+   && gradientConsistencyRatio > optGradientSanityRatioThreshold
+  )
+  {
+    optimizerGradientSanityScaleActive =
+      Foam::max
+      (
+        optGradientSanityRescaleMin,
+        scalar(1.0)/Foam::max(gradientConsistencyRatio, scalar(1.0))
+      );
+    if (gradientConsistencyRatio > scalar(2.0)*optGradientSanityRatioThreshold)
+    {
+      optimizerResetMMAAsymptotesNextIter = true;
+    }
+  }
+  else
+  {
+    optimizerGradientSanityScaleActive = scalar(1.0);
+  }
+}
+else if (optimizerGradientSanityScaleActive < scalar(1.0))
+{
+  optimizerGradientSanityScaleActive =
+    Foam::min(scalar(1.0), optimizerGradientSanityScaleActive + scalar(0.05));
+}
 previousMaxLinearFinalResidual = maxLinearFinalResidual;
 hasPreviousMaxLinearFinalResidual = true;
 const bool firstFailureHealthEvent =
@@ -1015,8 +1069,8 @@ if (Pstream::master())
       << std::setw(14) << "PenTotal"
       << std::setw(14) << "RollPen"
       << std::setw(14) << "LinPen"
-      << std::setw(14) << "ConPen"
-      << std::setw(14) << "ConsPen"
+      << std::setw(14) << "constPen"
+      << std::setw(14) << "gradPen"
       << std::setw(14) << "TrustPen"
       << std::setw(10) << "FlowRB"
       << std::setw(10) << "HeatRB"
@@ -1226,6 +1280,13 @@ if (Pstream::master())
     "tminKS="+fmtScalar(thermalTminConstraintMargin),
     "pen="+fmtScalar(optThermalEnvelopePenalty)
   );
+  writeRow
+  (
+    "gray penalty",
+    "active="+std::string(static_cast<bool>(optGrayPenaltyEnable) ? "yes" : "no"),
+    "weight="+fmtScalar(grayPenaltyWeightActive),
+    "value="+fmtScalar(grayPenaltyObjective)
+  );
   writeRow("margin delta", "power="+fmtScalar(powerConstraintMarginDelta), "powerFinal="+fmtScalar(powerConstraintFinalMarginDelta), "volume="+fmtScalar(volumeConstraintMarginDelta), "maxGuard="+fmtScalar(guardConstraintViolationDelta));
   writeRow("thermal", "meanT="+fmtScalar(MeanT), "maxT="+fmtScalar(maxT));
 
@@ -1236,6 +1297,14 @@ if (Pstream::master())
     "moveLimit="+fmtScalar(optimizerMoveLimitActive),
     "mode="+std::string(static_cast<bool>(optAdaptiveMoveLimitEnable) ? "adaptive" : "fixed"),
     "moveHits="+fmtCount(xMoveLimitHitCountLocal)
+  );
+  writeRow
+  (
+    "recovery",
+    "tinyStreak="+fmtCount(optimizerTinyStepStreak),
+    "stagnation="+std::string(optimizerMMAStagnationRecoveryActive ? "yes" : "no"),
+    "gradScale="+fmtScalar(optimizerGradientSanityScaleActive),
+    "mmaResetNext="+std::string(optimizerResetMMAAsymptotesNextIter ? "yes" : "no")
   );
   writeRow("bound clamps", "lower="+fmtCount(xLowerBoundCountLocal), "upper="+fmtCount(xUpperBoundCountLocal), "nonFiniteX="+fmtCount(xNonFiniteCountLocal));
 
@@ -1415,9 +1484,9 @@ if (Pstream::master())
       << ",\"score\":" << optimizerHealthScore
       << ",\"band\":\"" << optimizerHealthBand << "\""
       << ",\"rollbackPenalty\":" << rollbackPenalty
-      << ",\"constraintPenalty\":" << constraintPenalty
+      << ",\"constPen\":" << constraintPenalty
       << ",\"linearPenalty\":" << linearPenalty
-      << ",\"consistencyPenalty\":" << consistencyPenalty
+      << ",\"gradPen\":" << consistencyPenalty
       << ",\"trustPenalty\":" << trustPenalty
     << "}"
     << ",\"convergence\":{"
@@ -1518,6 +1587,8 @@ if (Pstream::master())
       << ",\"volumeConstraintMargin\":" << volumeConstraintMargin
       << ",\"volumeConstraintMarginDelta\":" << volumeConstraintMarginDelta
       << ",\"thermalExcessObjective\":" << thermalExcessObjective
+      << ",\"grayPenaltyWeight\":" << grayPenaltyWeightActive
+      << ",\"grayPenaltyObjective\":" << grayPenaltyObjective
       << ",\"thermalTmaxKSConstraintMargin\":" << thermalTmaxConstraintMargin
       << ",\"thermalTmaxKSConstraintMarginDelta\":" << thermalTmaxConstraintMarginDelta
       << ",\"thermalTminKSConstraintMargin\":" << thermalTminConstraintMargin
@@ -1534,6 +1605,10 @@ if (Pstream::master())
       << ",\"asymInc\":" << mma_inc
       << ",\"asymDec\":" << mma_dec
       << ",\"moveLimitHitCount\":" << xMoveLimitHitCountLocal
+      << ",\"tinyStepStreak\":" << optimizerTinyStepStreak
+      << ",\"stagnationRecoveryActive\":" << (optimizerMMAStagnationRecoveryActive ? 1 : 0)
+      << ",\"gradientSanityScale\":" << optimizerGradientSanityScaleActive
+      << ",\"mmaAsymptoteResetNext\":" << (optimizerResetMMAAsymptotesNextIter ? 1 : 0)
       << ",\"lowerBoundCount\":" << xLowerBoundCountLocal
       << ",\"upperBoundCount\":" << xUpperBoundCountLocal
       << ",\"designNonFiniteCount\":" << xNonFiniteCountLocal

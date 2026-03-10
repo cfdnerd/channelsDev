@@ -17,14 +17,39 @@ for(i=0;i<n;i++)
  xpOld[i]=xp[i];
  xhOld[i]=xh[i];
 }
+const volScalarField xhPositive(Foam::max(xh, scalar(0.0)));
+const volScalarField xhMaterial
+(
+  Foam::pow(xhPositive, materialInterpolationExponentActive)
+);
+const volScalarField xhMaterialDerivative
+(
+  materialInterpolationExponentActive
+ *Foam::pow(xhPositive, materialInterpolationExponentActive - scalar(1.0))
+);
 
 const volScalarField dAlphaDxh
 (
-  -alphaMax*(1 + qu)*qu/((qu + xh)*(qu + xh))
+  -alphaMax
+  *(1 + qu)
+  *qu
+  /(
+      (qu + xhMaterial)
+     *(qu + xhMaterial)
+    )
+  *xhMaterialDerivative
 );
 const volScalarField dAlphaMolDxh
 (
-  (kf - ks)*(1 + qu)*qu/((qu + xh)*(qu + xh))/rhoCp
+  (kf - ks)
+  *(1 + qu)
+  *qu
+  /(
+      (qu + xhMaterial)
+     *(qu + xhMaterial)
+    )
+  /rhoCp
+  *xhMaterialDerivative
 );
 const bool optimizationCycleTurbulentSensitivityMode =
     customTurbulenceActive && optimizationCycleTurbulentOptimizationMode;
@@ -33,6 +58,16 @@ const volScalarField& objectiveThermalAdjoint =
 
 fsenshMeanT = dAlphaDxh*(U&Ub)
            + b1*dAlphaMolDxh*(fvc::grad(T)&fvc::grad(objectiveThermalAdjoint));
+if (static_cast<bool>(optGrayPenaltyEnable) && grayPenaltyWeightActive > SMALL)
+{
+ const dimensionedScalar grayPenaltyWeight
+ (
+   "grayPenaltyWeight",
+   fsenshMeanT.dimensions(),
+   grayPenaltyWeightActive
+ );
+ fsenshMeanT += grayPenaltyWeight*(scalar(1.0) - scalar(2.0)*xh);
+}
 if(DDHS)//design dependent heat source
 {
  fsenshMeanT += b1*objectiveThermalAdjoint*thermalSource;
@@ -54,6 +89,9 @@ const scalar weightedPowerConstraint =
    - 1.0
   );
 const scalar weightedVolumeConstraint = optVolumeConstraintWeight*V;
+std::vector<scalar> constraintGradientWeights(m, scalar(1.0));
+constraintGradientWeights[mmaPowerConstraintIndex] = optPowerConstraintWeight;
+constraintGradientWeights[mmaVolumeConstraintIndex] = optVolumeConstraintWeight;
 if (turbulenceProModeActive)
 {
  gx[0]=weightedPowerConstraint;
@@ -63,8 +101,8 @@ if (turbulenceProModeActive)
  {
   xmma[i] = x[i];
   dfdx[i]=fsensMeanT[i]/N;//sensitivities of objective function
-  dgdx[0][i]=optPowerConstraintWeight*(gsensPowerDiss[i]/N);//sensitivities of constraint function
-  dgdx[1][i]=optVolumeConstraintWeight*(gsensVol[i]/N);//sensitivities of constraint function
+  dgdx[0][i]=gsensPowerDiss[i]/N;//sensitivities of constraint function
+  dgdx[1][i]=gsensVol[i]/N;//sensitivities of constraint function
  }
 
  mma.asyminc = mma_inc;
@@ -85,77 +123,65 @@ else
  {
   xmma[i] = x[i];
   dfdx[i]=fsensMeanT[i]/N;//sensitivities of objective function
-  // Build raw constraint gradients first; apply user weights after L2 normalization.
   dgdx[mmaPowerConstraintIndex][i]=gsensPowerDiss[i]/N;//sensitivities of constraint function
   dgdx[mmaVolumeConstraintIndex][i]=gsensVol[i]/N;//sensitivities of constraint function
   if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
   {
     dgdx[mmaThermalTmaxConstraintIndex][i]=fsensMeanT[i]/N;
-    dgdx[mmaThermalTminConstraintIndex][i]=-fsensMeanT[i]/N;
+     dgdx[mmaThermalTminConstraintIndex][i]=-fsensMeanT[i]/N;
   }
  }
-
- // Gradient nondimensionalization keeps objective and constraints on comparable
- // scales before MMA asymptote updates.
- scalar dfdxL2Local = 0.0;
- scalar dgdxPowerL2Local = 0.0;
- scalar dgdxVolumeL2Local = 0.0;
- for (i = 0; i < n; i++)
- {
-   const scalar dObj = static_cast<scalar>(dfdx[i]);
-   const scalar dPow = static_cast<scalar>(dgdx[mmaPowerConstraintIndex][i]);
-   const scalar dVol = static_cast<scalar>(dgdx[mmaVolumeConstraintIndex][i]);
-   dfdxL2Local += dObj*dObj;
-   dgdxPowerL2Local += dPow*dPow;
-   dgdxVolumeL2Local += dVol*dVol;
- }
- reduce(dfdxL2Local, sumOp<scalar>());
- reduce(dgdxPowerL2Local, sumOp<scalar>());
- reduce(dgdxVolumeL2Local, sumOp<scalar>());
-
- const scalar dfdxNorm =
-   Foam::max(Foam::sqrt(dfdxL2Local), optSensitivityGradientL2Eps);
- const scalar dgdxPowerNorm =
-   Foam::max(Foam::sqrt(dgdxPowerL2Local), optSensitivityGradientL2Eps);
- const scalar dgdxVolumeNorm =
-   Foam::max(Foam::sqrt(dgdxVolumeL2Local), optSensitivityGradientL2Eps);
- scalar dgdxThermalTmaxNorm = optSensitivityGradientL2Eps;
- scalar dgdxThermalTminNorm = optSensitivityGradientL2Eps;
- if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
- {
-   scalar dgdxThermalTmaxL2Local = 0.0;
-   scalar dgdxThermalTminL2Local = 0.0;
-   for (i = 0; i < n; i++)
-   {
-     const scalar dTmax = static_cast<scalar>(dgdx[mmaThermalTmaxConstraintIndex][i]);
-     const scalar dTmin = static_cast<scalar>(dgdx[mmaThermalTminConstraintIndex][i]);
-     dgdxThermalTmaxL2Local += dTmax*dTmax;
-     dgdxThermalTminL2Local += dTmin*dTmin;
-   }
-   reduce(dgdxThermalTmaxL2Local, sumOp<scalar>());
-   reduce(dgdxThermalTminL2Local, sumOp<scalar>());
-   dgdxThermalTmaxNorm =
-     Foam::max(Foam::sqrt(dgdxThermalTmaxL2Local), optSensitivityGradientL2Eps);
-   dgdxThermalTminNorm =
-     Foam::max(Foam::sqrt(dgdxThermalTminL2Local), optSensitivityGradientL2Eps);
- }
- for (i = 0; i < n; i++)
- {
-   dfdx[i] /= dfdxNorm;
-   dgdx[mmaPowerConstraintIndex][i] =
-     optPowerConstraintWeight*(dgdx[mmaPowerConstraintIndex][i]/dgdxPowerNorm);
-   dgdx[mmaVolumeConstraintIndex][i] =
-     optVolumeConstraintWeight*(dgdx[mmaVolumeConstraintIndex][i]/dgdxVolumeNorm);
-   if (mmaUseThermalEnvelopeConstraints && m > mmaThermalTminConstraintIndex)
-   {
-     dgdx[mmaThermalTmaxConstraintIndex][i] /= dgdxThermalTmaxNorm;
-     dgdx[mmaThermalTminConstraintIndex][i] /= dgdxThermalTminNorm;
-   }
- }
-
  mma.asyminc = mma_inc;
  mma.asymdec = mma_dec;
  mma.movelimit = optimizerMoveLimitActive;
+}
+
+// Gradient nondimensionalization keeps objective and constraints on comparable
+// scales before MMA asymptote updates.
+scalar dfdxL2Local = 0.0;
+std::vector<scalar> dgdxL2Local(m, scalar(0.0));
+for (i = 0; i < n; i++)
+{
+  const scalar dObj = static_cast<scalar>(dfdx[i]);
+  dfdxL2Local += dObj*dObj;
+  for (label constrainti = 0; constrainti < m; ++constrainti)
+  {
+    const scalar dConstraint = static_cast<scalar>(dgdx[constrainti][i]);
+    dgdxL2Local[constrainti] += dConstraint*dConstraint;
+  }
+}
+reduce(dfdxL2Local, sumOp<scalar>());
+for (label constrainti = 0; constrainti < m; ++constrainti)
+{
+  reduce(dgdxL2Local[constrainti], sumOp<scalar>());
+}
+const scalar dfdxNorm =
+  Foam::max(Foam::sqrt(dfdxL2Local), optSensitivityGradientL2Eps);
+std::vector<scalar> dgdxNorm(m, optSensitivityGradientL2Eps);
+for (label constrainti = 0; constrainti < m; ++constrainti)
+{
+  dgdxNorm[constrainti] =
+    Foam::max(Foam::sqrt(dgdxL2Local[constrainti]), optSensitivityGradientL2Eps);
+}
+const scalar gradientSanityScale =
+  static_cast<bool>(optGradientSanityRescaleEnable)
+  ? optimizerGradientSanityScaleActive
+  : scalar(1.0);
+for (i = 0; i < n; i++)
+{
+  dfdx[i] = gradientSanityScale*(dfdx[i]/dfdxNorm);
+  for (label constrainti = 0; constrainti < m; ++constrainti)
+  {
+    dgdx[constrainti][i] =
+      gradientSanityScale
+     *constraintGradientWeights[constrainti]
+     *(dgdx[constrainti][i]/dgdxNorm[constrainti]);
+  }
+}
+if (optimizerResetMMAAsymptotesNextIter)
+{
+  mma.iter = 1;
+  optimizerResetMMAAsymptotesNextIter = false;
 }
 
 Info<< "\n run MMA \n" << endl;

@@ -39,23 +39,23 @@ if (Pstream::master())
     << "# MTO_ThermalFluid optimizer health monitor\n"
     << "# Top-10 prioritized health metrics (P1..P10) for early stability tracking\n"
     << "# HealthScore=100-PenTotal, clamped to [0,100]\n"
-    << "# PenTotal=RollPen+ConPen+LinPen+ConsPen+TrustPen\n"
+    << "# PenTotal=RollPen+constPen+LinPen+gradPen+TrustPen\n"
     << "# RollPen: rollback/divergence/magnitude-guard penalties (cap 45)\n"
     << "# LinPen: 6*log10(1 + MaxLinRes/linearSolveWarnResidual), +5 if residual growth violated, cap 20\n"
-    << "# ConPen: 5*log10(1 + GuardCon/optConstraintTol), cap 25\n"
-    << "# ConsPen: gradient-consistency penalty for opt>10 (cap 10)\n"
+    << "# constPen: 5*log10(1 + GuardCon/optConstraintTol), cap 25\n"
+    << "# gradPen: gradient-consistency penalty for opt>10 (cap 10)\n"
     << "# TrustPen: trust-ratio deviation penalty when trust ratio is defined (cap 10)\n"
     << "# FlowRB/HeatRB: binary rollback indicators (0 or 1)\n"
-    << "# Priority: P1=HealthScore P2=PenTotal P3=RollPen P4=LinPen P5=ConPen P6=ConsPen P7=TrustPen P8=FlowRB P9=HeatRB\n"
-    << "# Cols: Iter HealthScore PenTotal RollPen LinPen ConPen ConsPen TrustPen FlowRB HeatRB\n"
+    << "# Priority: P1=HealthScore P2=PenTotal P3=RollPen P4=LinPen P5=constPen P6=gradPen P7=TrustPen P8=FlowRB P9=HeatRB\n"
+    << "# Cols: Iter HealthScore PenTotal RollPen LinPen constPen gradPen TrustPen FlowRB HeatRB\n"
     << std::left
     << std::setw(8) << "Iter"
     << std::setw(14) << "HealthScore"
     << std::setw(14) << "PenTotal"
     << std::setw(14) << "RollPen"
     << std::setw(14) << "LinPen"
-    << std::setw(14) << "ConPen"
-    << std::setw(14) << "ConsPen"
+    << std::setw(14) << "constPen"
+    << std::setw(14) << "gradPen"
     << std::setw(14) << "TrustPen"
     << std::setw(10) << "FlowRB"
     << std::setw(10) << "HeatRB"
@@ -416,6 +416,7 @@ bool PD0SugLogInitialized(false);
 scalar thermalExcessObjective(0.0);
 scalar thermalTmaxKSConstraint(0.0);
 scalar thermalTminKSConstraint(0.0);
+scalar grayPenaltyObjective(0.0);
 scalar previousObjectiveValue(0);
 bool hasPreviousObjectiveValue(false);
 scalar previousPowerConstraintMargin(0);
@@ -444,6 +445,15 @@ bool previousTrustRatioDefinedForGovernor(false);
 bool hasPreviousGovernorMetrics(false);
 scalar turbulenceSuppressionRampScaleActive(1.0);
 bool continuationGovernorStressActive(false);
+scalar projectionBetaScaleActive(optProjectionBetaScaleStart);
+scalar projectionDelStepActive(optProjectionDelStepStart);
+scalar filterRadiusScaleActive(1.0);
+scalar materialInterpolationExponentActive(optMaterialInterpolationExponentStart);
+scalar grayPenaltyWeightActive(optGrayPenaltyWeightStart);
+label optimizerTinyStepStreak(0);
+bool optimizerMMAStagnationRecoveryActive(false);
+bool optimizerResetMMAAsymptotesNextIter(false);
+scalar optimizerGradientSanityScaleActive(1.0);
 label continuationIteration(1);
 label continuationScheduleIterationActive(1);
 scalar previousMaxLinearFinalResidual(0.0);
@@ -532,7 +542,8 @@ volScalarField proModeLaggedOmegaa
 );
 bool proModeLaggedClosureInitialized(false);
 double len=std::pow(area/N, 1.0/3);
-b.value()=1.0/(filterR*len/3.464)/(filterR*len/3.464);
+const scalar filterBCoeffBaseValue = 1.0/(filterR*len/3.464)/(filterR*len/3.464);
+b.value() = filterBCoeffBaseValue;
 //***********************************//MMA
 const label mmaPowerConstraintIndex = 0;
 const label mmaVolumeConstraintIndex = 1;

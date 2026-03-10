@@ -225,6 +225,9 @@ if (boundedFlowAdjointMode)
 }
 
 label adjointCycleNoImproveStreak = 0;
+vectorField adjointCycleUaDeltaPrevious;
+bool adjointCycleUaHasDeltaPrevious = false;
+scalar adjointCycleUaAitkenOmega = 1.0;
 
 for (i = 0; i < adjointFlowCorrectors; i++)
 {
@@ -392,11 +395,67 @@ for (i = 0; i < adjointFlowCorrectors; i++)
     turbulenceProModeActive
   ? HbyAa - rAUa*fvc::grad(pa)
   : HbyAa - rAtUa()*fvc::grad(pa);
-  Ua.correctBoundaryConditions();
-  fvOptions.correct(Ua);
+Ua.correctBoundaryConditions();
+fvOptions.correct(Ua);
+if
+(
+    boundedFlowAdjointMode
+ && static_cast<bool>(optAdjointAitkenEnable)
+ && (i + 1) >= optAdjointAitkenStartCorrector
+)
+{
+    const vectorField adjointCycleUaCurrentRaw(Ua.internalField());
+    vectorField adjointCycleUaDelta(adjointCycleUaCurrentRaw - UaPrevious);
+    if (adjointCycleUaHasDeltaPrevious)
+    {
+        scalar adjointCycleAitkenNumerator = 0.0;
+        scalar adjointCycleAitkenDenominator = 0.0;
+        forAll(adjointCycleUaDelta, celli)
+        {
+            const vector adjointCycleUaDeltaDiff =
+              adjointCycleUaDelta[celli] - adjointCycleUaDeltaPrevious[celli];
+            adjointCycleAitkenNumerator +=
+              (adjointCycleUaDeltaPrevious[celli] & adjointCycleUaDeltaDiff);
+            adjointCycleAitkenDenominator +=
+              (adjointCycleUaDeltaDiff & adjointCycleUaDeltaDiff);
+        }
+        reduce(adjointCycleAitkenNumerator, sumOp<scalar>());
+        reduce(adjointCycleAitkenDenominator, sumOp<scalar>());
+        if (adjointCycleAitkenDenominator > optAdjointAitkenEpsilon)
+        {
+            scalar adjointCycleAitkenOmegaNew =
+              -adjointCycleUaAitkenOmega
+              *adjointCycleAitkenNumerator
+              /Foam::max(adjointCycleAitkenDenominator, optAdjointAitkenEpsilon);
+            adjointCycleAitkenOmegaNew =
+              Foam::max
+              (
+                Foam::min(adjointCycleAitkenOmegaNew, optAdjointAitkenOmegaMax),
+                optAdjointAitkenOmegaMin
+              );
+            vectorField& adjointCycleUaInternal = Ua.primitiveFieldRef();
+            forAll(adjointCycleUaInternal, celli)
+            {
+                adjointCycleUaInternal[celli] =
+                  UaPrevious[celli] + adjointCycleAitkenOmegaNew*adjointCycleUaDelta[celli];
+            }
+            Ua.correctBoundaryConditions();
+            fvOptions.correct(Ua);
+            adjointCycleUaAitkenOmega = adjointCycleAitkenOmegaNew;
+            adjointCycleUaDelta = Ua.internalField() - UaPrevious;
+        }
+    }
+    adjointCycleUaDeltaPrevious = adjointCycleUaDelta;
+    adjointCycleUaHasDeltaPrevious = true;
+}
+else if (boundedFlowAdjointMode)
+{
+    adjointCycleUaHasDeltaPrevious = false;
+    adjointCycleUaAitkenOmega = 1.0;
+}
 
-  if (boundedFlowAdjointMode)
-  {
+if (boundedFlowAdjointMode)
+{
       const vectorField& UaCurrent = Ua.internalField();
       const scalarField& paCurrent = pa.internalField();
       scalar localUaDeltaSqSum = 0.0;

@@ -1,5 +1,75 @@
 //***********************************//update mu and lambda
 opt++;
+const label continuationScheduleIterationForRamps = Foam::max(opt, label(1));
+auto linearRampValue =
+  [&](const scalar startValue, const scalar endValue, const label startIter, const label endIter) -> scalar
+  {
+    if (continuationScheduleIterationForRamps <= startIter)
+    {
+      return startValue;
+    }
+    if (continuationScheduleIterationForRamps >= endIter)
+    {
+      return endValue;
+    }
+    const scalar rampSpan =
+      Foam::max
+      (
+        scalar(endIter - startIter),
+        scalar(1.0)
+      );
+    const scalar rampProgress =
+      scalar(continuationScheduleIterationForRamps - startIter)/rampSpan;
+    return startValue + (endValue - startValue)*rampProgress;
+  };
+projectionBetaScaleActive =
+  linearRampValue
+  (
+    optProjectionBetaScaleStart,
+    optProjectionBetaScaleEnd,
+    optProjectionBetaRampStartIteration,
+    optProjectionBetaRampEndIteration
+  );
+projectionDelStepActive =
+  linearRampValue
+  (
+    optProjectionDelStepStart,
+    optProjectionDelStepEnd,
+    optProjectionDelStepRampStartIteration,
+    optProjectionDelStepRampEndIteration
+  );
+filterRadiusScaleActive =
+  static_cast<bool>(optFilterStrengthRampEnable)
+  ? linearRampValue
+    (
+      scalar(1.0),
+      optFilterRadiusScaleMin,
+      optFilterStrengthRampStartIteration,
+      optFilterStrengthRampEndIteration
+    )
+  : scalar(1.0);
+materialInterpolationExponentActive =
+  static_cast<bool>(optMaterialInterpolationExponentEnable)
+  ? linearRampValue
+    (
+      optMaterialInterpolationExponentStart,
+      optMaterialInterpolationExponentEnd,
+      optMaterialInterpolationExponentRampStartIteration,
+      optMaterialInterpolationExponentRampEndIteration
+    )
+  : scalar(1.0);
+grayPenaltyWeightActive =
+  static_cast<bool>(optGrayPenaltyEnable)
+  ? linearRampValue
+    (
+      optGrayPenaltyWeightStart,
+      optGrayPenaltyWeightEnd,
+      optGrayPenaltyRampStartIteration,
+      optGrayPenaltyRampEndIteration
+    )
+  : scalar(0.0);
+b.value() =
+  filterBCoeffBaseValue/sqr(Foam::max(filterRadiusScaleActive, scalar(1e-6)));
 const scalar governorSlowFactorClamped =
   Foam::max
   (
@@ -30,6 +100,14 @@ const scalar continuationRampScale =
   continuationGovernorStressActive
   ? governorSlowFactorClamped
   : scalar(1.0);
+const bool mmaStagnationRecoveryEligible =
+    static_cast<bool>(optMMAStagnationRecoveryEnable)
+ && optimizerTinyStepStreak >= optMMAStagnationWindow;
+optimizerMMAStagnationRecoveryActive = mmaStagnationRecoveryEligible;
+if (mmaStagnationRecoveryEligible && static_cast<bool>(optMMAStagnationAsymptoteResetEnable))
+{
+  optimizerResetMMAAsymptotesNextIter = true;
+}
 if (turbulenceProModeActive)
 {
   continuationIteration = Foam::max(opt, label(1));
@@ -38,6 +116,17 @@ if (turbulenceProModeActive)
     continuationGovernorStressActive
     ? Foam::max(movlim*governorMoveLimitScaleClamped, scalar(1e-4))
     : movlim;
+  if (mmaStagnationRecoveryEligible)
+  {
+    const scalar stagnationMoveLimitCap =
+      Foam::max(Foam::min(optMMAStagnationMoveLimitCap, scalar(1.0)), scalar(1e-4));
+    optimizerMoveLimitActive =
+      Foam::min
+      (
+        Foam::max(optimizerMoveLimitActive*optMMAStagnationMoveLimitBoost, scalar(1e-4)),
+        stagnationMoveLimitCap
+      );
+  }
   if (static_cast<bool>(optTurbulenceSuppressionRampEnable))
   {
     if (continuationScheduleIterationActive <= optTurbulenceSuppressionRampStartIteration)
@@ -98,8 +187,23 @@ if (turbulenceProModeActive)
     qu=0.005+(opt-80)*1e-4*continuationRampScale;
   }
   qu=Foam::min(qu,0.01);
-  alpha=alphaMax*qu*(1-xh)/(qu+xh);
-  DT=(ks+(kf-ks)*xh*(1+qu)/(qu+xh))/rhoCp;
+  const volScalarField xhMaterial
+  (
+    Foam::pow
+    (
+      Foam::max(xh, scalar(0.0)),
+      materialInterpolationExponentActive
+    )
+  );
+  const volScalarField xhBlendDenominator(qu + xhMaterial);
+  auditDivisionDenominator
+  (
+    xhBlendDenominator,
+    "update.H::alpha/DT denominator (qu+xhMaterial)",
+    SMALL
+  );
+  alpha=alphaMax*qu*(1-xhMaterial)/xhBlendDenominator;
+  DT=(ks+(kf-ks)*xhMaterial*(1+qu)/xhBlendDenominator)/rhoCp;
 }
 else
 {
@@ -192,6 +296,17 @@ else
     optimizerMoveLimitActive =
       Foam::max(optimizerMoveLimitActive*governorMoveLimitScaleClamped, scalar(1e-4));
   }
+  if (mmaStagnationRecoveryEligible)
+  {
+    const scalar stagnationMoveLimitCap =
+      Foam::max(Foam::min(optMMAStagnationMoveLimitCap, scalar(1.0)), scalar(1e-4));
+    optimizerMoveLimitActive =
+      Foam::min
+      (
+        Foam::max(optimizerMoveLimitActive*optMMAStagnationMoveLimitBoost, scalar(1e-4)),
+        stagnationMoveLimitCap
+      );
+  }
   if(solid_area)
   {
      forAll(cells_solid, i)
@@ -239,11 +354,19 @@ else
   qu = scheduledQu;
   alphaMax.value()=Foam::min(alphaMax.value(),alphaMAX.value());
   qu=Foam::min(qu,0.01);
-  const volScalarField xhBlendDenominator(qu + xh);
+  const volScalarField xhMaterial
+  (
+    Foam::pow
+    (
+      Foam::max(xh, scalar(0.0)),
+      materialInterpolationExponentActive
+    )
+  );
+  const volScalarField xhBlendDenominator(qu + xhMaterial);
   auditDivisionDenominator
   (
     xhBlendDenominator,
-    "update.H::alpha/DT denominator (qu+xh)",
+    "update.H::alpha/DT denominator (qu+xhMaterial)",
     SMALL
   );
   if (static_cast<bool>(optDivisionAuditEnable))
@@ -258,6 +381,6 @@ else
         << exit(FatalError);
     }
   }
-  alpha=alphaMax*qu*(1-xh)/xhBlendDenominator;
-  DT=(ks+(kf-ks)*xh*(1+qu)/xhBlendDenominator)/rhoCp;
+  alpha=alphaMax*qu*(1-xhMaterial)/xhBlendDenominator;
+  DT=(ks+(kf-ks)*xhMaterial*(1+qu)/xhBlendDenominator)/rhoCp;
 }

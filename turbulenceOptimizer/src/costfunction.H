@@ -84,6 +84,14 @@ if
     localThetaMinPeak + ksMinLogMean/Foam::max(thermalKSBeta, SMALL);
 }
 V=fvc::domainIntegrate(xh).value()/area-(voluse+0*Foam::max(0,0.5-opt*0.015));  
+grayPenaltyObjective = 0.0;
+if (static_cast<bool>(optGrayPenaltyEnable) && grayPenaltyWeightActive > SMALL)
+{
+  grayPenaltyObjective =
+    grayPenaltyWeightActive
+   *fvc::domainIntegrate(xh*(scalar(1.0) - xh)).value()
+   /Foam::max(area, SMALL);
+}
 
 PowerDiss=0;
 for (i=0; i<nObjPatch; i++)
