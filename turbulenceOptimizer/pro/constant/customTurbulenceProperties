@@ -84,7 +84,7 @@ optimizationCycleClosureAdjointDualConsistentBC true; // Dual-consistent BC.
 // ------------------------------------------------------------------------- //
 // Pro-Mode Adjoint Tuning
 // ------------------------------------------------------------------------- //
-proModeAdjointClosureModel          sa; // Pro mode closure-adjoint model: sst (ka+omegaa) or sa (SA-family nuTilda-adjoint, ka-only transported).
+proModeAdjointClosureModel          sst; // Pro mode closure-adjoint model: sst (ka+omegaa) or sa (SA-family nuTilda-adjoint, ka-only transported).
 proModeAdjointStabilityPack          true; // Single toggle: enables (Ua/Ub tuning + closure damping + T/Ta/Tb PBiCGStab/DILU + rollback guards).
 
 // ************************************************************************* //
