@@ -24,7 +24,7 @@ convergenceControl
     // false: use dictionary values/defaults
     optUseHardcodedProjectionSchedule true;
     // Thermal adjoint selector: ta (explicit Ta) or tb (legacy Tb).
-    optThermalAdjointMode ta;
+    optThermalAdjointMode tb;
 
     // Late-stage filter/projection/binarization continuation.
     optFilterStrengthRampStartIteration 60;

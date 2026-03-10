@@ -105,7 +105,7 @@ Switch optThermalBoundedObjectiveEnable
 );
 word optThermalAdjointMode
 (
-  convergenceControl.lookupOrDefault<word>("optThermalAdjointMode", "ta")
+  convergenceControl.lookupOrDefault<word>("optThermalAdjointMode", "tb")
 );
 if
 (
