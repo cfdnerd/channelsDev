@@ -91,7 +91,8 @@ const word proModeClosureAdjointFormulation("transportedResidualDraft");
 const bool proModeClosureAdjointDualConsistentBC(true);
 const scalar proModeClosureAdjointInvTau(3.0);
 const scalar proModeClosureCrossCoupling(0.15);
-const bool proModeRobustLinearSolverActive = proModeAdjointStabilityPackActive;
+// Align Pro mode with laminarOptimizer pipeline: always use fvSolution solver settings.
+const bool proModeRobustLinearSolverActive = false;
 const bool proModeRobustScalarSolverActive = proModeRobustLinearSolverActive;
 dictionary proModeRobustScalarSolverControls;
 dictionary proModeRobustNonsymmetricSolverControls;
