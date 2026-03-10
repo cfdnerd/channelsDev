@@ -117,7 +117,7 @@ solvers
         nPostSweeps     2;
         nFinestSweeps   2;
         nCellsInCoarsestLevel 20;
-        maxIter         30000;
+        maxIter         10000;
     }
      "(xp|fsensMeanT|gsensVol|gsensPowerDiss)"
     {
