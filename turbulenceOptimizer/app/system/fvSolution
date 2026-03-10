@@ -84,11 +84,18 @@ solvers
     }
      "(T)"
     {
-        solver          PBiCGStab;
-        preconditioner  DILU;
-        tolerance       1e-9;
+        solver          GAMG;
+        tolerance       1e-10;
         relTol          0;
-        maxIter         40000;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
+        maxIter         20000;
     }
      "(Ta|Tb)"
     {
