@@ -113,10 +113,19 @@ if (proModeRobustLinearSolverActive)
     proModeRobustNonsymmetricSolverControls.add("maxIter", 20000);
 
     // Symmetric systems: pressure-correction adjoint Poisson solves (pa/pb).
-    proModeRobustSymmetricSolverControls.add("solver", word("PCG"));
-    proModeRobustSymmetricSolverControls.add("preconditioner", word("DIC"));
+    // Use multigrid here to reduce high-iteration/stalled adjoint pressure passes
+    // observed with Krylov+DIC on ill-conditioned late-stage designs.
+    proModeRobustSymmetricSolverControls.add("solver", word("GAMG"));
     proModeRobustSymmetricSolverControls.add("tolerance", 1e-10);
     proModeRobustSymmetricSolverControls.add("relTol", 0.0);
+    proModeRobustSymmetricSolverControls.add("smoother", word("GaussSeidel"));
+    proModeRobustSymmetricSolverControls.add("cacheAgglomeration", true);
+    proModeRobustSymmetricSolverControls.add("agglomerator", word("faceAreaPair"));
+    proModeRobustSymmetricSolverControls.add("mergeLevels", 1);
+    proModeRobustSymmetricSolverControls.add("nPreSweeps", 0);
+    proModeRobustSymmetricSolverControls.add("nPostSweeps", 2);
+    proModeRobustSymmetricSolverControls.add("nFinestSweeps", 2);
+    proModeRobustSymmetricSolverControls.add("nCellsInCoarsestLevel", 20);
     proModeRobustSymmetricSolverControls.add("maxIter", 20000);
 }
 Switch adjointCycleThermalAdjointOnly
@@ -127,14 +136,24 @@ Switch adjointCycleFullAdjointVerification
 (
     customTurbulenceProperties.lookupOrDefault<Switch>("adjointCycleFullAdjointVerification", false)
 );
-Switch optimizationCycleGradientClosure
+const bool optimizationCycleGradientClosure =
+    customTurbulenceActive && !turbulenceProModeActive;
+const bool enableTurbulentOptimization =
+    customTurbulenceActive && !turbulenceProModeActive;
+if
 (
-    customTurbulenceProperties.lookupOrDefault<Switch>("optimizationCycleGradientClosure", false)
-);
-Switch enableTurbulentOptimization
-(
-    customTurbulenceProperties.lookupOrDefault<Switch>("enableTurbulentOptimization", false)
-);
+    customTurbulenceActive
+ && (
+        customTurbulenceProperties.found("optimizationCycleGradientClosure")
+     || customTurbulenceProperties.found("enableTurbulentOptimization")
+    )
+)
+{
+    Info<< "Ignoring customTurbulenceProperties.optimizationCycleGradientClosure and "
+        << "customTurbulenceProperties.enableTurbulentOptimization. "
+        << "Both are now derived from turbulenceProMode (false->true,true | true->false,false)."
+        << endl;
+}
 const bool optimizationCycleTurbulentOptimizationMode =
     customTurbulenceActive
  && !turbulenceProModeActive
@@ -692,7 +711,6 @@ if
  || (adjointCycleFullAdjointVerification && optimizationCycleTurbulentOptimizationMode)
  || (adjointCycleThermalAdjointOnly && turbulenceProModeActive)
  || (adjointCycleFullAdjointVerification && turbulenceProModeActive)
- || (optimizationCycleTurbulentOptimizationMode && turbulenceProModeActive)
 )
 {
     FatalErrorInFunction
@@ -701,24 +719,6 @@ if
         << "the Optimization-Cycle turbulent optimization mode, and "
         << "customTurbulenceProperties.turbulenceProMode are "
         << "mutually exclusive run modes."
-        << exit(FatalError);
-}
-if (customTurbulenceActive && optimizationCycleGradientClosure != enableTurbulentOptimization)
-{
-    FatalErrorInFunction
-        << "Optimization-Cycle turbulent optimization is guarded by a strict two-key "
-        << "runtime gate. Set both "
-        << "customTurbulenceProperties.optimizationCycleGradientClosure and "
-        << "customTurbulenceProperties.enableTurbulentOptimization to true "
-        << "to enable it, or set both to false to keep it disabled."
-        << exit(FatalError);
-}
-if (customTurbulenceActive && turbulenceProModeActive && (optimizationCycleGradientClosure || enableTurbulentOptimization))
-{
-    FatalErrorInFunction
-        << "customTurbulenceProperties.turbulenceProMode=true requires "
-        << "optimizationCycleGradientClosure=false and enableTurbulentOptimization=false. "
-        << "Disable the strict Optimization-Cycle gate keys when running Pro mode."
         << exit(FatalError);
 }
 if (customTurbulenceActive && adjointCycleThermalAdjointOnly)
@@ -754,7 +754,7 @@ else if (customTurbulenceActive && adjointCycleFullAdjointVerification)
 else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
 {
     Info<< "Custom kOmegaSST Optimization-Cycle turbulent optimization mode is enabled "
-        << "through the strict runtime gate. The solver will assemble "
+        << "via turbulenceProMode=false. The solver will assemble "
         << "turbulence-aware sensitivities and include explicit residual "
         << "closure derivatives in the optimizer gradients. "
         << "Adjoint reset="
@@ -842,11 +842,10 @@ else if (customTurbulenceActive)
 {
     FatalErrorInFunction
         << "Custom kOmegaSST is currently implemented only through the Stage-B "
-        << "primal and staged verification paths, plus the strict Optimization-Cycle "
+        << "primal and staged verification paths, plus the Optimization-Cycle "
         << "mode and turbulence Pro mode. Select exactly one of adjointCycleThermalAdjointOnly, "
-        << "adjointCycleFullAdjointVerification, or set "
-        << "both optimizationCycleGradientClosure and enableTurbulentOptimization to true, "
-        << "or set turbulenceProMode=true (with both gate keys false)."
+        << "adjointCycleFullAdjointVerification, or use turbulenceProMode "
+        << "(false=Optimization-Cycle, true=Pro mode)."
         << exit(FatalError);
 }
 if (customTurbulenceActive)

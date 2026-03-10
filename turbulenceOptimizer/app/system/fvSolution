@@ -19,10 +19,17 @@ solvers
 {
     "(pa|pb)"
     {
-        solver          PBiCGStab;
-        preconditioner  DIC;
+        solver          GAMG;
         tolerance       1e-10;
         relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
         maxIter         20000;
     }
 

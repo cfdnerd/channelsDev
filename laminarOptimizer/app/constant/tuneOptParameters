@@ -20,13 +20,8 @@ FoamFile
 // and constraint violation all remain small for several consecutive loops.
 convergenceControl
 {
-    optMinIterations    50;
-    optStallWindow      5;
-    optObjectiveTol     1e-3;
-    optConstraintTol    1e-3;
-    optStepTol          5e-3;
-    optPowerConstraintWeight 1.0;
-    optVolumeConstraintWeight 1.0;
+    // Intentionally empty: use solver defaults from createFields.H.
+    // Add only non-default overrides here when tuning is needed.
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
