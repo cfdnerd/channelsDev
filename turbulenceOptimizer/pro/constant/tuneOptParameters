@@ -1,0 +1,56 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      tuneOptParameters;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+convergenceControl
+{
+    // Keep only unresolved-issue controls for the next run.
+
+    // Toggle hardcoded projection continuation profile in createFields.H.
+    // true: force built-in values for beta/del ramps
+    // false: use dictionary values/defaults
+    optUseHardcodedProjectionSchedule true;
+    // Thermal adjoint selector: ta (explicit Ta) or tb (legacy Tb).
+    optThermalAdjointMode tb;
+
+    // Late-stage filter/projection/binarization continuation.
+    optFilterStrengthRampStartIteration 60;
+    optFilterStrengthRampEndIteration   150;
+    optFilterRadiusScaleMin 0.45; // shrink late filter radius more aggressively.
+
+    optMaterialInterpolationExponentEnd   3.5;
+    optMaterialInterpolationExponentRampStartIteration 20;
+    optMaterialInterpolationExponentRampEndIteration   130;
+
+    // Grayness penalty: integral(xh*(1-xh)) to drive 0/1 design.
+    optGrayPenaltyWeightStart 0.02;
+    optGrayPenaltyWeightEnd   0.70;
+    optGrayPenaltyRampStartIteration 20;
+    optGrayPenaltyRampEndIteration   140;
+
+    // MMA stagnation recovery for tiny x-step windows.
+    optMMAStagnationStepThreshold 2e-5;
+    optMMAStagnationWindow 6;
+    optMMAStagnationMoveLimitBoost 2.0;
+    optMMAStagnationMoveLimitCap   0.30;
+
+    // Keep Aitken acceleration for adjoint no-improve behavior.
+    optAdjointAitkenOmegaMin 0.20;
+    optAdjointAitkenOmegaMax 0.95;
+
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

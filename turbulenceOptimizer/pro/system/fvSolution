@@ -1,0 +1,172 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSolution;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+solvers
+{
+    "(pa|pb)"
+    {
+        solver          GAMG;
+        tolerance       1e-10;
+        relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
+        maxIter         20000;
+    }
+
+    "(p|pc)"
+    {
+        solver          GAMG;
+        tolerance       1e-10;
+        relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        maxIter         5000;
+    }
+
+    "(U|Ua|Ub|Uc|epsilon)"
+    {
+        solver          smoothSolver;
+        smoother        symGaussSeidel;
+        nSweeps         2;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         5000;
+    }
+    "k"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         10000;
+    }
+    "omega"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         10000;
+    }
+    "ka"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         10000;
+    }
+    "omegaa"
+    {
+        solver          PBiCGStab;
+        preconditioner  DILU;
+        tolerance       1e-9;
+        relTol          0;
+        maxIter         10000;
+    }
+     "(T)"
+    {
+        solver          GAMG;
+        tolerance       1e-10;
+        relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
+        maxIter         20000;
+    }
+     "(Ta|Tb)"
+    {
+        solver          GAMG;
+        tolerance       1e-10;
+        relTol          0;
+        smoother        GaussSeidel;
+        cacheAgglomeration true;
+        agglomerator    faceAreaPair;
+        mergeLevels     1;
+        nPreSweeps      0;
+        nPostSweeps     2;
+        nFinestSweeps   2;
+        nCellsInCoarsestLevel 20;
+        maxIter         10000;
+    }
+     "(xp|fsensMeanT|gsensVol|gsensPowerDiss)"
+    {
+        solver          PCG;
+        preconditioner  DIC;
+        tolerance       1e-8;
+        relTol          0;
+        maxIter         5000;
+    }
+}
+
+SIMPLE
+{
+    nNonOrthogonalCorrectors 4;
+    consistent yes;
+    // nCorrectors 2;
+    // nOuterCorrectors 10;
+    pRefCell 0;
+    pRefValue 0;
+
+}
+
+relaxationFactors
+{
+    fields
+    {
+        "(p|pa|pb|pc)" 0.2;
+        alpha           0.1;
+    }
+    equations
+    {
+        U               0.7;
+        "(Ua|Ub|Uc)"    0.45;
+        T               0.4;
+        k               0.30;
+        omega           0.15;
+        ka              0.20;
+        omegaa          0.15;
+        epsilon         0.7;
+    }
+}
+constraintFunctionDict_flow
+{
+    numberConstraintPatches      2;
+    constraintPatchesNames       (inlet outlet);
+}
+constraintFunctionDict_solid
+{
+    numberConstraintPatches      1;
+    constraintPatchesNames       (force);
+}
+// ************************************************************************* //

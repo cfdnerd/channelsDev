@@ -1,0 +1,90 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  5                                     |
+|   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      customTurbulenceProperties;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// ------------------------------------------------------------------------- //
+// Run Mode
+// ------------------------------------------------------------------------- //
+enable                          true;       // Enable custom turbulence model.
+model                           kOmegaSST;  // Supported model.
+wallTreatmentMode               legacyFixedKOmega; // legacyFixedKOmega | wallFunctionCompatible.
+turbulenceProMode               true;       // Pro mode: keep k/omega (and closure adjoint) solves, but run laminar-style optimizer updates.
+proModeClosureAdjointSolves     true;       // Pro mode only: toggle ka/omegaa (closure adjoint) solves.
+
+// ------------------------------------------------------------------------- //
+// Inlet Reference
+// ------------------------------------------------------------------------- //
+Uin                             0.5;         // Inlet speed reference [m/s].
+inletTurbulenceMode             directFields; // Use inlet values from 0/ fields.
+turbulenceLengthScale           turbulenceLengthScale [0 1 0 0 0 0 0] 2.8e-4; // Lt reference.
+
+// ------------------------------------------------------------------------- //
+// SST Coefficients
+// ------------------------------------------------------------------------- //
+alphaK1                         alphaK1 [0 0 0 0 0 0 0] 0.85;
+alphaK2                         alphaK2 [0 0 0 0 0 0 0] 1.0;
+alphaOmega1                     alphaOmega1 [0 0 0 0 0 0 0] 0.5;
+alphaOmega2                     alphaOmega2 [0 0 0 0 0 0 0] 0.856;
+gamma1                          gamma1 [0 0 0 0 0 0 0] 0.5555555556;
+gamma2                          gamma2 [0 0 0 0 0 0 0] 0.44;
+beta1                           beta1 [0 0 0 0 0 0 0] 0.075;
+beta2                           beta2 [0 0 0 0 0 0 0] 0.0828;
+betaStar                        betaStar [0 0 0 0 0 0 0] 0.09;
+a1                              a1 [0 0 0 0 0 0 0] 0.31;
+b1                              b1 [0 0 0 0 0 0 0] 1.0;
+c1                              c1 [0 0 0 0 0 0 0] 10.0;
+Prt                             Prt [0 0 0 0 0 0 0] 0.85; // Turbulent Prandtl.
+
+// ------------------------------------------------------------------------- //
+// Physical Bounds
+// ------------------------------------------------------------------------- //
+kMin                            kMin [0 2 -2 0 0 0 0] 1e-10;
+omegaMin                        omegaMin [0 0 -1 0 0 0 0] 1e-6;
+omegaMax                        omegaMax [0 0 -1 0 0 0 0] 1e6;
+omegaWallFactor                 60.0;       // Wall omega factor.
+nutFloor                        nutFloor [0 2 -1 0 0 0 0] 1e-12;
+nutMax                          nutMax [0 2 -1 0 0 0 0] 1e-2;
+yMin                            yMin [0 1 0 0 0 0 0] 1e-8;
+turbulenceDampingCoeff          1.0;        // Required damping scale.
+turbulencePrimalTransportDiffusionScale 1.5; // >1 adds dissipation for k/omega transport.
+turbulenceAdjointTransportDiffusionScale 2.0; // >1 adds dissipation for ka/omegaa transport.
+
+// ------------------------------------------------------------------------- //
+// Primal Nonlinear Solve
+// ------------------------------------------------------------------------- //
+momentumCorrectors              120;         // SIMPLE correctors per loop.
+turbulenceCorrectors            5;           // Max k-omega passes.
+minTurbulenceCorrectors         5;           // Minimum k-omega passes.
+kNonlinearTol                   1e-2;        // k relative-change tolerance.
+omegaNonlinearTol               3e-3;        // omega relative-change tolerance.
+nutNonlinearTol                 1.5e-2;      // nut relative-change tolerance.
+
+// ------------------------------------------------------------------------- //
+// Optimization-Cycle Adjoint
+// ------------------------------------------------------------------------- //
+optimizationCycleFlowAdjointCorrectors       1;   // Ua/pa correctors.
+optimizationCycleHeatAdjointCorrectors       3;   // Ub/pb correctors.
+optimizationCycleTransportedClosureAdjoints  true; // Enable ka/omegaa PDE.
+optimizationCycleClosureAdjointFormulation   transportedCrossCoupledV3;
+optimizationCycleClosureAdjointDualConsistentBC true; // Dual-consistent BC.
+
+// ------------------------------------------------------------------------- //
+// Pro-Mode Adjoint Tuning
+// ------------------------------------------------------------------------- //
+proModeAdjointClosureModel          sa; // Pro mode closure-adjoint model: sst (ka+omegaa) or sa (SA-family nuTilda-adjoint, ka-only transported).
+proModeAdjointStabilityPack          true; // Single toggle: enables (Ua/Ub tuning + closure damping + T/Ta/Tb PBiCGStab/DILU + rollback guards).
+
+// ************************************************************************* //
