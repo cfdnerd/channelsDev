@@ -43,12 +43,10 @@ label kFloorFluidCountLocal = 0;
 label omegaFloorSolidCountLocal = 0;
 label omegaFloorGrayCountLocal = 0;
 label omegaFloorFluidCountLocal = 0;
-const bool yPlusDiagnosticsActive =
-    customTurbulenceActive
- && wallTreatmentModeWallFunctionCompatible
- && static_cast<bool>(optWallFunctionYPlusDiagnosticsEnable);
-const scalar yPlusBandMinActive = optWallFunctionYPlusMin;
-const scalar yPlusBandMaxActive = optWallFunctionYPlusMax;
+const bool yPlusDiagnosticsActive = false;
+const scalar yPlusBandMinActive = scalar(30.0);
+const scalar yPlusBandMaxActive = scalar(300.0);
+const scalar yPlusInBandWarnFraction = scalar(0.50);
 const scalar yPlusNuRef = Foam::max(nu.value(), SMALL);
 const scalar yPlusCmuQuarter = Foam::pow(betaStarCoeff.value(), 0.25);
 const label yPlusPatchCount = mesh.boundary().size();
@@ -429,12 +427,12 @@ const scalar yPlusInBandFraction =
 const bool yPlusMostlyOutside =
     yPlusDiagnosticsActive
  && yPlusGlobalFaceCount > 0
- && yPlusInBandFraction < optWallFunctionYPlusInBandWarnFraction;
+ && yPlusInBandFraction < yPlusInBandWarnFraction;
 if (Pstream::master() && yPlusMostlyOutside)
 {
   Info<< "WARNING: wall-function yPlus in-band fraction is low ("
       << yPlusInBandFraction << " < "
-      << optWallFunctionYPlusInBandWarnFraction
+      << yPlusInBandWarnFraction
       << "). Consider mesh refinement or wall-treatment retuning."
       << endl;
 }
@@ -624,10 +622,8 @@ const scalar predictedThermalTminDelta = predictedThermalTminDeltaLocal;
 const scalar predictedObjectiveReduction = -predictedObjectiveDelta;
 const scalar actualObjectiveReduction =
   hasPreviousObjectiveValue ? previousObjectiveValue - objectiveValue : 0.0;
-const scalar trustPredReductionAbsFloor =
-  Foam::max(optTrustPredReductionAbsFloor, scalar(1e-16));
-const scalar trustPredReductionRelFloor =
-  Foam::max(optTrustPredReductionRelFloor, scalar(1e-12));
+const scalar trustPredReductionAbsFloor = scalar(1e-16);
+const scalar trustPredReductionRelFloor = scalar(1e-12);
 const scalar trustRatioClampAbs = scalar(5.0);
 const scalar trustObjectiveRefAbs =
   hasPreviousObjectiveValue
@@ -660,11 +656,7 @@ const scalar trustPenaltyForStop =
   ? Foam::min(scalar(10.0), scalar(10.0)*trustDeviationForStop)
   : scalar(0.0);
 const bool trustUnreliableForGate =
-    trustPenaltyForStop >= optConvergedTrustPenaltySaturationThreshold
- || (
-      static_cast<bool>(optConvergedGrayTrustGateUndefinedTrustBlocks)
-   && !trustRatioDefined
-    );
+  trustPenaltyForStop >= optConvergedTrustPenaltySaturationThreshold;
 const bool saOrSstRunActive =
     customTurbulenceActive
  && (
@@ -1348,7 +1340,7 @@ if (Pstream::master())
     "mode="+std::string(wallTreatmentMode.c_str()),
     "y+diag="+std::string(yPlusDiagnosticsActive ? "on" : "off"),
     "band=["+fmtScalar(yPlusBandMinActive)+","+fmtScalar(yPlusBandMaxActive)+"]",
-    "warnFrac="+fmtScalar(optWallFunctionYPlusInBandWarnFraction)
+    "warnFrac="+fmtScalar(yPlusInBandWarnFraction)
   );
   if (yPlusDiagnosticsActive && yPlusGlobalFaceCount > 0)
   {
@@ -1393,7 +1385,7 @@ if (Pstream::master())
         "y+ warning",
         "status=WARN",
         "inBand="+fmtScalar(yPlusInBandFraction),
-        "threshold="+fmtScalar(optWallFunctionYPlusInBandWarnFraction),
+        "threshold="+fmtScalar(yPlusInBandWarnFraction),
         "action=refine/retune"
       );
     }
@@ -1511,8 +1503,6 @@ if (Pstream::master())
       << ",\"trustRatioDefined\":" << (trustRatioDefined ? 1 : 0)
       << ",\"trustRatio\":" << trustRatio
       << ",\"trustPenalty\":" << trustPenaltyForStop
-      << ",\"grayTrustGateUndefinedTrustBlocks\":"
-      << (static_cast<bool>(optConvergedGrayTrustGateUndefinedTrustBlocks) ? 1 : 0)
       << ",\"grayTrustGateTrustUnreliable\":" << (trustUnreliableForGate ? 1 : 0)
       << ",\"grayTrustGateActive\":" << (saOrSstRunActive ? 1 : 0)
       << ",\"grayTrustGateBlocked\":" << (convergedGrayTrustGateBlocked ? 1 : 0)
@@ -1656,7 +1646,7 @@ if (Pstream::master())
       << ",\"wallFunctionYPlusBandMin\":" << yPlusBandMinActive
       << ",\"wallFunctionYPlusBandMax\":" << yPlusBandMaxActive
       << ",\"wallFunctionYPlusWarnFraction\":"
-      << optWallFunctionYPlusInBandWarnFraction
+      << yPlusInBandWarnFraction
       << ",\"wallFunctionYPlusFaceCount\":" << yPlusGlobalFaceCount
       << ",\"wallFunctionYPlusMin\":"
       << (yPlusGlobalFaceCount > 0 ? yPlusGlobalMin : scalar(0.0))

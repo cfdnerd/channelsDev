@@ -89,13 +89,9 @@ const bool governorPenaltyStress =
        previousConstraintPenaltyForGovernor >= optStabilityContinuationGovernorConstraintPenaltyThreshold
     || previousLinearPenaltyForGovernor >= optStabilityContinuationGovernorLinearPenaltyThreshold
   );
-const bool governorTrustUndefinedStress =
-  hasPreviousGovernorMetrics
-  && static_cast<bool>(optStabilityContinuationGovernorTrustUndefinedBlocks)
-  && !previousTrustRatioDefinedForGovernor;
 continuationGovernorStressActive =
     static_cast<bool>(optStabilityContinuationGovernorEnable)
- && (governorPenaltyStress || governorTrustUndefinedStress);
+ && governorPenaltyStress;
 const scalar continuationRampScale =
   continuationGovernorStressActive
   ? governorSlowFactorClamped

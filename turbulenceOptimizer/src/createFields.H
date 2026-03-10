@@ -225,6 +225,22 @@ label optProjectionDelStepRampEndIteration
 (
   convergenceControl.lookupOrDefault<label>("optProjectionDelStepRampEndIteration", 160)
 );
+Switch optUseHardcodedProjectionSchedule
+(
+  convergenceControl.lookupOrDefault<Switch>("optUseHardcodedProjectionSchedule", true)
+);
+if (optUseHardcodedProjectionSchedule)
+{
+  // Hardcoded projection continuation profile (toggleable by one runtime switch).
+  optProjectionBetaScaleStart = 0.40;
+  optProjectionBetaScaleEnd = 2.80;
+  optProjectionBetaRampStartIteration = 20;
+  optProjectionBetaRampEndIteration = 120;
+  optProjectionDelStepStart = 0.22;
+  optProjectionDelStepEnd = 0.50;
+  optProjectionDelStepRampStartIteration = 25;
+  optProjectionDelStepRampEndIteration = 120;
+}
 Switch optSensitivityVolumeWeightingEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optSensitivityVolumeWeightingEnable", true)
@@ -288,18 +304,6 @@ scalar optStabilityContinuationGovernorSlowFactor
 scalar optStabilityContinuationGovernorMoveLimitScale
 (
   convergenceControl.lookupOrDefault<scalar>("optStabilityContinuationGovernorMoveLimitScale", 0.70)
-);
-Switch optStabilityContinuationGovernorTrustUndefinedBlocks
-(
-  convergenceControl.lookupOrDefault<Switch>("optStabilityContinuationGovernorTrustUndefinedBlocks", true)
-);
-scalar optTrustPredReductionAbsFloor
-(
-  convergenceControl.lookupOrDefault<scalar>("optTrustPredReductionAbsFloor", 1e-12)
-);
-scalar optTrustPredReductionRelFloor
-(
-  convergenceControl.lookupOrDefault<scalar>("optTrustPredReductionRelFloor", 1e-6)
 );
 Switch optTurbulenceSuppressionRampEnable
 (
@@ -441,22 +445,6 @@ scalar optAdjointAitkenEpsilon
 (
   convergenceControl.lookupOrDefault<scalar>("optAdjointAitkenEpsilon", 1e-16)
 );
-Switch optWallFunctionYPlusDiagnosticsEnable
-(
-  convergenceControl.lookupOrDefault<Switch>("optWallFunctionYPlusDiagnosticsEnable", true)
-);
-scalar optWallFunctionYPlusMin
-(
-  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusMin", 30.0)
-);
-scalar optWallFunctionYPlusMax
-(
-  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusMax", 300.0)
-);
-scalar optWallFunctionYPlusInBandWarnFraction
-(
-  convergenceControl.lookupOrDefault<scalar>("optWallFunctionYPlusInBandWarnFraction", 0.50)
-);
 Switch optConvergedGrayTrustGateEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optConvergedGrayTrustGateEnable", true)
@@ -476,10 +464,6 @@ scalar optConvergedGrayFractionThreshold
 scalar optConvergedTrustPenaltySaturationThreshold
 (
   convergenceControl.lookupOrDefault<scalar>("optConvergedTrustPenaltySaturationThreshold", 9.90)
-);
-Switch optConvergedGrayTrustGateUndefinedTrustBlocks
-(
-  convergenceControl.lookupOrDefault<Switch>("optConvergedGrayTrustGateUndefinedTrustBlocks", true)
 );
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
@@ -596,25 +580,6 @@ if (optAdaptiveMoveLimitMin <= 0.0 || optAdaptiveMoveLimitMax <= 0.0)
     << ", max=" << optAdaptiveMoveLimitMax
     << exit(FatalError);
 }
-if (optWallFunctionYPlusMin <= 0.0 || optWallFunctionYPlusMax <= optWallFunctionYPlusMin)
-{
-  FatalErrorInFunction
-    << "Wall-function yPlus band must satisfy 0 < optWallFunctionYPlusMin < optWallFunctionYPlusMax. "
-    << "Found min=" << optWallFunctionYPlusMin
-    << ", max=" << optWallFunctionYPlusMax
-    << exit(FatalError);
-}
-if
-(
-    optWallFunctionYPlusInBandWarnFraction < 0.0
- || optWallFunctionYPlusInBandWarnFraction > 1.0
-)
-{
-  FatalErrorInFunction
-    << "optWallFunctionYPlusInBandWarnFraction must be in [0, 1]. Found "
-    << optWallFunctionYPlusInBandWarnFraction
-    << exit(FatalError);
-}
 if (optConvergedGrayTrustGateMinIterations < 1)
 {
   FatalErrorInFunction
@@ -697,14 +662,6 @@ if (optStabilityContinuationGovernorLinearPenaltyThreshold < 0.0)
   FatalErrorInFunction
     << "optStabilityContinuationGovernorLinearPenaltyThreshold must be >= 0. Found "
     << optStabilityContinuationGovernorLinearPenaltyThreshold
-    << exit(FatalError);
-}
-if (optTrustPredReductionAbsFloor <= 0.0 || optTrustPredReductionRelFloor <= 0.0)
-{
-  FatalErrorInFunction
-    << "optTrustPredReductionAbsFloor and optTrustPredReductionRelFloor must be > 0. Found "
-    << "abs=" << optTrustPredReductionAbsFloor
-    << ", rel=" << optTrustPredReductionRelFloor
     << exit(FatalError);
 }
 if (optStabilityContinuationGovernorSlowFactor <= 0.0 || optStabilityContinuationGovernorSlowFactor > 1.0)

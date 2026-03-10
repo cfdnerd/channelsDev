@@ -19,20 +19,10 @@ convergenceControl
 {
     // Keep only unresolved-issue controls for the next run.
 
-    // Smooth projection (tanh) + sharper continuation to reduce gray stagnation.
-    optProjectionBetaScaleStart 0.4;
-    optProjectionBetaScaleEnd   2.8;
-    optProjectionBetaRampStartIteration 20;
-    optProjectionBetaRampEndIteration   120;
-    optProjectionDelStepStart 0.22;
-    optProjectionDelStepEnd   0.50;
-    optProjectionDelStepRampStartIteration 25;
-    optProjectionDelStepRampEndIteration   120;
-
-    // Trust-definition collapse fix.
-    optStabilityContinuationGovernorTrustUndefinedBlocks false;
-    optTrustPredReductionAbsFloor 1e-16;
-    optTrustPredReductionRelFloor 1e-12;
+    // Toggle hardcoded projection continuation profile in createFields.H.
+    // true: force built-in values for beta/del ramps
+    // false: use dictionary values/defaults
+    optUseHardcodedProjectionSchedule true;
 
     // Late-stage filter/projection/binarization continuation.
     optFilterStrengthRampStartIteration 60;
@@ -59,11 +49,6 @@ convergenceControl
     optAdjointAitkenOmegaMin 0.20;
     optAdjointAitkenOmegaMax 0.95;
 
-    // Wall-function diagnostics disabled for low-Re wall-treatment run.
-    optWallFunctionYPlusDiagnosticsEnable false;
-
-    // Prevent trust-undefined latch in converged gray-trust gate.
-    optConvergedGrayTrustGateUndefinedTrustBlocks false;
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
