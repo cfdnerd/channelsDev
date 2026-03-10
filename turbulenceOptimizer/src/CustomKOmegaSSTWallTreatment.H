@@ -41,7 +41,7 @@ if (customTurbulenceActive)
             << mesh.boundary()[patchi].name()
             << " face " << facei
             << ": omegaWall=" << omegaWallValue
-            << ". Clipping is disabled by policy; inspect wall-treatment inputs."
+            << ". Hard limiting is disabled by policy; inspect wall-treatment inputs."
             << exit(FatalError);
         }
 
@@ -51,7 +51,17 @@ if (customTurbulenceActive)
       else
       {
         const label celli = faceCells[facei];
-        const scalar kWallValue = Foam::max(k[celli], kMin.value());
+        const scalar kWallValue = k[celli];
+        if (!(kWallValue > 0.0) || kWallValue >= GREAT)
+        {
+          FatalErrorInFunction
+            << "Non-physical wall k obtained from adjacent cell on patch "
+            << mesh.boundary()[patchi].name()
+            << " face " << facei
+            << ": kWall=" << kWallValue
+            << ". Hard limiting is disabled by policy; inspect wall-treatment inputs."
+            << exit(FatalError);
+        }
         const scalar uTau = cmuQuarter*Foam::sqrt(kWallValue);
         const scalar yPlus = uTau*yFace/Foam::max(nu.value(), SMALL);
         const scalar omegaViscous =
@@ -61,7 +71,7 @@ if (customTurbulenceActive)
         const scalar blend =
           0.5*(1.0 + Foam::tanh((yPlus - yPlusSwitch)/yPlusBlendWidth));
         const scalar omegaWallValue =
-          Foam::max((1.0 - blend)*omegaViscous + blend*omegaLog, omegaMin.value());
+          (1.0 - blend)*omegaViscous + blend*omegaLog;
 
         if (!(omegaWallValue > 0.0) || omegaWallValue >= GREAT)
         {
@@ -70,7 +80,7 @@ if (customTurbulenceActive)
             << mesh.boundary()[patchi].name()
             << " face " << facei
             << ": omegaWall=" << omegaWallValue
-            << ". Clipping is disabled by policy; inspect wall-treatment inputs."
+            << ". Hard limiting is disabled by policy; inspect wall-treatment inputs."
             << exit(FatalError);
         }
 

@@ -140,8 +140,16 @@ if (customTurbulenceActive)
     forAll(saNuTildaInternal, celli)
     {
       const scalar nuCell = nuUniform;
-      const scalar nutCell = Foam::max(nutInternal[celli], scalar(0.0));
-      scalar nuTildaCell = Foam::max(nutCell, scalar(1e-6)*nuCell);
+      const scalar nutCell = nutInternal[celli];
+      if (!(nutCell > 0.0) || nutCell >= GREAT)
+      {
+        FatalErrorInFunction
+          << "Non-physical nut detected while reconstructing SA nuTilda: "
+          << "cell=" << celli << ", nut=" << nutCell
+          << ". Hard limiting is disabled by policy; investigate closure state."
+          << exit(FatalError);
+      }
+      scalar nuTildaCell = nutCell;
       for (label saNewtonIter = 0; saNewtonIter < 6; ++saNewtonIter)
       {
         const scalar chi = nuTildaCell/nuCell;
@@ -154,7 +162,18 @@ if (customTurbulenceActive)
         const scalar dfv1dNuTilda = dfv1dChi/nuCell;
         const scalar residual = nuTildaCell*fv1 - nutCell;
         const scalar jacobian = Foam::max(fv1 + nuTildaCell*dfv1dNuTilda, SMALL);
-        nuTildaCell = Foam::max(nuTildaCell - residual/jacobian, scalar(0.0));
+        const scalar nuTildaTrial = nuTildaCell - residual/jacobian;
+        if (!(nuTildaTrial > 0.0) || nuTildaTrial >= GREAT)
+        {
+          FatalErrorInFunction
+            << "Non-physical SA nuTilda encountered during Newton reconstruction: "
+            << "cell=" << celli
+            << ", iter=" << saNewtonIter
+            << ", trial=" << nuTildaTrial
+            << ". Hard limiting is disabled by policy; investigate closure state."
+            << exit(FatalError);
+        }
+        nuTildaCell = nuTildaTrial;
       }
       const scalar chi = nuTildaCell/nuCell;
       const scalar chi2 = chi*chi;
@@ -164,9 +183,18 @@ if (customTurbulenceActive)
       const scalar dfv1dChi =
         3.0*chi2*saCv1Cubed/Foam::max(denom*denom, SMALL);
       const scalar dfv1dNuTilda = dfv1dChi/nuCell;
+      const scalar dNutDNuTildaValue = fv1 + nuTildaCell*dfv1dNuTilda;
+      if (!(dNutDNuTildaValue >= 0.0) || dNutDNuTildaValue >= GREAT)
+      {
+        FatalErrorInFunction
+          << "Non-physical dNut/dNuTilda detected in SA reconstruction: "
+          << "cell=" << celli
+          << ", value=" << dNutDNuTildaValue
+          << ". Hard limiting is disabled by policy; investigate closure state."
+          << exit(FatalError);
+      }
       saNuTildaInternal[celli] = nuTildaCell;
-      dNutDNuTildaInternal[celli] =
-        Foam::max(fv1 + nuTildaCell*dfv1dNuTilda, scalar(0.0));
+      dNutDNuTildaInternal[celli] = dNutDNuTildaValue;
     }
     saNuTildaState.correctBoundaryConditions();
     dNutDNuTilda.correctBoundaryConditions();
@@ -604,7 +632,7 @@ if (customTurbulenceActive)
   {
     FatalErrorInFunction
       << "Non-physical ka magnitude detected: max(|ka|)=" << kaAbsMax
-      << ". Clipping is disabled by policy; investigate formulation/root cause."
+      << ". Hard limiting is disabled by policy; investigate formulation/root cause."
       << exit(FatalError);
   }
   ka.correctBoundaryConditions();

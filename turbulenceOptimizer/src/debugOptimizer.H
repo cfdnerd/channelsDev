@@ -572,18 +572,6 @@ const scalar guardConstraintViolationDelta =
   : 0;
 const scalar convergenceConstraintViolation = maxConstraintViolation;
 const scalar guardConstraintViolationNetRise = guardConstraintViolationDelta;
-const scalar turbulenceClipObsFraction = 0.25;
-const scalar turbulenceClipWarnFraction = 0.70;
-const scalar maxClipFraction = Foam::max
-(
-  Foam::max(kFloorFraction, omegaFloorFraction),
-  Foam::max(nutZeroFraction, nutCapFraction)
-);
-const scalar maxFluidClipFraction = Foam::max(kFloorFluidFraction, omegaFloorFluidFraction);
-const scalar maxGrayClipFraction = Foam::max(kFloorGrayFraction, omegaFloorGrayFraction);
-const scalar maxTransitionClipFraction = Foam::max(maxGrayClipFraction, maxFluidClipFraction);
-const bool clipHardSafetyStop = false;
-const bool clipSafetyStop = false;
 const scalar powerViolationPositive =
   Foam::max(powerConstraintFinalMargin, scalar(0.0));
 const scalar volumeViolationPositive =
@@ -777,10 +765,6 @@ if (!residualGrowthWithinLimit)
 {
   linearPenalty = Foam::min(linearPenalty + scalar(5.0), scalar(20.0));
 }
-const scalar clipPenalty =
-  customTurbulenceActive
-  ? Foam::min(scalar(15.0), scalar(80.0)*Foam::max(maxClipFraction, scalar(0.0)))
-  : scalar(0.0);
 const scalar consistencyPenalty =
   (opt > 10)
   ? Foam::min
@@ -830,11 +814,6 @@ if (fieldEnvelopeStop)
   stopOptimization = true;
   optimizerStopReason = word("fieldEnvelopeViolation");
 }
-else if (clipHardSafetyStop)
-{
-  stopOptimization = true;
-  optimizerStopReason = word("clipHardViolation");
-}
 else if (!healthChecksPassed)
 {
   stopOptimization = true;
@@ -859,7 +838,6 @@ const label reportedOptimizerConvergedStreak = optimizerConvergedStreak;
 previousTrustRatio = trustRatio;
 hasPreviousTrustRatio = trustRatioDefined;
 previousConstraintPenaltyForGovernor = constraintPenalty;
-previousClipPenaltyForGovernor = clipPenalty;
 previousLinearPenaltyForGovernor = linearPenalty;
 previousTrustRatioDefinedForGovernor = trustRatioDefined;
 hasPreviousGovernorMetrics = true;
@@ -980,22 +958,6 @@ if (Pstream::master())
     (fsensNonFiniteCountLocal > 0 || gsensPowerNonFiniteCountLocal > 0 || gsensVolNonFiniteCountLocal > 0)
     ? "WARN"
     : "OK";
-  const scalar severeTransitionFluidThreshold =
-    scalar(0.08);
-  const bool severeTransitionClip =
-    customTurbulenceActive
-    && maxGrayClipFraction >= 0.85
-    && maxFluidClipFraction >= severeTransitionFluidThreshold
-    && maxConstraintViolation > optConstraintTol;
-  const label turbulenceClipSeverity =
-    !customTurbulenceActive ? -1
-    : ((maxFluidClipFraction >= turbulenceClipWarnFraction || severeTransitionClip) ? 2
-      : (maxFluidClipFraction >= turbulenceClipObsFraction ? 1
-        : (maxGrayClipFraction >= turbulenceClipWarnFraction ? 1 : 0)));
-  const char* turbulenceClipHealth =
-    turbulenceClipSeverity == 2 ? "WARN"
-    : (turbulenceClipSeverity == 1 ? "OBS"
-      : (turbulenceClipSeverity == 0 ? "OK" : "SKIP"));
   const bool stopSuccessful =
     stopOptimization && optimizerStopReason == word("converged");
   const bool stopFailure =
@@ -1003,15 +965,12 @@ if (Pstream::master())
   const char* stopOutcome =
     !stopOptimization ? "running" : (stopSuccessful ? "converged" : "guard-stop");
   const char* solverHealth =
-    (solverSeverity >= 2 || turbulenceClipSeverity >= 2)
-    ? "WARN"
-    : ((solverSeverity == 1 || turbulenceClipSeverity == 1) ? "OBS" : "OK");
+    solverSeverity >= 2 ? "WARN" : (solverSeverity == 1 ? "OBS" : "OK");
   const scalar trustPenalty = trustPenaltyForStop;
   const scalar healthPenaltyTotal =
       rollbackPenalty
     + constraintPenalty
     + linearPenalty
-    + clipPenalty
     + consistencyPenalty
     + trustPenalty;
   const scalar optimizerHealthScore =
@@ -1057,7 +1016,6 @@ if (Pstream::master())
       << std::setw(14) << "RollPen"
       << std::setw(14) << "LinPen"
       << std::setw(14) << "ConPen"
-      << std::setw(14) << "ClipPen"
       << std::setw(14) << "ConsPen"
       << std::setw(14) << "TrustPen"
       << std::setw(10) << "FlowRB"
@@ -1074,7 +1032,6 @@ if (Pstream::master())
     << std::setw(14) << rollbackPenalty
     << std::setw(14) << linearPenalty
     << std::setw(14) << constraintPenalty
-    << std::setw(14) << clipPenalty
     << std::setw(14) << consistencyPenalty
     << std::setw(14) << trustPenalty
     << std::setw(10) << static_cast<int>(flowHardRollbackHit)
@@ -1098,8 +1055,6 @@ if (Pstream::master())
       << " predictedObjectiveReduction=" << predictedObjectiveReduction
       << " actualObjectiveReduction=" << actualObjectiveReduction
       << " gradientConsistencyRatio=" << gradientConsistencyRatio
-      << " maxFluidClip=" << maxFluidClipFraction
-      << " maxGrayClip=" << maxGrayClipFraction
       << " thermalTmaxKS=" << thermalTmaxConstraintMargin
       << " thermalTminKS=" << thermalTminConstraintMargin
       << '\n';
@@ -1228,9 +1183,7 @@ if (Pstream::master())
     "tAbs="+fmtScalar(thermalFieldAbsMaxObserved)
       + " lim=" + fmtScalar(optThermalFieldAbsMax)
       + " viol=" + std::string(thermalFieldEnvelopeViolated ? "yes" : "no"),
-    "envelopeStop="+std::string(fieldEnvelopeStop ? "yes" : "no"),
-    "clipStop="+std::string(clipSafetyStop ? "yes" : "no")
-      + " hard=" + std::string(clipHardSafetyStop ? "yes" : "no")
+    "envelopeStop="+std::string(fieldEnvelopeStop ? "yes" : "no")
   );
   writeRow("Stop", "candidate="+std::string(convergenceCandidate ? "yes" : "no"), "stop="+std::string(stopOptimization ? "yes" : "no"), "reason="+std::string(optimizerStopReason.c_str()));
   writeRow
@@ -1385,10 +1338,6 @@ if (Pstream::master())
     "sinkS="+fmtScalar(porousTurbulenceSuppressionCoeff)
       + " sinkA=" + fmtScalar(porousTurbulenceAlphaSinkCoeff)
   );
-  writeRow("clip health", "status="+std::string(turbulenceClipHealth), "fluidFrac="+fmtScalar(maxFluidClipFraction), "grayFrac="+fmtScalar(maxGrayClipFraction), "allFrac="+fmtScalar(maxClipFraction));
-  writeRow("clip trigger", "severeFluidThr="+fmtScalar(severeTransitionFluidThreshold), "severeGrayThr=8.500000e-01");
-  writeRow("turb clips", "kFloor="+fmtCount(kFloorCountLocal), "omegaFloor="+fmtCount(omegaFloorCountLocal), "nutZero="+fmtCount(nutZeroCountLocal), "nutCap="+fmtCount(nutCapCountLocal));
-  writeRow("clip frac", "kFloor="+fmtScalar(kFloorFraction), "omegaFloor="+fmtScalar(omegaFloorFraction), "nutZero="+fmtScalar(nutZeroFraction), "nutCap="+fmtScalar(nutCapFraction));
   writeRow("phase cells", "solid="+fmtCount(solidCellCountLocal), "gray="+fmtCount(grayCellCountLocal), "fluid="+fmtCount(fluidCellCountLocal));
   writeRow("kFloor phase", "solid="+fmtScalar(kFloorSolidFraction), "gray="+fmtScalar(kFloorGrayFraction), "fluid="+fmtScalar(kFloorFluidFraction));
   writeRow("wFloor phase", "solid="+fmtScalar(omegaFloorSolidFraction), "gray="+fmtScalar(omegaFloorGrayFraction), "fluid="+fmtScalar(omegaFloorFluidFraction));
@@ -1463,13 +1412,11 @@ if (Pstream::master())
       << ",\"constraints\":\"" << constraintHealth << "\""
       << ",\"sensitivity\":\"" << sensitivityHealth << "\""
       << ",\"solver\":\"" << solverHealth << "\""
-      << ",\"turbulenceClip\":\"" << turbulenceClipHealth << "\""
       << ",\"score\":" << optimizerHealthScore
       << ",\"band\":\"" << optimizerHealthBand << "\""
       << ",\"rollbackPenalty\":" << rollbackPenalty
       << ",\"constraintPenalty\":" << constraintPenalty
       << ",\"linearPenalty\":" << linearPenalty
-      << ",\"clipPenalty\":" << clipPenalty
       << ",\"consistencyPenalty\":" << consistencyPenalty
       << ",\"trustPenalty\":" << trustPenalty
     << "}"
@@ -1679,15 +1626,6 @@ if (Pstream::master())
       << ",\"omegaFloorSolidFraction\":" << omegaFloorSolidFraction
       << ",\"omegaFloorGrayFraction\":" << omegaFloorGrayFraction
       << ",\"omegaFloorFluidFraction\":" << omegaFloorFluidFraction
-      << ",\"clipHealth\":\"" << turbulenceClipHealth << "\""
-      << ",\"clipMaxFraction\":" << maxClipFraction
-      << ",\"clipFluidFraction\":" << maxFluidClipFraction
-      << ",\"clipGrayFraction\":" << maxGrayClipFraction
-      << ",\"clipTransitionFraction\":" << maxTransitionClipFraction
-      << ",\"clipObsThreshold\":" << turbulenceClipObsFraction
-      << ",\"clipWarnThreshold\":" << turbulenceClipWarnFraction
-      << ",\"clipSevereTransitionFluidThreshold\":" << severeTransitionFluidThreshold
-      << ",\"clipSevereTransition\":" << (severeTransitionClip ? 1 : 0)
       << ",\"uaMaxMag\":" << UaMaxMagLocal
       << ",\"uaMeanMag\":" << UaMeanMag
       << ",\"paMin\":" << paLocalMin

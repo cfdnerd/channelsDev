@@ -39,16 +39,15 @@ if (Pstream::master())
     << "# MTO_ThermalFluid optimizer health monitor\n"
     << "# Top-10 prioritized health metrics (P1..P10) for early stability tracking\n"
     << "# HealthScore=100-PenTotal, clamped to [0,100]\n"
-    << "# PenTotal=RollPen+ConPen+LinPen+ClipPen+ConsPen+TrustPen\n"
+    << "# PenTotal=RollPen+ConPen+LinPen+ConsPen+TrustPen\n"
     << "# RollPen: rollback/divergence/magnitude-guard penalties (cap 45)\n"
     << "# LinPen: 6*log10(1 + MaxLinRes/linearSolveWarnResidual), +5 if residual growth violated, cap 20\n"
     << "# ConPen: 5*log10(1 + GuardCon/optConstraintTol), cap 25\n"
-    << "# ClipPen: turbulence clipping penalty (cap 15)\n"
     << "# ConsPen: gradient-consistency penalty for opt>10 (cap 10)\n"
     << "# TrustPen: trust-ratio deviation penalty when trust ratio is defined (cap 10)\n"
     << "# FlowRB/HeatRB: binary rollback indicators (0 or 1)\n"
-    << "# Priority: P1=HealthScore P2=PenTotal P3=RollPen P4=LinPen P5=ConPen P6=ClipPen P7=ConsPen P8=TrustPen P9=FlowRB P10=HeatRB\n"
-    << "# Cols: Iter HealthScore PenTotal RollPen LinPen ConPen ClipPen ConsPen TrustPen FlowRB HeatRB\n"
+    << "# Priority: P1=HealthScore P2=PenTotal P3=RollPen P4=LinPen P5=ConPen P6=ConsPen P7=TrustPen P8=FlowRB P9=HeatRB\n"
+    << "# Cols: Iter HealthScore PenTotal RollPen LinPen ConPen ConsPen TrustPen FlowRB HeatRB\n"
     << std::left
     << std::setw(8) << "Iter"
     << std::setw(14) << "HealthScore"
@@ -56,7 +55,6 @@ if (Pstream::master())
     << std::setw(14) << "RollPen"
     << std::setw(14) << "LinPen"
     << std::setw(14) << "ConPen"
-    << std::setw(14) << "ClipPen"
     << std::setw(14) << "ConsPen"
     << std::setw(14) << "TrustPen"
     << std::setw(10) << "FlowRB"
@@ -441,7 +439,6 @@ scalar optimizerMoveLimitActive(movlim);
 scalar previousTrustRatio(1.0);
 bool hasPreviousTrustRatio(false);
 scalar previousConstraintPenaltyForGovernor(0.0);
-scalar previousClipPenaltyForGovernor(0.0);
 scalar previousLinearPenaltyForGovernor(0.0);
 bool previousTrustRatioDefinedForGovernor(false);
 bool hasPreviousGovernorMetrics(false);

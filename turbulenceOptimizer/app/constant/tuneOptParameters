@@ -64,7 +64,6 @@ convergenceControl
     // Health-driven continuation governor for unstable SST/SA regimes.
     optStabilityContinuationGovernorEnable true;
     optStabilityContinuationGovernorConstraintPenaltyThreshold 8.0;
-    optStabilityContinuationGovernorClipPenaltyThreshold 6.0;
     optStabilityContinuationGovernorLinearPenaltyThreshold 5.0;
     optStabilityContinuationGovernorSlowFactor 0.35;
     optStabilityContinuationGovernorMoveLimitScale 0.70;

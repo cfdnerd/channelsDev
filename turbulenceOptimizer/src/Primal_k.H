@@ -7,7 +7,7 @@ if (customTurbulenceActive)
     FatalErrorInFunction
       << "Detected non-physical closure state before k solve: "
       << "min(k)=" << kMinBefore << ", min(omega)=" << omegaMinBefore
-      << ". Clipping is disabled by policy; investigate formulation/root cause."
+      << ". Hard limiting is disabled by policy; investigate formulation/root cause."
       << exit(FatalError);
   }
   if (!(kMinBefore > 0.0))

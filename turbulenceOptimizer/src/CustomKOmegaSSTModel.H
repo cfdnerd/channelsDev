@@ -13,7 +13,7 @@
 
   if (customTurbulenceActive)
   {
-    // Use a single primal/adjoint/closure state map without clip-conditioned drift.
+    // Use a single primal/adjoint/closure state map without state-conditioning drift.
     kClosureState = k;
     omegaClosureState = omega;
 
@@ -47,7 +47,7 @@
       logOmegaClosureState = Foam::log(omegaLogArgument);
       if (closureLogRegularizationActive)
       {
-        // Log-domain regularization keeps states strictly positive without hard clipping.
+        // Log-domain regularization keeps states strictly positive with smooth transforms.
         kClosureState = kLogFloor*(Foam::exp(logKClosureState) + scalar(1.0));
         omegaClosureState = omegaLogFloor*(Foam::exp(logOmegaClosureState) + scalar(1.0));
       }
@@ -305,7 +305,7 @@
       FatalErrorInFunction
         << "Non-physical nut predicted by closure model: "
         << "min(nut)=" << nutMinValue << ", max(nut)=" << nutMaxValue
-        << ". Clipping is disabled by policy; investigate formulation/root cause."
+        << ". Hard limiting is disabled by policy; investigate formulation/root cause."
         << exit(FatalError);
     }
 
@@ -397,8 +397,30 @@
         forAll(nutPatch, facei)
         {
           const label celli = faceCells[facei];
-          nutPatch[facei] = Foam::max(nut[celli], nutFloor.value());
-          alphatPatch[facei] = Foam::max(alphat[celli], scalar(0.0));
+          const scalar nutWallValue = nut[celli];
+          const scalar alphatWallValue = alphat[celli];
+          if (!(nutWallValue > 0.0) || nutWallValue >= GREAT)
+          {
+            FatalErrorInFunction
+              << "Non-physical wall nut generated in wall-function-compatible mode: "
+              << "patch=" << mesh.boundary()[patchi].name()
+              << ", face=" << facei
+              << ", nut=" << nutWallValue
+              << ". Hard limiting is disabled by policy; investigate closure formulation."
+              << exit(FatalError);
+          }
+          if (!(alphatWallValue >= 0.0) || alphatWallValue >= GREAT)
+          {
+            FatalErrorInFunction
+              << "Non-physical wall alphat generated in wall-function-compatible mode: "
+              << "patch=" << mesh.boundary()[patchi].name()
+              << ", face=" << facei
+              << ", alphat=" << alphatWallValue
+              << ". Hard limiting is disabled by policy; investigate closure formulation."
+              << exit(FatalError);
+          }
+          nutPatch[facei] = nutWallValue;
+          alphatPatch[facei] = alphatWallValue;
         }
       }
     }

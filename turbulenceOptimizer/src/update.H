@@ -17,7 +17,6 @@ const bool governorPenaltyStress =
   &&
   (
        previousConstraintPenaltyForGovernor >= optStabilityContinuationGovernorConstraintPenaltyThreshold
-    || previousClipPenaltyForGovernor >= optStabilityContinuationGovernorClipPenaltyThreshold
     || previousLinearPenaltyForGovernor >= optStabilityContinuationGovernorLinearPenaltyThreshold
   );
 const bool governorTrustUndefinedStress =

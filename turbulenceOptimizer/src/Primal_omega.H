@@ -7,7 +7,7 @@ if (customTurbulenceActive)
     FatalErrorInFunction
       << "Detected non-physical closure state before omega solve: "
       << "min(k)=" << kMinBefore << ", min(omega)=" << omegaMinBefore
-      << ". Clipping is disabled by policy; investigate formulation/root cause."
+      << ". Hard limiting is disabled by policy; investigate formulation/root cause."
       << exit(FatalError);
   }
   if (!(omegaMinBefore > 0.0))
@@ -24,7 +24,7 @@ if (customTurbulenceActive)
     FatalErrorInFunction
       << "Detected non-physical eddy viscosity before omega solve: "
       << "min(nut)=" << nutMinBefore
-      << ". Clipping is disabled by policy; investigate formulation/root cause."
+      << ". Hard limiting is disabled by policy; investigate formulation/root cause."
       << exit(FatalError);
   }
 

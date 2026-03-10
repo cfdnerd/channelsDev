@@ -241,14 +241,6 @@ scalar optStabilityContinuationGovernorConstraintPenaltyThreshold
     8.0
   )
 );
-scalar optStabilityContinuationGovernorClipPenaltyThreshold
-(
-  convergenceControl.lookupOrDefault<scalar>
-  (
-    "optStabilityContinuationGovernorClipPenaltyThreshold",
-    6.0
-  )
-);
 scalar optStabilityContinuationGovernorLinearPenaltyThreshold
 (
   convergenceControl.lookupOrDefault<scalar>
@@ -506,13 +498,6 @@ if (optStabilityContinuationGovernorConstraintPenaltyThreshold < 0.0)
   FatalErrorInFunction
     << "optStabilityContinuationGovernorConstraintPenaltyThreshold must be >= 0. Found "
     << optStabilityContinuationGovernorConstraintPenaltyThreshold
-    << exit(FatalError);
-}
-if (optStabilityContinuationGovernorClipPenaltyThreshold < 0.0)
-{
-  FatalErrorInFunction
-    << "optStabilityContinuationGovernorClipPenaltyThreshold must be >= 0. Found "
-    << optStabilityContinuationGovernorClipPenaltyThreshold
     << exit(FatalError);
 }
 if (optStabilityContinuationGovernorLinearPenaltyThreshold < 0.0)

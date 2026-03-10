@@ -770,7 +770,6 @@ else if (customTurbulenceActive && optimizationCycleTurbulentOptimizationMode)
         << ", crossCoupling=" << optimizationCycleClosureCrossCoupling
         << ", formulation=" << optimizationCycleClosureAdjointFormulation
         << ", dualBC=" << (optimizationCycleClosureAdjointDualConsistentBC ? "true" : "false")
-        << ", clipWeighting=false"
         << "). "
         << "Porous-aware transport="
         << (porousAwareTurbulenceTransport ? "true" : "false")

@@ -266,7 +266,7 @@ if (customTurbulenceActive)
   {
     FatalErrorInFunction
       << "Non-physical omegaa magnitude detected: max(|omegaa|)=" << omegaaAbsMax
-      << ". Clipping is disabled by policy; investigate formulation/root cause."
+      << ". Hard limiting is disabled by policy; investigate formulation/root cause."
       << exit(FatalError);
   }
   omegaa.correctBoundaryConditions();
