@@ -41,6 +41,8 @@ if (customTurbulenceActive)
   (
     alpha*scalar(0.0)
   );
+  const scalar turbulenceSuppressionRampScale =
+    turbulenceSuppressionRampScaleActive;
   if (porousAwareTurbulenceTransport)
   {
     const volTensorField gradU(fvc::grad(U));
@@ -62,8 +64,11 @@ if (customTurbulenceActive)
       )
     );
     turbulenceSuppressionRate =
-        porousTurbulenceSuppressionCoeff*turbulenceSuppressionMask*sqrtS2
-      + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
+      turbulenceSuppressionRampScale
+      *(
+          porousTurbulenceSuppressionCoeff*turbulenceSuppressionMask*sqrtS2
+        + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha
+       );
   }
 
   const bool positivityPreservingLinearizationEnabled =

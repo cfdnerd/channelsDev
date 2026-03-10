@@ -50,6 +50,8 @@ if (customTurbulenceActive)
   (
     alpha*scalar(0.0)
   );
+  const scalar turbulenceSuppressionRampScale =
+    turbulenceSuppressionRampScaleActive;
   if (porousAwareTurbulenceTransport)
   {
     const volTensorField gradU(fvc::grad(U));
@@ -71,8 +73,11 @@ if (customTurbulenceActive)
       )
     );
     turbulenceSuppressionRate =
-        porousTurbulenceSuppressionCoeff*turbulenceSuppressionMask*sqrtS2
-      + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha;
+      turbulenceSuppressionRampScale
+      *(
+          porousTurbulenceSuppressionCoeff*turbulenceSuppressionMask*sqrtS2
+        + porousTurbulenceAlphaSinkCoeff*turbulenceSuppressionMask*alpha
+       );
   }
 
   const bool positivityPreservingLinearizationEnabled =
@@ -84,6 +89,16 @@ if (customTurbulenceActive)
 
   // Positivity-preserving source treatment:
   // split raw sources into positive explicit part and negative implicit sink.
+  const dimensionedScalar nutRegularizationFloor
+  (
+    "nutRegularizationFloor",
+    nut.dimensions(),
+    Foam::max
+    (
+      nutFloor.value(),
+      optClosureNutRegularizationScale*Foam::max(nu.value(), SMALL)
+    )
+  );
   const volScalarField omegaPatankarRef
   (
     static_cast<bool>(optClosureSmoothDenominatorEnable)
@@ -93,8 +108,8 @@ if (customTurbulenceActive)
   const volScalarField omegaNutDenominator
   (
     static_cast<bool>(optClosureSmoothDenominatorEnable)
-    ? Foam::sqrt(sqr(nut) + sqr(nutFloor))
-    : Foam::max(nut, nutFloor)
+    ? Foam::sqrt(sqr(nut) + sqr(nutRegularizationFloor))
+    : Foam::max(nut, nutRegularizationFloor)
   );
   const volScalarField omegaProductionRaw
   (

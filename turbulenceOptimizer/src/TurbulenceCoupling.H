@@ -27,11 +27,26 @@ auto updateTurbulenceResidualBlocks =
   kDiffusionBlock = nu + alphaKField*nut;
   omegaDiffusionBlock = nu + alphaOmegaField*nut;
   kDestructionBlock = betaStarCoeff*omega;
-  const volScalarField omegaProductionDenominator(Foam::max(nut, nutFloor));
+  const dimensionedScalar nutRegularizationFloor
+  (
+    "nutRegularizationFloor",
+    nut.dimensions(),
+    Foam::max
+    (
+      nutFloor.value(),
+      optClosureNutRegularizationScale*Foam::max(nu.value(), SMALL)
+    )
+  );
+  const volScalarField omegaProductionDenominator
+  (
+    static_cast<bool>(optClosureSmoothDenominatorEnable)
+    ? Foam::sqrt(sqr(nut) + sqr(nutRegularizationFloor))
+    : Foam::max(nut, nutRegularizationFloor)
+  );
   auditDivisionDenominator
   (
     omegaProductionDenominator,
-    "TurbulenceCoupling.H::omegaProductionBlock denominator (max(nut,nutFloor))",
+    "TurbulenceCoupling.H::omegaProductionBlock denominator (regularized nut)",
     SMALL
   );
   omegaProductionBlock = gammaField*PkField/omegaProductionDenominator;

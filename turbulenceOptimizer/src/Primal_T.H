@@ -12,10 +12,7 @@ else
 {
  TEqn-=thermalSource;
 }
-if (!turbulenceProModeActive)
-{
- TEqn.relax();
-}
+TEqn.relax();
 const auto TLinearSolvePerformance =
   proModeRobustScalarSolverActive
 ? TEqn.solve(proModeRobustScalarSolverControls)

@@ -722,6 +722,73 @@ const scalar volumeConsistencyRatio =
   /Foam::max(Foam::max(Foam::mag(volumeConstraintMarginDelta), Foam::mag(predictedVolumeDelta)), SMALL);
 const scalar gradientConsistencyRatio =
   Foam::max(objectiveConsistencyRatio, Foam::max(powerConsistencyRatio, volumeConsistencyRatio));
+const std::string flowAdjStopReasonForPenalty(adjointCycleAdjointStopReason.c_str());
+const std::string heatAdjStopReasonForPenalty(optimizationCycleHeatAdjointStopReason.c_str());
+const bool flowMagnitudeGuardHitForPenalty =
+  flowAdjStopReasonForPenalty.find("magnitude-guard") != std::string::npos;
+const bool heatMagnitudeGuardHitForPenalty =
+  heatAdjStopReasonForPenalty.find("magnitude-guard") != std::string::npos;
+const bool flowHardRollbackHitForPenalty =
+  adjointCycleAdjointRolledBack && !adjointCycleAdjointFlowControlledStop;
+const bool heatHardRollbackHitForPenalty =
+  optimizationCycleHeatAdjointRolledBack && !optimizationCycleHeatAdjointControlledStop;
+scalar rollbackPenalty = 0.0;
+if (flowHardRollbackHitForPenalty)
+{
+  rollbackPenalty += 20.0;
+}
+if (heatHardRollbackHitForPenalty)
+{
+  rollbackPenalty += 25.0;
+}
+if (adjointCycleAdjointFlowDiverged)
+{
+  rollbackPenalty += 15.0;
+}
+if (flowMagnitudeGuardHitForPenalty)
+{
+  rollbackPenalty += 10.0;
+}
+if (heatMagnitudeGuardHitForPenalty)
+{
+  rollbackPenalty += 10.0;
+}
+rollbackPenalty = Foam::min(rollbackPenalty, scalar(45.0));
+const scalar constraintScale = Foam::max(optConstraintTol, scalar(1e-8));
+const scalar constraintStress =
+  std::log10
+  (
+    scalar(1.0)
+  + Foam::max(guardConstraintViolation, scalar(0.0))/constraintScale
+  );
+const scalar constraintPenalty =
+  Foam::min(scalar(25.0), scalar(5.0)*constraintStress);
+const scalar residualScale =
+  Foam::max(linearSolveWarnResidual, scalar(1e-14));
+const scalar residualStress =
+  std::log10
+  (
+    scalar(1.0)
+  + Foam::max(maxLinearFinalResidual, scalar(0.0))/residualScale
+  );
+scalar linearPenalty =
+  Foam::min(scalar(15.0), scalar(6.0)*residualStress);
+if (!residualGrowthWithinLimit)
+{
+  linearPenalty = Foam::min(linearPenalty + scalar(5.0), scalar(20.0));
+}
+const scalar clipPenalty =
+  customTurbulenceActive
+  ? Foam::min(scalar(15.0), scalar(80.0)*Foam::max(maxClipFraction, scalar(0.0)))
+  : scalar(0.0);
+const scalar consistencyPenalty =
+  (opt > 10)
+  ? Foam::min
+    (
+      scalar(10.0),
+      scalar(4.0)*Foam::max(gradientConsistencyRatio - scalar(1.0), scalar(0.0))
+    )
+  : scalar(0.0);
 
 const bool convergenceCandidate =
   opt >= optMinIterations
@@ -791,6 +858,11 @@ if (optDiagnosticMode && !residualGrowthWithinLimit)
 const label reportedOptimizerConvergedStreak = optimizerConvergedStreak;
 previousTrustRatio = trustRatio;
 hasPreviousTrustRatio = trustRatioDefined;
+previousConstraintPenaltyForGovernor = constraintPenalty;
+previousClipPenaltyForGovernor = clipPenalty;
+previousLinearPenaltyForGovernor = linearPenalty;
+previousTrustRatioDefinedForGovernor = trustRatioDefined;
+hasPreviousGovernorMetrics = true;
 previousMaxLinearFinalResidual = maxLinearFinalResidual;
 hasPreviousMaxLinearFinalResidual = true;
 const bool firstFailureHealthEvent =
@@ -934,63 +1006,6 @@ if (Pstream::master())
     (solverSeverity >= 2 || turbulenceClipSeverity >= 2)
     ? "WARN"
     : ((solverSeverity == 1 || turbulenceClipSeverity == 1) ? "OBS" : "OK");
-  scalar rollbackPenalty = 0.0;
-  if (flowHardRollbackHit)
-  {
-    rollbackPenalty += 20.0;
-  }
-  if (heatHardRollbackHit)
-  {
-    rollbackPenalty += 25.0;
-  }
-  if (adjointCycleAdjointFlowDiverged)
-  {
-    rollbackPenalty += 15.0;
-  }
-  if (flowMagnitudeGuardHit)
-  {
-    rollbackPenalty += 10.0;
-  }
-  if (heatMagnitudeGuardHit)
-  {
-    rollbackPenalty += 10.0;
-  }
-  rollbackPenalty = Foam::min(rollbackPenalty, scalar(45.0));
-  const scalar constraintScale = Foam::max(optConstraintTol, scalar(1e-8));
-  const scalar constraintStress =
-    std::log10
-    (
-      scalar(1.0)
-    + Foam::max(guardConstraintViolation, scalar(0.0))/constraintScale
-    );
-  const scalar constraintPenalty =
-    Foam::min(scalar(25.0), scalar(5.0)*constraintStress);
-  const scalar residualScale =
-    Foam::max(linearSolveWarnResidual, scalar(1e-14));
-  const scalar residualStress =
-    std::log10
-    (
-      scalar(1.0)
-    + Foam::max(maxLinearFinalResidual, scalar(0.0))/residualScale
-    );
-  scalar linearPenalty =
-    Foam::min(scalar(15.0), scalar(6.0)*residualStress);
-  if (!residualGrowthWithinLimit)
-  {
-    linearPenalty = Foam::min(linearPenalty + scalar(5.0), scalar(20.0));
-  }
-  const scalar clipPenalty =
-    customTurbulenceActive
-    ? Foam::min(scalar(15.0), scalar(80.0)*Foam::max(maxClipFraction, scalar(0.0)))
-    : scalar(0.0);
-  const scalar consistencyPenalty =
-    (opt > 10)
-    ? Foam::min
-      (
-        scalar(10.0),
-        scalar(4.0)*Foam::max(gradientConsistencyRatio - scalar(1.0), scalar(0.0))
-      )
-    : scalar(0.0);
   const scalar trustPenalty = trustPenaltyForStop;
   const scalar healthPenaltyTotal =
       rollbackPenalty

@@ -40,8 +40,9 @@ convergenceControl
     // --------------------------------------------------------------------- //
     // Turbulence-closure denominator regularization controls.
     optClosureLogRegularizationEnable true;
-    optClosureSmoothDenominatorEnable false;
+    optClosureSmoothDenominatorEnable true;
     optKOmegaPositivityPreservingLinearizationEnable true;
+    optClosureNutRegularizationScale 1e-3; // local nut regularization floor scale (multiplies nu).
 
     // Smooth projection (tanh) controls for Heaviside continuation.
     optProjectionSmoothingEnable true;
@@ -59,6 +60,21 @@ convergenceControl
     optAdaptiveMoveLimitShrinkFactor   0.70;
     optAdaptiveMoveLimitGrowFactor     1.15;
     optAdaptiveMoveLimitNegativeTrustDamping  0.50;
+
+    // Health-driven continuation governor for unstable SST/SA regimes.
+    optStabilityContinuationGovernorEnable true;
+    optStabilityContinuationGovernorConstraintPenaltyThreshold 8.0;
+    optStabilityContinuationGovernorClipPenaltyThreshold 6.0;
+    optStabilityContinuationGovernorLinearPenaltyThreshold 5.0;
+    optStabilityContinuationGovernorSlowFactor 0.35;
+    optStabilityContinuationGovernorMoveLimitScale 0.70;
+    optStabilityContinuationGovernorTrustUndefinedBlocks true;
+
+    // Ramp porous turbulence suppression to avoid early over-damping.
+    optTurbulenceSuppressionRampEnable true;
+    optTurbulenceSuppressionRampStartIteration 1;
+    optTurbulenceSuppressionRampEndIteration 120;
+    optTurbulenceSuppressionRampMinScale 0.25;
 
     // Wall-function diagnostics (high-Re coarse-mesh suitability checks).
     optWallFunctionYPlusDiagnosticsEnable true;

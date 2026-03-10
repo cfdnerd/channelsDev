@@ -69,7 +69,7 @@ if (turbulenceProModeActive)
 
  mma.asyminc = mma_inc;
  mma.asymdec = mma_dec;
- mma.movelimit = movlim;
+ mma.movelimit = optimizerMoveLimitActive;
 }
 else
 {

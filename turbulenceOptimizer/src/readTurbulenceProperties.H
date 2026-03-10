@@ -1373,7 +1373,42 @@ volScalarField omegaProductionBlock
         IOobject::NO_READ,
         IOobject::NO_WRITE
     ),
-    gammaField*PkField/Foam::max(nut, nutFloor)
+    gammaField*PkField
+    /
+    (
+      static_cast<bool>(optClosureSmoothDenominatorEnable)
+      ? Foam::sqrt
+        (
+          sqr(nut)
+          + sqr
+            (
+              dimensionedScalar
+              (
+                "nutRegularizationFloor",
+                nut.dimensions(),
+                Foam::max
+                (
+                  nutFloor.value(),
+                  optClosureNutRegularizationScale*Foam::max(nu.value(), SMALL)
+                )
+              )
+            )
+        )
+      : Foam::max
+        (
+          nut,
+          dimensionedScalar
+          (
+            "nutRegularizationFloor",
+            nut.dimensions(),
+            Foam::max
+            (
+              nutFloor.value(),
+              optClosureNutRegularizationScale*Foam::max(nu.value(), SMALL)
+            )
+          )
+        )
+    )
 );
 
 volScalarField omegaDestructionBlock

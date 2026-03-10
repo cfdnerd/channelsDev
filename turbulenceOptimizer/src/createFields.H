@@ -229,6 +229,66 @@ scalar optAdaptiveMoveLimitNegativeTrustDamping
 (
   convergenceControl.lookupOrDefault<scalar>("optAdaptiveMoveLimitNegativeTrustDamping", 0.50)
 );
+Switch optStabilityContinuationGovernorEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optStabilityContinuationGovernorEnable", true)
+);
+scalar optStabilityContinuationGovernorConstraintPenaltyThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>
+  (
+    "optStabilityContinuationGovernorConstraintPenaltyThreshold",
+    8.0
+  )
+);
+scalar optStabilityContinuationGovernorClipPenaltyThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>
+  (
+    "optStabilityContinuationGovernorClipPenaltyThreshold",
+    6.0
+  )
+);
+scalar optStabilityContinuationGovernorLinearPenaltyThreshold
+(
+  convergenceControl.lookupOrDefault<scalar>
+  (
+    "optStabilityContinuationGovernorLinearPenaltyThreshold",
+    5.0
+  )
+);
+scalar optStabilityContinuationGovernorSlowFactor
+(
+  convergenceControl.lookupOrDefault<scalar>("optStabilityContinuationGovernorSlowFactor", 0.35)
+);
+scalar optStabilityContinuationGovernorMoveLimitScale
+(
+  convergenceControl.lookupOrDefault<scalar>("optStabilityContinuationGovernorMoveLimitScale", 0.70)
+);
+Switch optStabilityContinuationGovernorTrustUndefinedBlocks
+(
+  convergenceControl.lookupOrDefault<Switch>("optStabilityContinuationGovernorTrustUndefinedBlocks", true)
+);
+Switch optTurbulenceSuppressionRampEnable
+(
+  convergenceControl.lookupOrDefault<Switch>("optTurbulenceSuppressionRampEnable", true)
+);
+label optTurbulenceSuppressionRampStartIteration
+(
+  convergenceControl.lookupOrDefault<label>("optTurbulenceSuppressionRampStartIteration", 1)
+);
+label optTurbulenceSuppressionRampEndIteration
+(
+  convergenceControl.lookupOrDefault<label>("optTurbulenceSuppressionRampEndIteration", 120)
+);
+scalar optTurbulenceSuppressionRampMinScale
+(
+  convergenceControl.lookupOrDefault<scalar>("optTurbulenceSuppressionRampMinScale", 0.25)
+);
+scalar optClosureNutRegularizationScale
+(
+  convergenceControl.lookupOrDefault<scalar>("optClosureNutRegularizationScale", 1e-3)
+);
 Switch optWallFunctionYPlusDiagnosticsEnable
 (
   convergenceControl.lookupOrDefault<Switch>("optWallFunctionYPlusDiagnosticsEnable", true)
@@ -439,6 +499,70 @@ if (optAdaptiveMoveLimitNegativeTrustDamping <= 0.0 || optAdaptiveMoveLimitNegat
   FatalErrorInFunction
     << "optAdaptiveMoveLimitNegativeTrustDamping must satisfy 0 < value <= 1. Found "
     << optAdaptiveMoveLimitNegativeTrustDamping
+    << exit(FatalError);
+}
+if (optStabilityContinuationGovernorConstraintPenaltyThreshold < 0.0)
+{
+  FatalErrorInFunction
+    << "optStabilityContinuationGovernorConstraintPenaltyThreshold must be >= 0. Found "
+    << optStabilityContinuationGovernorConstraintPenaltyThreshold
+    << exit(FatalError);
+}
+if (optStabilityContinuationGovernorClipPenaltyThreshold < 0.0)
+{
+  FatalErrorInFunction
+    << "optStabilityContinuationGovernorClipPenaltyThreshold must be >= 0. Found "
+    << optStabilityContinuationGovernorClipPenaltyThreshold
+    << exit(FatalError);
+}
+if (optStabilityContinuationGovernorLinearPenaltyThreshold < 0.0)
+{
+  FatalErrorInFunction
+    << "optStabilityContinuationGovernorLinearPenaltyThreshold must be >= 0. Found "
+    << optStabilityContinuationGovernorLinearPenaltyThreshold
+    << exit(FatalError);
+}
+if (optStabilityContinuationGovernorSlowFactor <= 0.0 || optStabilityContinuationGovernorSlowFactor > 1.0)
+{
+  FatalErrorInFunction
+    << "optStabilityContinuationGovernorSlowFactor must satisfy 0 < value <= 1. Found "
+    << optStabilityContinuationGovernorSlowFactor
+    << exit(FatalError);
+}
+if (optStabilityContinuationGovernorMoveLimitScale <= 0.0 || optStabilityContinuationGovernorMoveLimitScale > 1.0)
+{
+  FatalErrorInFunction
+    << "optStabilityContinuationGovernorMoveLimitScale must satisfy 0 < value <= 1. Found "
+    << optStabilityContinuationGovernorMoveLimitScale
+    << exit(FatalError);
+}
+if (optTurbulenceSuppressionRampStartIteration < 1)
+{
+  FatalErrorInFunction
+    << "optTurbulenceSuppressionRampStartIteration must be >= 1. Found "
+    << optTurbulenceSuppressionRampStartIteration
+    << exit(FatalError);
+}
+if (optTurbulenceSuppressionRampEndIteration < optTurbulenceSuppressionRampStartIteration)
+{
+  FatalErrorInFunction
+    << "optTurbulenceSuppressionRampEndIteration must be >= optTurbulenceSuppressionRampStartIteration. Found start="
+    << optTurbulenceSuppressionRampStartIteration
+    << ", end=" << optTurbulenceSuppressionRampEndIteration
+    << exit(FatalError);
+}
+if (optTurbulenceSuppressionRampMinScale <= 0.0 || optTurbulenceSuppressionRampMinScale > 1.0)
+{
+  FatalErrorInFunction
+    << "optTurbulenceSuppressionRampMinScale must satisfy 0 < value <= 1. Found "
+    << optTurbulenceSuppressionRampMinScale
+    << exit(FatalError);
+}
+if (optClosureNutRegularizationScale <= 0.0)
+{
+  FatalErrorInFunction
+    << "optClosureNutRegularizationScale must be > 0. Found "
+    << optClosureNutRegularizationScale
     << exit(FatalError);
 }
 
