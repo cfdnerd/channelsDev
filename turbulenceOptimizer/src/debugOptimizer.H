@@ -664,6 +664,12 @@ const scalar trustPenaltyForStop =
   trustRatioDefined
   ? Foam::min(scalar(10.0), scalar(10.0)*trustDeviationForStop)
   : scalar(0.0);
+const bool trustUnreliableForGate =
+    trustPenaltyForStop >= optConvergedTrustPenaltySaturationThreshold
+ || (
+      static_cast<bool>(optConvergedGrayTrustGateUndefinedTrustBlocks)
+   && !trustRatioDefined
+    );
 const bool saOrSstRunActive =
     customTurbulenceActive
  && (
@@ -681,8 +687,7 @@ const bool convergedGrayTrustGateBlocked =
  && saOrSstRunActive
  && opt >= optConvergedGrayTrustGateMinIterations
  && grayVolumeFraction >= optConvergedGrayFractionThreshold
- && trustPenaltyForStop >= optConvergedTrustPenaltySaturationThreshold
- && trustRatioDefined;
+ && trustUnreliableForGate;
 const scalar objectiveAbsValue = Foam::mag(objectiveValue);
 const scalar thermalFieldAbsMaxObserved =
   Foam::max(Foam::mag(TLocalMin), Foam::mag(TLocalMax));
@@ -1219,7 +1224,9 @@ if (Pstream::master())
     "active="+std::string(saOrSstRunActive ? "yes" : "no"),
     "blocked="+std::string(convergedGrayTrustGateBlocked ? "yes" : "no"),
     "gray="+fmtScalar(grayVolumeFraction)+"/"+fmtScalar(optConvergedGrayFractionThreshold),
-    "trustPen="+fmtScalar(trustPenaltyForStop)+"/"+fmtScalar(optConvergedTrustPenaltySaturationThreshold)
+    "trustDef="+std::string(trustRatioDefined ? "yes" : "no")
+      + " trustPen=" + fmtScalar(trustPenaltyForStop)
+      + "/" + fmtScalar(optConvergedTrustPenaltySaturationThreshold)
   );
   writeRow("Outcome", "state="+std::string(stopOutcome), "success="+std::string(stopSuccessful ? "yes" : "no"), "failure="+std::string(stopFailure ? "yes" : "no"));
 
@@ -1473,6 +1480,9 @@ if (Pstream::master())
       << ",\"trustRatioDefined\":" << (trustRatioDefined ? 1 : 0)
       << ",\"trustRatio\":" << trustRatio
       << ",\"trustPenalty\":" << trustPenaltyForStop
+      << ",\"grayTrustGateUndefinedTrustBlocks\":"
+      << (static_cast<bool>(optConvergedGrayTrustGateUndefinedTrustBlocks) ? 1 : 0)
+      << ",\"grayTrustGateTrustUnreliable\":" << (trustUnreliableForGate ? 1 : 0)
       << ",\"grayTrustGateActive\":" << (saOrSstRunActive ? 1 : 0)
       << ",\"grayTrustGateBlocked\":" << (convergedGrayTrustGateBlocked ? 1 : 0)
       << ",\"grayTrustGateGrayThreshold\":" << optConvergedGrayFractionThreshold

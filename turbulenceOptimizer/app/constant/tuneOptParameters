@@ -72,6 +72,7 @@ convergenceControl
     optConvergedGrayTrustGateMinIterations 50;
     optConvergedGrayFractionThreshold 0.50;
     optConvergedTrustPenaltySaturationThreshold 9.90;
+    optConvergedGrayTrustGateUndefinedTrustBlocks true; // also block when trust ratio is undefined (predicted reduction collapsed)
 
     // --------------------------------------------------------------------- //
     // Thermal Envelope Constraints

@@ -265,6 +265,10 @@ scalar optConvergedTrustPenaltySaturationThreshold
 (
   convergenceControl.lookupOrDefault<scalar>("optConvergedTrustPenaltySaturationThreshold", 9.90)
 );
+Switch optConvergedGrayTrustGateUndefinedTrustBlocks
+(
+  convergenceControl.lookupOrDefault<Switch>("optConvergedGrayTrustGateUndefinedTrustBlocks", true)
+);
 if (optRunMode != word("production") && optRunMode != word("diagnostic"))
 {
   FatalErrorInFunction
