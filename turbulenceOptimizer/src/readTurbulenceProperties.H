@@ -103,7 +103,7 @@ if (proModeRobustLinearSolverActive)
     proModeRobustScalarSolverControls.add("smoother", word("symGaussSeidel"));
     proModeRobustScalarSolverControls.add("tolerance", 1e-10);
     proModeRobustScalarSolverControls.add("relTol", 0.0);
-    proModeRobustScalarSolverControls.add("maxIter", 20000);
+    proModeRobustScalarSolverControls.add("maxIter", 30000);
 
     // Non-symmetric systems: transport-dominated adjoint equations (Ua/Ub/ka/omegaa).
     proModeRobustNonsymmetricSolverControls.add("solver", word("PBiCGStab"));

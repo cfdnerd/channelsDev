@@ -23,6 +23,8 @@ convergenceControl
     // true: force built-in values for beta/del ramps
     // false: use dictionary values/defaults
     optUseHardcodedProjectionSchedule true;
+    // Thermal adjoint selector: ta (explicit Ta) or tb (legacy Tb).
+    optThermalAdjointMode ta;
 
     // Late-stage filter/projection/binarization continuation.
     optFilterStrengthRampStartIteration 60;
